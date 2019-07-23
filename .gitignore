@@ -1,0 +1,30 @@
+#Cached files
+__pycache__/**
+
+#Pictures
+*.png
+
+#Tensorflow stuff
+
+#SQL Scripts
+*.sql
+
+#Draw.io files
+*.drawio
+
+#Random Files
+DatabaseCategorizer (2).xml
+test.py
+user_input.csv
+
+
+#Word files
+*.docx
+
+#One note files
+*.onetoc2
+*.one
+OneNote_RecycleBin/**
+
+
+
