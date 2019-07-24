@@ -10,15 +10,15 @@ The implementation steps are : <br/>
 
 Files : <br/>
 JVWork_ExtractDatabases.py <br/>
-   A module that contains several functinos for recursively looking for sql databases in a remote location. Used to  
-   originally save sql databases from a remote server to a local disc.  
-   functions{ <br/>
-   get_UNC <br/>
-   search_databases # Most important, used to recursively search, and save <br/>
-   save_databases # Interacts with the shell to save remote databasese to local location <br/>
-   get_database_name #Handles naming of the copied databases to the local disc becasue the remote databases are all named <br/>
-    similar things and are in many different locations <br/>
-  }<br/>
+⋅⋅⋅A module that contains several functinos for recursively looking for sql databases in a remote location. Used to  <br/>
+⋅⋅⋅originally save sql databases from a remote server to a local disc.  <br/>
+⋅⋅⋅functions{  <br/>
+⋅⋅⋅get_UNC  <br/>
+⋅⋅⋅search_databases # Most important, used to recursively search, and save  <br/>
+⋅⋅⋅save_databases # Interacts with the shell to save remote databasese to local location  <br/>
+⋅⋅⋅get_database_name #Handles naming of the copied databases to the local disc becasue the remote databases are all named  <br/>
+⋅⋅⋅⋅⋅⋅similar things and are in many different locations  <br/>
+  }  
 ***
 JVWork_ExtractDatabases_test.py <br/>
   A test script for JVWorl_ExtractDatabases.py. Not important. Maybe remove in the future <br/>
