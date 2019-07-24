@@ -8,11 +8,11 @@ The implementation steps are : <br/>
 3) Save data in .csv files (Actually, a noSQL system would suit this application well b/c we are dealing with sequential data <br/>
 4) Automatically cluster data (unsupervised clustering) <br/>
 
-Files : <br/>
+## Files : <br/>
 1. JVWork_ExtractDatabases.py <br/>
     A module that contains several functinos for recursively looking for sql databases in a remote location. Used to  <br/>
     originally save sql databases from a remote server to a local disc.  <br/>
-    functions{  <br/>
+    #### functions{  <br/>
     get_UNC  <br/>
     search_databases # Most important, used to recursively search, and save  <br/>
     save_databases # Interacts with the shell to save remote databasese to local location  <br/>
@@ -25,7 +25,7 @@ Files : <br/>
 ***
 3. JVWork_MDFPipeline.py <br/>
     A module that contains several functions for extracting data from SQL databases. <br/>
-        functions { <br/>
+        #### functions { <br/>
         search_database #searches a location for sql databases <br/>
         main #iterate through databases saved in local location and join tables into one csv file <br/>
         join_dataframes #joins a list of dataframes <br/>
