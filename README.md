@@ -12,20 +12,20 @@ The implementation steps are : <br/>
 1. JVWork_ExtractDatabases.py <br/>
     A module that contains several functinos for recursively looking for sql databases in a remote location. Used to  <br/>
     originally save sql databases from a remote server to a local disc.  <br/>
-        #### functions{  
-        get_UNC   
-        search_databases # Most important, used to recursively search, and save   
-        save_databases # Interacts with the shell to save remote databasese to local location   
-        get_database_name #Handles naming of the copied databases to the local disc becasue the remote databases are all named   
-         similar things and are in many different locations   
-       }  
+     #### functions{  <br/>
+     get_UNC   <br/>
+     search_databases # Most important, used to recursively search, and save   <br/>
+     save_databases # Interacts with the shell to save remote databasese to local location   <br/>
+     get_database_name #Handles naming of the copied databases to the local disc becasue the remote databases are all named   <br/>
+     similar things and are in many different locations   <br/>
+     }  <br/>
 ---
-2. JVWork_ExtractDatabases_test.py  
-    A test script for JVWorl_ExtractDatabases.py. Not important. Maybe remove in the future  
+2. JVWork_ExtractDatabases_test.py  <br/>
+    A test script for JVWorl_ExtractDatabases.py. Not important. Maybe remove in the future  <br/>
 ---
-3. JVWork_MDFPipeline.py 
-    A module that contains several functions for extracting data from SQL databases. 
-        functions { 
+3. JVWork_MDFPipeline.py <br/>
+    A module that contains several functions for extracting data from SQL databases. <br/>
+        functions {  <br/>
         search_database #searches a location for sql databases <br/>
         main #iterate through databases saved in local location and join tables into one csv file <br/>
         join_dataframes #joins a list of dataframes <br/>
