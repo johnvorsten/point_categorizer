@@ -30,13 +30,14 @@ class AccuracyTest():
                     columns=['DBPath','correct_k', 
                              'optk_MDS_gap_max', 'optk_MDS_gap_Tib',
                              'optk_MDS_gap*_max', 'optk_X_gap_max', 'optk_X_gap_Tib',
-                             'optk_X_gap*_max', #'count_dict',
-                             'n_points'
+                             'optk_X_gap*_max', 
+                             'n_points', 'n_len1','n_len2','n_len3','n_len4',
+                             'n_len5'
                              ]
                     )
             self.error_df.to_csv(self.error_df_path)
         else:
-            self.error_df = pd.read_csv(self.error_df_path)
+            self.error_df = pd.read_csv(self.error_df_path, index_col=0)
     
     def get_correct_k(self, db_name, dataframe, manual=False):
         """Finds the correct k based on database name from a csv file located
@@ -144,8 +145,8 @@ class AccuracyTest():
         myDBPipe = JVDBPipe()
         sequence_tag = 'DBPath'
         
-        for indicies, database in iterator:
-            
+        for _, database in iterator:
+
             col = np.where(database.columns == sequence_tag)[0][0]
             db_name = database.iloc[0, col]
             print('\n## {}\n'.format(db_name))
@@ -168,59 +169,78 @@ class AccuracyTest():
                       Set manual = True to avoid this error'.format(db_name))
                 continue
             
-            mds = MDS(n_components = 2)
-            X_reduced_mds = mds.fit_transform(X)
-            max_clusters = int(min(65, correct_k + 5, X.shape[0]))
-            #max_clusters = min(15, int(np.ceil(X.shape[0]/2)))
+            words_bool = X > 0
+            lengths = np.sum(words_bool, axis=1)
+            unique_lengths = list(set(lengths))
             
-            optimalkMDS = OptimalK(parallel_backend='multiprocessing')
-            num_k_gap1_MDS = optimalkMDS(X_reduced_mds, cluster_array=np.arange(1,max_clusters,1))
-            gapdf1_MDS = optimalkMDS.gap_df
-            optimalkX = OptimalK(parallel_backend='multiprocessing')
-            num_k_gap1_X = optimalkX(X.astype(np.float32), cluster_array=np.arange(1,max_clusters,1))
-            gapdf1_X = optimalkX.gap_df
+            #Empty, sum results at saving
+            optK_MDS_gap_max = []
+            optK_MDS_gap_Tib = []
+            optK_MDS_gapStar_max = []
             
-            #Maybe if other one is too slow?
-    #        num_k_gap2_X, gapdf2_X = myClustering.optimalK2(X, nrefs=5, maxClusters=_max_clusters)
-    #        num_k_gap2_MDS, gapdf2_MDS = myClustering.optimalK2(X_reduced_mds, nrefs=5, maxClusters=_max_clusters)
+            optK_X_gap_max = []
+            optK_X_gap_Tib = []
+            optK_X_gapStar_max = []
             
-            #Different methods
-            optK_MDS_gap_max = num_k_gap1_MDS
-            optK_MDS_gap_Tib = self.tib_optimal_k(gapdf1_MDS['n_clusters'], 
-                                             gapdf1_MDS['gap_value'], 
-                                             gapdf1_MDS['ref_dispersion_std'])
-            optK_MDS_gapStar_max = gapdf1_MDS.iloc[np.argmax(gapdf1_MDS['gap*'].values)].n_clusters
-            
-            optK_X_gap_max = num_k_gap1_X
-            optK_X_gap_Tib = self.tib_optimal_k(gapdf1_X['n_clusters'], 
-                                           gapdf1_X['gap_value'], 
-                                           gapdf1_X['ref_dispersion_std'])
-            optK_X_gapStar_max = gapdf1_X.iloc[np.argmax(gapdf1_X['gap*'].values)].n_clusters
-            
+            #Iterate over each word size
+            for length in unique_lengths: 
+                indicies = np.where(lengths == length)
+                X_partial = X[indicies]
+                
+                mds = MDS(n_components = 2)
+                X_reduced_mds = mds.fit_transform(X_partial)
+                #Change max_clusters for correct_k
+                max_clusters = int(min(65, 
+                                       correct_k*(X_partial.shape[0]/X.shape[0])+3, 
+                                       X_partial.shape[0]))
+                #max_clusters = min(15, int(np.ceil(X.shape[0]/2)))
+                
+                optimalkMDS = OptimalK(parallel_backend='multiprocessing')
+                num_k_gap1_MDS = optimalkMDS(X_reduced_mds, cluster_array=np.arange(1,max_clusters,1))
+                gapdf1_MDS = optimalkMDS.gap_df
+                optimalkX = OptimalK(parallel_backend='multiprocessing')
+                num_k_gap1_X = optimalkX(X_partial.astype(np.float32), cluster_array=np.arange(1,max_clusters,1))
+                gapdf1_X = optimalkX.gap_df
+                
+                #Maybe if other one is too slow?
+        #        num_k_gap2_X, gapdf2_X = myClustering.optimalK2(X, nrefs=5, maxClusters=_max_clusters)
+        #        num_k_gap2_MDS, gapdf2_MDS = myClustering.optimalK2(X_reduced_mds, nrefs=5, maxClusters=_max_clusters)
+                
+                #Different methods
+                optK_MDS_gap_max.append(num_k_gap1_MDS)
+                optK_MDS_gap_Tib.append(self.tib_optimal_k(gapdf1_MDS['n_clusters'], 
+                                                 gapdf1_MDS['gap_value'], 
+                                                 gapdf1_MDS['ref_dispersion_std']))
+                optK_MDS_gapStar_max.append(gapdf1_MDS.iloc[np.argmax(gapdf1_MDS['gap*'].values)].n_clusters)
+                
+                optK_X_gap_max.append(num_k_gap1_X)
+                optK_X_gap_Tib.append(self.tib_optimal_k(gapdf1_X['n_clusters'], 
+                                               gapdf1_X['gap_value'], 
+                                               gapdf1_X['ref_dispersion_std']))
+                optK_X_gapStar_max.append(gapdf1_X.iloc[np.argmax(gapdf1_X['gap*'].values)].n_clusters)
+                
             new_vals = pd.DataFrame({sequence_tag:db_name,
                      'correct_k':correct_k,
-                     'optk_MDS_gap_max':optK_MDS_gap_max,
-                     'optk_MDS_gap_Tib':optK_MDS_gap_Tib,
-                     'optk_MDS_gap*_max':optK_MDS_gapStar_max,
-                     'optk_X_gap_max':optK_X_gap_max,
-                     'optk_X_gap_Tib':optK_X_gap_Tib,
-                     'optk_X_gap*_max':optK_X_gapStar_max,
-#                     'count_dict':self.get_word_dictionary(X),
+                     'optk_MDS_gap_max':sum(optK_MDS_gap_max),
+                     'optk_MDS_gap_Tib':sum(optK_MDS_gap_Tib),
+                     'optk_MDS_gap*_max':sum(optK_MDS_gapStar_max),
+                     'optk_X_gap_max':sum(optK_X_gap_max),
+                     'optk_X_gap_Tib':sum(optK_X_gap_Tib),
+                     'optk_X_gap*_max':sum(optK_X_gapStar_max),
                      'n_points':X.shape[0]
                      })
             
-#            self.error_df = self.error_df.append(
-#                    {sequence_tag:db_name,
-#                     'correct_k':correct_k,
-#                     'optk_MDS_gap_max':optK_MDS_gap_max,
-#                     'optk_MDS_gap_Tib':optK_MDS_gap_Tib,
-#                     'optk_MDS_gap*_max':optK_MDS_gapStar_max,
-#                     'optk_X_gap_max':optK_X_gap_max,
-#                     'optk_X_gap_Tib':optK_X_gap_Tib,
-#                     'optk_X_gap*_max':optK_X_gapStar_max,
-#                     'count_dict':self.get_word_dictionary(X),
-#                     'n_points':X.shape[0]
-#                     })
+            #Make a dictionary that can be saved in dataframe
+            count_dict = self.get_word_dictionary(X)
+            old_keys = list(count_dict.keys())
+            new_keys = ['n_len' + str(old_key) for old_key in old_keys]
+            for old_key, new_key in zip(old_keys, new_keys):
+                count_dict[new_key] = count_dict.pop(old_key)
+            
+            count_dict[sequence_tag] = db_name
+            count_df = pd.DataFrame(count_dict)
+            new_vals = new_vals.join(count_df.set_index(sequence_tag), on=sequence_tag)
+            
             self.error_df = self.error_df.append(new_vals)
             error_df = self.error_df
         
@@ -303,6 +323,22 @@ myTest = AccuracyTest()
 _master_pts_db = r"D:\Z - Saved SQL Databases\master_pts_db.csv"
 myClustering = JVClusterTools()
 my_iter = myClustering.read_database_set(_master_pts_db)
-myTest.iterate(my_iter, manual=True, plot=False)
+error_df = myTest.error_df
+
+
+
+#myTest.iterate(my_iter, manual=True, plot=False)
+
+
+b = myTest.error_df
+
+
+
+
+    
+
+
+
+
 
 
