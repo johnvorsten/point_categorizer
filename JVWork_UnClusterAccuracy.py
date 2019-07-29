@@ -32,7 +32,7 @@ class AccuracyTest():
                              'optk_MDS_gap*_max', 'optk_X_gap_max', 'optk_X_gap_Tib',
                              'optk_X_gap*_max', 
                              'n_points', 'n_len1','n_len2','n_len3','n_len4',
-                             'n_len5'
+                             'n_len5', 'n_len6', 'n_len7'
                              ]
                     )
             self.error_df.to_csv(self.error_df_path)
@@ -48,12 +48,6 @@ class AccuracyTest():
         manual : Display points for manual entry of correct K. True if you
         want the user to manually enter in K.
         dataframe : dataframe of current sequence (pass df_clean)"""
-        
-#        global correct_k_dict
-#        
-#        if not 'correct_k_dict' in dir():
-#            print('\nRead correct_k_dict from memroy')
-#            correct_k_dict = pd.read_csv(self.correct_k_dict_path, index_col=0, header='infer')
         
         try:
             col = np.where(dataframe.columns == 'DBPath')[0][0]
@@ -121,13 +115,38 @@ class AccuracyTest():
         count_dict = {}
         
         for row in word_array:
-            count = sum(row)
+            count = sum(row>0)
             try:
                 count_dict[count] += 1
             except KeyError:
                 count_dict[count] = 1
                 
         return count_dict
+    
+    def get_max_iterations(self, X, X_partial, correct_k):
+        """Return the max number of k_clusters to try in optimalK clustering
+        parameters
+        -------
+        X : whole text bagged dataset
+        X_partial : partial bagged dataset, based on word size
+        correct_k : correct clusters for whole dataset"""
+        #Set the upper bound
+#        max_clusters = min(correct_k*(X_partial.shape[0]/X.shape[0])+5, 
+#                           X_partial.shape[0])
+        if correct_k >= 500:
+            raise ClusterTooHigh()
+        if correct_k >= 50: #Handle large datasets
+            max_clusters = min(correct_k*(X_partial.shape[0]/X.shape[0])+9,
+                               X_partial.shape[0])
+        else: #Smaller datasets
+            max_clusters = min(correct_k+9,
+                               X_partial.shape[0])
+        #Set the lower bound
+        max_clusters = max(max_clusters, 
+                           6)
+        if max_clusters >= X_partial.shape[0]:
+            max_clusters = X_partial.shape[0]
+        return int(max_clusters)
     
     def iterate(self, iterator, manual=True, plot=False):
         """Iterate through a database and report optimalK for each sequence in
@@ -140,8 +159,8 @@ class AccuracyTest():
         output
         -------
         error_df : dataframe containing optimalK predicted and actual K"""
-        global database, df_clean, error_df, new_vals
-        
+        global database, df_clean, error_df, new_vals, count_df, new_vals, X_partial
+        global indicies
         myDBPipe = JVDBPipe()
         sequence_tag = 'DBPath'
         
@@ -186,14 +205,14 @@ class AccuracyTest():
             for length in unique_lengths: 
                 indicies = np.where(lengths == length)
                 X_partial = X[indicies]
+                print('Trying word count : {}'.format(length))
+                if X_partial.shape[0] <= 1: #Skip 1-length words, not useful
+                    continue
                 
                 mds = MDS(n_components = 2)
                 X_reduced_mds = mds.fit_transform(X_partial)
                 #Change max_clusters for correct_k
-                max_clusters = int(min(65, 
-                                       correct_k*(X_partial.shape[0]/X.shape[0])+3, 
-                                       X_partial.shape[0]))
-                #max_clusters = min(15, int(np.ceil(X.shape[0]/2)))
+                max_clusters = self.get_max_iterations(X, X_partial, correct_k)
                 
                 optimalkMDS = OptimalK(parallel_backend='multiprocessing')
                 num_k_gap1_MDS = optimalkMDS(X_reduced_mds, cluster_array=np.arange(1,max_clusters,1))
@@ -220,14 +239,14 @@ class AccuracyTest():
                 optK_X_gapStar_max.append(gapdf1_X.iloc[np.argmax(gapdf1_X['gap*'].values)].n_clusters)
                 
             new_vals = pd.DataFrame({sequence_tag:db_name,
-                     'correct_k':correct_k,
-                     'optk_MDS_gap_max':sum(optK_MDS_gap_max),
-                     'optk_MDS_gap_Tib':sum(optK_MDS_gap_Tib),
-                     'optk_MDS_gap*_max':sum(optK_MDS_gapStar_max),
-                     'optk_X_gap_max':sum(optK_X_gap_max),
-                     'optk_X_gap_Tib':sum(optK_X_gap_Tib),
-                     'optk_X_gap*_max':sum(optK_X_gapStar_max),
-                     'n_points':X.shape[0]
+                     'correct_k':[correct_k],
+                     'optk_MDS_gap_max':[sum(optK_MDS_gap_max)],
+                     'optk_MDS_gap_Tib':[sum(optK_MDS_gap_Tib)],
+                     'optk_MDS_gap*_max':[sum(optK_MDS_gapStar_max)],
+                     'optk_X_gap_max':[sum(optK_X_gap_max)],
+                     'optk_X_gap_Tib':[sum(optK_X_gap_Tib)],
+                     'optk_X_gap*_max':[sum(optK_X_gapStar_max)],
+                     'n_points':[X.shape[0]]
                      })
             
             #Make a dictionary that can be saved in dataframe
@@ -238,7 +257,7 @@ class AccuracyTest():
                 count_dict[new_key] = count_dict.pop(old_key)
             
             count_dict[sequence_tag] = db_name
-            count_df = pd.DataFrame(count_dict)
+            count_df = pd.DataFrame(count_dict, index=[0])
             new_vals = new_vals.join(count_df.set_index(sequence_tag), on=sequence_tag)
             
             self.error_df = self.error_df.append(new_vals)
@@ -314,7 +333,10 @@ class AccuracyTest():
         ax = mds_fig.subplots(1,1)
         self.plt_MDS(X_reduced_mds[:,0], X_reduced_mds[:,1], np.zeros(X_reduced_mds.shape[0]), ax)
     
+    
 class NoValueFound(Exception):
+    pass
+class ClusterTooHigh(Exception):
     pass
 
 
@@ -325,13 +347,8 @@ myClustering = JVClusterTools()
 my_iter = myClustering.read_database_set(_master_pts_db)
 error_df = myTest.error_df
 
-
-
-#myTest.iterate(my_iter, manual=True, plot=False)
-
-
-b = myTest.error_df
-
+myTest.iterate(my_iter, manual=True, plot=False)
+b=myTest.error_df
 
 
 

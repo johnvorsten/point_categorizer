@@ -26,5 +26,6 @@ user_input.csv
 *.one
 OneNote_RecycleBin/**
 
-
+#Git notes
+git notes.txt
 
