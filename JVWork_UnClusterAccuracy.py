@@ -348,7 +348,6 @@ my_iter = myClustering.read_database_set(_master_pts_db)
 error_df = myTest.error_df
 
 myTest.iterate(my_iter, manual=True, plot=False)
-b=myTest.error_df
 
 
 
