@@ -2,6 +2,50 @@
 """
 Created on Thu Jun 20 07:53:26 2019
 
+This is a package of useful pipelines and transformation classes used for 
+processing data. This module contains :
+
+ 'DataFrameSelector' - Retrieve values of certain columns from pd.DataFrame
+ 'DuplicateRemover' - Remove duplicates from named columns of a pd.DataFrame
+ 'JVDBPipe' - A class with some useful pre-built pipelines
+ 'RemoveAttribute' - Removes named attributes/columns from pd.DataFrames
+ 'RemoveNan' - Removes nan values from named columns in pd.DataFrame. Contains
+ useful custom ways to deal with nan (aka replace w/ text)
+ 'SetDtypes' - Changes column data types of pd.DataFrame
+ 'StandardScaler' - Scales values along columns
+ 'TextCleaner' - Processes text attributes/columns with regex
+ 'TextToWordDict' - Creates a one-hot encoded dataframe from text instances
+ 'UnitCleaner' - A custom mapping of words in my data to a standard set of 
+ units/words
+ 'VirtualRemover' - A custom class to remove instances with the "virtual" 
+ instance type
+ 'WordDictToSparseTransformer' - Converts your word dictionary to a sparse 
+ matrix of encoded words
+ 
+ Example usage : 
+
+myTest = AccuracyTest() #For performing unsupervised clustering
+myClustering = JVClusterTools() #For retrieving data
+myDBPipe = JVDBPipe() #Class in this module
+
+_master_pts_db = r"D:\Z - Saved SQL Databases\master_pts_db.csv"
+my_iter = myClustering.read_database_set(_master_pts_db) #Create an interator over database
+
+sequence_tag = 'DBPath'
+_, database = next(my_iter)
+error_df = myTest.error_df
+    
+clean_pipe = myDBPipe.cleaning_pipeline(remove_dupe=False, 
+                                      replace_numbers=False, 
+                                      remove_virtual=True)
+df_clean = clean_pipe.fit_transform(database)
+text_pipe = myDBPipe.text_pipeline(vocab_size='all', attributes='NAME',
+                                   seperator='.')
+X = text_pipe.fit_transform(df_clean).toarray()
+word_vocab = text_pipe.named_steps['WordDictToSparseTransformer'].vocabulary #Total dictionary of words in dataset
+df_text = pd.DataFrame(X, columns=_word_vocab) #Dataframe with each column 
+naming the encoded word (feature). Instances are along (axis 0)
+
 @author: z003vrzk
 """
 
@@ -14,7 +58,6 @@ import re
 from scipy.sparse import csr_matrix
 from collections import Counter
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
-import os
 
 
 class RemoveAttribute(BaseEstimator, TransformerMixin):
@@ -161,10 +204,11 @@ class TextToWordDict(BaseEstimator, TransformerMixin):
         where key is a word/phrase that appears in each instance of X, and value
         is the total number of times key appears in an instance"""
         X_ListDictionary = []
+        regex_pattern = '|'.join(map(re.escape, self.seperator))
         
         for point_names in X:
             
-            wordCounts = Counter(point_names.split(sep=self.seperator))
+            wordCounts = Counter(re.split(regex_pattern, point_names))
             X_ListDictionary.append(wordCounts)
             
         return np.array(X_ListDictionary)
@@ -313,7 +357,7 @@ class JVDBPipe():
         mode : replace with mode
         any other value : replace with that value"""
         self._nan_replace_dict = {'NETDEVID':'empty', 'NAME':'remove', 'DESCRIPTOR':'empty','TYPE':'mode','INITVALUE':'zero',
-                             'ALARMTYPE':'mode','FUNCTION':'mode','VIRTUAL':'mode','SYSTEM':'empty',
+                             'ALARMTYPE':'mode','FUNCTION':'Value','VIRTUAL':'False','SYSTEM':'empty',
                              'CS':'empty','SENSORTYPE':'digital','DEVICEHI':'zero','DEVICELO':'zero',
                              'DEVUNITS':'empty','SIGNALHI':'zero','SIGNALLO':'zero',
                              'SLOPE':'zero','INTERCEPT':'zero'}
@@ -332,9 +376,12 @@ class JVDBPipe():
                            'SENSORTYPE', 'DEVUNITS']
         self._num_attributes = ['INITVALUE', 'DEVICEHI', 'DEVICELO', 'SIGNALHI', 'SIGNALLO', 
                            'SLOPE', 'INTERCEPT']
-        self._text_attributes = ['NAME', 'DESCRIPTOR', 'SYSTEM'] #NETDEVID also?
+        self._text_attributes = ['NAME', 'DESCRIPTOR', 'SYSTEM']
+        
+    
 
-    def import_raw_data(self, path=r'D:\Z - Saved SQL Databases\master_pts_db.csv'):
+    def import_raw_data(self, 
+                        path=r'D:\Z - Saved SQL Databases\master_pts_db.csv'):
         """Imports data from CSV File (Dirty Data)
         parameters 
         -------
@@ -343,35 +390,38 @@ class JVDBPipe():
         df = pd.read_csv(_master_path, header=0, index_col=0, encoding='mac_roman')
         df.reset_index(drop=True, inplace=True)
         self.master_database = df
+        return
     
-    def run_pipelines(self, remove_dupe=False, replace_numbers=True, remove_virtual=False):
+    def calc_pipelines(self, 
+                       remove_dupe=False, 
+                       replace_numbers=True, 
+                       remove_virtual=False,
+                       seperator='.',
+                       vocabulary_size='all'):
         """Runs all pipelines and saves outputs to .csv files
         parameters
         -------
-        remove_dupe : whether or not to remove duplicates from the 'NAME' column"""
+        remove_dupe : whether or not to remove duplicates from the 'NAME' column
+        replace_numbers : replace numbers in text features with empty strings (True)
+        remove_virtual : remove "virtual" points
+        seperator : seperator for text features in the'Name' column. Used in 
+        TextToWordDict transformer. Can be single character or iterable of characters
+        vocabulary_size : number of featuers to encode in name, descriptor, 
+        and sysetm features text
+        """
         
-        cleaning_pipeline = Pipeline([
-                ('dropper', RemoveAttribute(self._drop_attributes)),
-                ('nan_remover', RemoveNan(self._nan_replace_dict)),
-                ('set_dtypes', SetDtypes(self._type_dict)),
-                ('text_clean', TextCleaner(self._text_clean_attrs, replace_numbers=replace_numbers)),
-                ('unit_clean', UnitCleaner(self._unit_dict)),
-                ('dupe_remove', DuplicateRemover(self._dupe_cols, remove_dupe=remove_dupe)),
-                ('virtual_remover', VirtualRemover(remove_virtual=remove_virtual))
-                ])
+        cleaning_pipeline = self.cleaning_pipeline(remove_dupe=remove_dupe, 
+                                                   replace_numbers=replace_numbers, 
+                                                   remove_virtual=remove_virtual)
         
-        name_pipeline = Pipeline([('text_to_dict', TextToWordDict(seperator='.')),
-                                  ('WordDictToSparseTransformer', WordDictToSparseTransformer(vocabulary_size=5000))
-                ])
-        #TODO : what is the best vocabulary size hyperparameter?
+        name_pipeline = self.name_pipeline(seperator=seperator,
+                                       vocabulary_size=vocabulary_size) #5000?
         
-        descriptor_pipeline = Pipeline([('text_to_dict', TextToWordDict(seperator=' ')),
-                                  ('WordDictToSparseTransformer', WordDictToSparseTransformer(vocabulary_size=2000))
-                ])
+        descriptor_pipeline = self.descriptor_pipeline(seperator=seperator, 
+                                       vocabulary_size=vocabulary_size) #2000?
         
-        system_pipeline = Pipeline([('text_to_dict', TextToWordDict(seperator=' ')),
-                                  ('WordDictToSparseTransformer', WordDictToSparseTransformer(vocabulary_size=350))
-                ])
+        system_pipeline = self.system_pipeline(seperator=seperator,
+                                       vocabulary_size=vocabulary_size) #2000?
         
         cat_pipeline = Pipeline([
                 ('selector', DataFrameSelector(self._cat_attributes)),
@@ -383,49 +433,13 @@ class JVDBPipe():
                 ('std_scaler',StandardScaler())
                 ])
         
-        full_pipeline = FeatureUnion(transformer_list=[('numPipeline', num_pipeline),
-                                                      ('catPipeline', cat_pipeline)
-                                                      ])
+        full_pipeline = FeatureUnion(transformer_list=[
+                ('cleaning_pipe', cleaning_pipeline),
+                ('numPipeline', num_pipeline),
+                ('catPipeline', cat_pipeline)
+                ])
         
-        df2 = cleaning_pipeline.fit_transform(self.master_database)
-        df2.reset_index(drop=True, inplace=True)
-        _save_path_df2 = r'D:\Z - Saved SQL Databases\master_pts_db_clean.csv'
-        if not Path(_save_path_df2).is_file():
-            df2.to_csv(_save_path_df2)
-        self.master_database_clean = df2
-        
-        
-        text_prepared = name_pipeline.fit_transform(df2['NAME'])
-    #    word_dict = name_pipeline.named_steps['WordDictToSparseTransformer'].master_dict
-        word_vocab = name_pipeline.named_steps['WordDictToSparseTransformer'].vocabulary
-        _save_path_name = r'D:\Z - Saved SQL Databases\master_pts_db_name_onehot.csv'
-        _df2_name_cols = [word_vocab]
-        df2_name_onehot = pd.DataFrame(text_prepared.toarray(), 
-                                   columns=_df2_name_cols)
-        if not Path(_save_path_name).is_file():
-            df2_name_onehot.to_csv(_save_path_name)
-        
-        
-        desc_prepared = descriptor_pipeline.fit_transform(df2['DESCRIPTOR'])
-    #    desc_dict = descriptor_pipeline.named_steps['WordDictToSparseTransformer'].master_dict
-        desc_vocab = descriptor_pipeline.named_steps['WordDictToSparseTransformer'].vocabulary
-        _save_path_description = r'D:\Z - Saved SQL Databases\master_pts_db_description_onehot.csv'
-        df2_desc_onehot = pd.DataFrame(desc_prepared.toarray(), 
-                                   columns=desc_vocab)
-        if not Path(_save_path_description).is_file():
-            df2_desc_onehot.to_csv(_save_path_description)
-        
-        sys_prepared = system_pipeline.fit_transform(df2['SYSTEM'])
-    #    sys_dict = system_pipeline.named_steps['WordDictToSparseTransformer'].master_dict
-        sys_vocab = system_pipeline.named_steps['WordDictToSparseTransformer'].vocabulary
-        _save_path_system = r'D:\Z - Saved SQL Databases\master_pts_db_system_onehot.csv'
-    #    _df2_sys_cols = [['Other word'], sys_vocab] #Vocabulary lookup
-        df2_sys_onehot = pd.DataFrame(sys_prepared.toarray(), 
-                                      columns=sys_vocab)
-        if not Path(_save_path_system).is_file():
-            df2_sys_onehot.to_csv(_save_path_system)
-        
-        df2_cat_num_scr = full_pipeline.fit_transform(df2)
+        df2_cat_num_scr = full_pipeline.fit_transform(self.master_database)
         _cat_cols = cat_pipeline.named_steps.catEncoder.categories_
         _cat_columns = np.concatenate(_cat_cols).ravel().tolist()
         _df2_cat_num_cols = [self._num_attributes, _cat_columns]
@@ -434,36 +448,108 @@ class JVDBPipe():
         _save_path_cat_num = r'D:\Z - Saved SQL Databases\master_pts_db_categorical_numeric.csv'
         if not Path(_save_path_cat_num).is_file():
             df2_cat_num.to_csv(_save_path_cat_num)
-
-    @staticmethod
-    def del_old_csv_files():
-        """Deletes automatically generated .csv files from the directory"""
-        _save_path_cat_num = r'D:\Z - Saved SQL Databases\master_pts_db_categorical_numeric.csv'
-        _save_path_system = r'D:\Z - Saved SQL Databases\master_pts_db_system_onehot.csv'
-        _save_path_description = r'D:\Z - Saved SQL Databases\master_pts_db_description_onehot.csv'
-        _save_path_name = r'D:\Z - Saved SQL Databases\master_pts_db_name_onehot.csv'
-        _save_path_df2 = r'D:\Z - Saved SQL Databases\master_pts_db_clean.csv'
-        os.remove(_save_path_cat_num)
-        os.remove(_save_path_system)
-        os.remove(_save_path_description)
-        os.remove(_save_path_name)
-        os.remove(_save_path_df2)
+        return
         
-    def text_pipeline(self, X, vocab_size):
+    def text_pipeline(self, 
+                      vocab_size, 
+                      attributes='NAME', 
+                      seperator='.'):
+        """Run raw data through the data and text pipelines. The point of this 
+        function is to control removing duplicates and removing numbers
+        parameters
+        NOTE : To use this pipeline you should pass a pandas dataframe to its
+        fit_transform() method
+        NOTE : This pipeline returns a sparse metrix. To get values use 
+        result.toarray(). To create a dataframe use pd.DataFrame(text_prepared.toarray(), 
+        columns=word_vocab)
+        word_vocab = name_pipeline.named_steps['WordDictToSparseTransformer'].vocabulary
+        -------
+        vocab_size : vocabulary size for one-hot text attributes. Pass int() or 
+        string 'all'
+        attributes : column names to select. Should be iterable to return a 2D
+        array, or a string to return a 1D array
+        seperator : seperator for text features in the'Name' column. Used in 
+        TextToWordDict transformer. Can be single character or iterable of characters
+        ouput
+        -------
+        A sklearn pipeline object containing modifier classes. To view the modifiers
+        see Pipeline.named_steps attribute or Pipeline.__getitem__(ind) """
+        
+        name_pipeline = Pipeline([
+                ('dataframe_selector', DataFrameSelector(attributes)),
+                ('text_to_dict', TextToWordDict(seperator=seperator)),
+                ('WordDictToSparseTransformer', WordDictToSparseTransformer(vocabulary_size=vocab_size))
+        ])
+
+        return name_pipeline
+    
+    def name_pipeline(self, 
+                      seperator, 
+                      attributes='NAME', 
+                      vocabulary_size='all'):
+        """Returns a pipeline for use on the name feature"""
+        
+        name_pipeline = Pipeline([
+            ('dataframe_selector', DataFrameSelector(attributes)),
+            ('text_to_dict', TextToWordDict(seperator=seperator)),
+            ('WordDictToSparseTransformer', WordDictToSparseTransformer(vocabulary_size=vocabulary_size))
+        ])
+        
+        #How to use this to create a clean dataframe
+#        word_dict = name_pipeline.named_steps['WordDictToSparseTransformer'].master_dict
+#        word_vocab = name_pipeline.named_steps['WordDictToSparseTransformer'].vocabulary
+#        _df2_name_cols = [word_vocab]
+#        df2_name_onehot = pd.DataFrame(text_prepared.toarray(), 
+#                                   columns=_df2_name_cols)
+        return name_pipeline
+        
+    def descriptor_pipeline(self, 
+                            seperator, 
+                            vocabulary_size, 
+                            attributes='DESCRIPTOR'):
+        """Returns a pipeline to use on the descriptor feature"""
+        
+        descriptor_pipeline = Pipeline([
+                ('dataframe_selector', DataFrameSelector(attributes)),
+                ('text_to_dict', TextToWordDict(seperator=seperator)),
+              ('WordDictToSparseTransformer', WordDictToSparseTransformer(vocabulary_size=vocabulary_size))
+        ])
+            
+        return descriptor_pipeline
+    
+    def system_pipeline(self, 
+                        seperator, 
+                        vocabulary_size, 
+                        attributes='SYSTEM'):
+        """Returns a pipeline to use on the system feature"""
+        
+        system_pipeline = Pipeline([
+            ('dataframe_selector', DataFrameSelector(attributes)),
+            ('text_to_dict', TextToWordDict(seperator=seperator)),
+            ('WordDictToSparseTransformer', WordDictToSparseTransformer(vocabulary_size=vocabulary_size))
+              ])
+            
+        return system_pipeline
+    
+    def text_pipeline_calc(self, 
+                           X, 
+                           vocab_size='all', 
+                           seperator='.'):
         """Run raw data through the data and text pipelines. The point of this 
         function is to control removing duplicates and removing numbers
         parameters
         -------
         X : dataframe to clean and process text. Default only processes 'NAME' 
         column
-        replace_numbers : boolean if replacing numbers
         vocab_size : vocabulary size for one-hot text attributes. Pass int() or 
         string 'all'
-        remove_dupe : boolean if removing duplicates in 'NAME' column"""
+        seperator : seperator for text features in the'Name' column. Used in 
+        TextToWordDict transformer. Can be single character or iterable of characters
+        """
         assert type(X) == pd.DataFrame, 'X msut be dataframe'
         assert X.shape[0] < 20000, 'Input dataframe shape is large. May be an issue'
         
-        name_pipeline = Pipeline([('text_to_dict', TextToWordDict(seperator='.')),
+        name_pipeline = Pipeline([('text_to_dict', TextToWordDict(seperator=seperator)),
                           ('WordDictToSparseTransformer', WordDictToSparseTransformer(vocabulary_size=vocab_size))
         ])
         
@@ -477,7 +563,46 @@ class JVDBPipe():
 
         return name_onehot
     
-    def cleaning_pipeline(self, X, 
+    def cleaning_pipeline(self, 
+                          remove_dupe, 
+                          replace_numbers, 
+                          remove_virtual):
+        """Cleaning pipeline. 
+        Remove attributes (self._drop_attributes)
+        Remove nan (self._nan_replace_dict)
+        Change data types (self._type_dict)
+        Clean Text (self._text_clean_attrs, replace_numbers)
+        Unit Cleaner (self._unit_dict)
+        Remove Duplicates (self._dupe_cols, remove_dupe)
+        Virtual Remove (remove_virtual)
+        NOTE : To use this pipeline you should pass a pandas dataframe to its
+        fit_transform() method
+        parameters
+        -------
+        remove_dupe : whether or not to remove duplicates from the 'NAME' column.
+        This happens with L2SL values. 
+        replace_numbers : whether or not to replace numbers in TextCleaner, 
+        see self._text_clean_attrs
+        remove_virtual : whether or not to remove virtuals in VirtualRemover
+        ouput
+        -------
+        A sklearn pipeline object containing modifier classes. To view the modifiers
+        see Pipeline.named_steps attribute or Pipeline.__getitem__(ind) """
+        
+        cleaning_pipeline = Pipeline([
+                ('dropper', RemoveAttribute(self._drop_attributes)),
+                ('nan_remover', RemoveNan(self._nan_replace_dict)),
+                ('set_dtypes', SetDtypes(self._type_dict)),
+                ('text_clean', TextCleaner(self._text_clean_attrs, replace_numbers=replace_numbers)),
+                ('unit_clean', UnitCleaner(self._unit_dict)),
+                ('dupe_remove', DuplicateRemover(self._dupe_cols, remove_dupe=remove_dupe)),
+                ('virtual_remover', VirtualRemover(remove_virtual=remove_virtual))
+                ])
+        
+        return cleaning_pipeline
+    
+    def cleaning_pipeline_calc(self, 
+                               X, 
                           remove_dupe, 
                           replace_numbers, 
                           remove_virtual):
@@ -515,15 +640,6 @@ class JVDBPipe():
         df2 = cleaning_pipeline.fit_transform(X)
         
         return df2
-
-
-#myDBPipe = JVDBPipe()
-#myDBPipe.import_raw_data()
-#myDBPipe.run_pipelines()
-#df = myDBPipe.master_database
-#df2 = myDBPipe.master_database_clean
-#
-#name_hot = myDBPipe.text_pipeline(df.iloc[:2000], replace_numbers=False, vocab_size=350, remove_dupe=False)
 
 
 

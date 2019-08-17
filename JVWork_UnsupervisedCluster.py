@@ -117,7 +117,7 @@ class JVClusterTools():
             yield indicies, feature_rows
     
     @staticmethod
-    def read_database_set(database_name, column_tag='DBPath'):
+    def read_database_set(database_name, column_name='DBPath'):
         """Yields sequential data from memory.
         parameters
         -------
@@ -144,15 +144,46 @@ class JVClusterTools():
                                    )
         for chunk in csv_iterator:
             
-            partial_set = set(chunk[column_tag])
+            partial_set = set(chunk[column_name])
             unique_names = list(partial_set)
             
             for name in unique_names:
                 
-                indicies = np.where(chunk[column_tag]==name)[0]
+                indicies = np.where(chunk[column_name]==name)[0]
                 sequence = chunk.iloc[indicies]
                 
                 yield indicies, sequence
+    
+    @staticmethod
+    def read_database_ontag(file_path, column_name, column_tag):
+        """Let Y denotate the label space. X denotates the instance space.
+        Retrieves all axis-0 indicies of column_tag in column_name. This is 
+        useful for retrieving all instances in {(Xi, yi) | 1<i<m} whose yi
+        match column_tag (assuming column_tag is in the space of Y).
+        parameters
+        -------
+        file_path : path to file
+        column_name : column that contains all yi for 1<i<m
+        column_tag : value from Y to match for each yi in 1<i<m"""
+        
+        df = pd.read_csv(file_path, 
+                         index_col=0, 
+                         usecols=[column_name],
+                         encoding='mac_roman')
+        
+        cols = pd.read_csv(file_path, 
+                           index_col=0,
+                           encoding='mac_roman',
+                           nrows=0).columns.tolist()
+        indicies = np.where(df.index == column_tag)[0]
+        
+        df_whole = pd.read_csv(file_path, 
+                         names=cols,
+                         encoding='mac-roman',
+                         skiprows = lambda x: x not in indicies)
+        df_whole.reset_index(drop=True, inplace=True)
+        return df_whole
+        
     
     
     @staticmethod
@@ -240,16 +271,4 @@ class JVClusterTools():
                                           'ref_dispersion':refDisp_mean, 'gap*':gap_star}, ignore_index=True)
     
         return (gaps.argmax() + 1, resultsdf)  # Plus 1 because index of 0 means 1 cluster is optimal, index 2 = 3 clusters are optimal
-
-
-
-
-
-
-
-
-
-
-
-
 
