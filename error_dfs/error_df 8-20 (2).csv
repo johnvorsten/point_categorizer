@@ -1,0 +1,256 @@
+,DBPath,correct_k,optk_X_gap_max,optk_X_gap_Tib,optk_X_gap*_max,n_points,n_len1,n_len2,n_len3,n_len4,n_len5,n_len6,n_len7
+1,D:\Z - Saved SQL Databases\44OP-160910_BU_Tidwell_Basement\JobDB.mdf,9,12,1,1,93,72,5,12,4,0,0,0
+2,D:\Z - Saved SQL Databases\44OP-093324_Baylor_Bric_Bldg\JobDB.mdf,56,54,1,2,783,0,5,514,264,0,0,0
+3,D:\Z - Saved SQL Databases\44OP-134749_ACC_JCP_Highland_Mall\JobDB.mdf,17,20,1,6,133,0,0,0,132,1,0,0
+4,D:\Z - Saved SQL Databases\44OP-159826_BU_Soccer\JobDB.mdf,11,7,1,3,12,0,0,3,9,0,0,0
+5,D:\Z - Saved SQL Databases\44OP-131383_SDMC_Surgery_Reno_PH2&3\JobDB.mdf,10,12,1,7,89,0,0,0,89,0,0,0
+6,D:\Z - Saved SQL Databases\44OP-146118_ACC_RR_BLDG_3000_Boiler_Mods\JobDB.mdf,3,5,1,5,20,0,0,19,1,0,0,0
+7,D:\Z - Saved SQL Databases\44OP-002754 TXSU Flowers\JobDB.mdf,7,10,1,6,144,0,0,4,140,0,0,0
+8,D:\Z - Saved SQL Databases\44OP-119299_ACC_Hays\JobDB.mdf,85,62,1,1,649,0,0,2,629,18,0,0
+9,D:\Z - Saved SQL Databases\44OP-155663_Baylor_BRIC_EHS\JobDB.mdf,63,56,1,1,768,2,5,489,268,4,0,0
+10,D:\Z - Saved SQL Databases\44OP-143320_NAMC_Antepartum\JobDB.mdf,38,18,1,5,475,0,0,475,0,0,0,0
+11,D:\Z - Saved SQL Databases\44OP-138902_Seton_HL_MRI_Addition\JobDB.mdf,4,6,1,1,41,0,0,41,0,0,0,0
+12,D:\Z - Saved SQL Databases\44OP-147511_Seton_NW_Chiller_Replacement\JobDB.mdf,19,23,1,1,78,0,2,76,0,0,0,0
+13,D:\Z - Saved SQL Databases\44OP-150984_Cirrus_Research old\JobDB.mdf,19,23,1,1,103,0,0,103,0,0,0,0
+14,D:\Z - Saved SQL Databases\44OP-154285_UT_EERC_MTC\JobDB.mdf,8,8,1,3,76,0,2,72,2,0,0,0
+15,D:\Z - Saved SQL Databases\44OP-152745_INTEL_AN4_COMPRESSOR\JobDB.mdf,48,52,1,6,624,1,2,21,466,134,0,0
+16,D:\Z - Saved SQL Databases\44OP-147217_HCA_Cedar_Park_FSED\JobDB.mdf,10,10,1,1,18,0,3,15,0,0,0,0
+17,D:\Z - Saved SQL Databases\44OP-159849_UT_EERC_old\JobDB.mdf,245,60,1,1,1723,0,20,1188,174,260,81,0
+18,D:\Z - Saved SQL Databases\44OP-163025_UT_TEST_BENCH\JobDB.mdf,1,1,1,1,24,24,0,0,0,0,0,0
+19,D:\Z - Saved SQL Databases\44OP-153537_NAMC_PEDS\JobDB.mdf,1,1,1,1,40,0,0,40,0,0,0,0
+20,D:\Z - Saved SQL Databases\44OP-130108_UT_Geography_Bldg\JobDB.mdf,21,23,1,3,92,0,0,92,0,0,0,0
+21,D:\Z - Saved SQL Databases\44OP-103884_ACC_Elgin\JobDB.mdf,26,26,1,3,209,0,0,0,209,0,0,0
+22,D:\Z - Saved SQL Databases\44OP-147028_UT_GEO_Package_6\JobDB.mdf,9,5,1,1,49,0,0,49,0,0,0,0
+23,D:\Z - Saved SQL Databases\44OP-165943_Cirrus_Logic_HQ_Ph_2\JobDB.mdf,16,19,1,2,61,0,2,46,13,0,0,0
+24,D:\Z - Saved SQL Databases\44OP-166059_Baylor_Elliston_Chapel\JobDB.mdf,2,1,1,1,2,0,0,2,0,0,0,0
+25,D:\Z - Saved SQL Databases\44OP-170006_TXSU_Jones_Dining_Hall_Reno_chase\JobDB.mdf,25,27,1,1,126,0,2,123,1,0,0,0
+26,D:\Z - Saved SQL Databases\44OP-142255_TFC_NSOC\JobDB.mdf,7,11,1,6,30,0,0,29,1,0,0,0
+27,D:\Z - Saved SQL Databases\44OP-151758_Baylor_Business_School\JobDB.mdf,67,58,1,1,1809,1552,6,215,36,0,0,0
+28,D:\Z - Saved SQL Databases\44OP-156184_TFC_INS_PDB\JobDB.mdf,9,7,3,3,33,14,0,16,3,0,0,0
+29,D:\Z - Saved SQL Databases\44OP-143748_UT_EERC\JobDB.mdf,39,25,1,4,60,0,0,60,0,0,0,0
+30,D:\Z - Saved SQL Databases\44OP-156674_RRMC_NUC_CATH\JobDB.mdf,6,8,1,4,49,0,49,0,0,0,0,0
+31,D:\Z - Saved SQL Databases\44OP-146488_TFC_DSHS_A600_Labs_Ph3\JobDB.mdf,16,15,3,3,34,5,0,1,28,0,0,0
+32,D:\Z - Saved SQL Databases\44OP-140618_TAMU_CC_Dining_Hall\JobDB.mdf,2,3,2,2,31,15,0,16,0,0,0,0
+33,D:\Z - Saved SQL Databases\44OP-154233_BU_Penland_Hall_Dining\JobDB.mdf,47,33,4,6,177,3,1,171,2,0,0,0
+34,D:\Z - Saved SQL Databases\44OP-155245_BRIC_Region_12_ESC\JobDB.mdf,81,67,5,5,768,2,5,500,257,4,0,0
+35,D:\Z - Saved SQL Databases\44OP-124719_TAMU_Library\JobDB.mdf,40,34,2,9,307,22,1,280,4,0,0,0
+36,D:\Z - Saved SQL Databases\44OP-159998 Jamie\JobDB.mdf,47,42,4,5,433,70,5,285,73,0,0,0
+37,D:\Z - Saved SQL Databases\44OP-150984_Cirrus_Research\JobDB.mdf,31,30,1,1,159,0,0,159,0,0,0,0
+38,D:\Z - Saved SQL Databases\44OP-171481_100_Congress_Civitas\JobDB.mdf,3,4,1,2,24,0,0,0,24,0,0,0
+39,D:\Z - Saved SQL Databases\44OP-127929_Baylor_Planters_House\JobDB.mdf,1,1,1,1,9,0,0,9,0,0,0,0
+40,D:\Z - Saved SQL Databases\44OP-168489_Baylor_Fast_Forward\JobDB.mdf,123,101,5,10,716,33,35,241,399,8,0,0
+41,D:\Z - Saved SQL Databases\44OP-117216_UMHB_Stadium\JobDB.mdf,75,68,2,5,409,1,1,328,79,0,0,0
+42,D:\Z - Saved SQL Databases\44OP-148606_BU_RANEY_SMITH\JobDB.mdf,15,14,2,3,50,0,0,11,39,0,0,0
+43,D:\Z - Saved SQL Databases\44OP-170006_TXSU_Jones_Dining_Hall_Reno\JobDB.mdf,39,43,2,2,152,0,4,147,1,0,0,0
+44,D:\Z - Saved SQL Databases\44OP-169562_Prudential_Overall_Supply\JobDB.mdf,1,1,1,1,307,307,0,0,0,0,0,0
+45,D:\Z - Saved SQL Databases\44OP-158160_Baylor_Armstrong_Browning_AHU\JobDB.mdf,2,2,2,2,35,13,0,22,0,0,0,0
+46,D:\Z - Saved SQL Databases\44OP-167838_Baylor_Athletic_Nutrition\JobDB.mdf,25,23,2,2,34,0,5,29,0,0,0,0
+47,D:\Z - Saved SQL Databases\44OP-159356_TSC_ITECC\JobDB.mdf,4,5,1,5,30,0,0,0,30,0,0,0
+48,D:\Z - Saved SQL Databases\44OP-145864_SDMC_32nd_AHU_Replacement\JobDB.mdf,3,6,1,2,58,0,0,0,58,0,0,0
+49,D:\Z - Saved SQL Databases\44OP-138488_TFC_LBJ_DMP_Phase_1\JobDB.mdf,16,23,1,9,312,0,0,312,0,0,0,0
+50,D:\Z - Saved SQL Databases\44OP-167901_Intel_AN4_3B\JobDB.mdf,4,12,3,6,44,0,0,0,40,4,0,0
+51,D:\Z - Saved SQL Databases\44OP-123360_S&W_POB\JobDB.mdf,18,21,2,6,179,0,2,177,0,0,0,0
+52,D:\Z - Saved SQL Databases\44OP-087407_UT_LIBERAL_ARTS\JobDB.mdf,23,57,3,4,430,0,4,370,56,0,0,0
+53,D:\Z - Saved SQL Databases\44OP-150580_NEC_Lakeline\JobDB.mdf,6,4,1,5,6,0,0,0,6,0,0,0
+54,D:\Z - Saved SQL Databases\44OP-124807_TFC_Moreton\JobDB.mdf,34,41,3,3,308,0,3,298,7,0,0,0
+55,D:\Z - Saved SQL Databases\44OP-159991 Neighbors\JobDB.mdf,6,1,1,6,7,0,0,0,7,0,0,0
+56,D:\Z - Saved SQL Databases\44OP-169908_Seton_HL_New_OA_Units\JobDB.mdf,2,2,1,2,30,0,0,30,0,0,0,0
+57,D:\Z - Saved SQL Databases\44OP-152078_AT&T_LABS MBC\JobDB.mdf,85,62,6,6,528,209,276,14,22,4,1,2
+58,D:\Z - Saved SQL Databases\44OP-167361_TFC_ DSHS_Fast_Forward\JobDB.mdf,16,31,3,3,42,0,0,28,12,2,0,0
+59,D:\Z - Saved SQL Databases\44OP-102233_Seton_HL_Chiller\JobDB.mdf,2,2,1,2,10,0,0,0,10,0,0,0
+60,D:\Z - Saved SQL Databases\44OP-168475_UT_Townes_Hall_HVAC_Proj_Ph_2\JobDB.mdf,7,27,2,9,108,0,0,92,16,0,0,0
+61,D:\Z - Saved SQL Databases\44OP-150108_TAMUHSC_MRB_MBC_FF\JobDB.mdf,40,20,3,3,435,412,9,14,0,0,0,0
+62,D:\Z - Saved SQL Databases\44OP-146257_Baylor_Track\JobDB.mdf,27,12,1,3,33,0,0,33,0,0,0,0
+63,D:\Z - Saved SQL Databases\44OP-149430-TFC_JHW_Monitor_DC\JobDB.mdf,86,101,4,6,295,10,0,87,175,23,0,0
+64,D:\Z - Saved SQL Databases\44OP-154286_Intel_AN4_Data_Center\JobDB.mdf,29,35,3,6,66,0,0,18,43,5,0,0
+65,D:\Z - Saved SQL Databases\44OP-166628_Baylor_BRIC_Dr_Birkeland\JobDB.mdf,3,13,2,2,58,0,0,47,11,0,0,0
+66,D:\Z - Saved SQL Databases\44OP-170871_SDMC_MRI_Addition\JobDB.mdf,1,1,1,3,4,0,0,0,0,4,0,0
+67,D:\Z - Saved SQL Databases\44OP-147230_TFC_WBT_and_SFA\JobDB.mdf,66,67,3,3,272,2,1,260,9,0,0,0
+68,D:\Z - Saved SQL Databases\44OP-159849 UT EERC-ECJ 2nd Flr\JobDB.mdf,39,23,1,2,61,0,0,61,0,0,0,0
+69,D:\Z - Saved SQL Databases\44OP-151233_SAMC_Pharmacy_Reno\JobDB.mdf,8,3,1,3,32,1,0,0,31,0,0,0
+70,D:\Z - Saved SQL Databases\44OP-159998CHASE\JobDB.mdf,69,79,7,7,225,27,18,141,22,4,11,2
+71,D:\Z - Saved SQL Databases\44OP-075294 SAMC New Const Ph 3 4 5\JobDB.mdf,4,7,1,7,138,0,0,0,138,0,0,0
+72,D:\Z - Saved SQL Databases\44OP-080108_Austin_Treasury\JobDB.mdf,7,10,2,10,102,14,0,88,0,0,0,0
+73,D:\Z - Saved SQL Databases\44OP-148387_BU_FORMAN_LAB\JobDB.mdf,6,10,2,4,40,0,0,22,18,0,0,0
+74,D:\Z - Saved SQL Databases\44OP-154681_Baylor_BRIC_OAHU_E2\JobDB.mdf,87,97,5,5,816,2,5,529,276,4,0,0
+75,D:\Z - Saved SQL Databases\44OP-120702_Seton_HL_Nuclear\JobDB.mdf,1,1,1,1,2,0,0,2,0,0,0,0
+76,D:\Z - Saved SQL Databases\44OP-112425_East_Village_North\JobDB.mdf,27,38,3,6,151,0,2,133,16,0,0,0
+77,D:\Z - Saved SQL Databases\44OP-159849 EERC\JobDB.mdf,290,292,4,5,2294,0,1,968,1149,124,52,0
+78,D:\Z - Saved SQL Databases\44OP-162206_MCC_CSC_Module_E_Chiller\JobDB.mdf,2,2,1,4,7,0,0,7,0,0,0,0
+79,D:\Z - Saved SQL Databases\44OP-135704_BU_South_Russell\JobDB.mdf,24,11,2,2,156,0,5,150,1,0,0,0
+80,D:\Z - Saved SQL Databases\44OP-129261_100_Congress_Central_Plant_Upgrade\JobDB.mdf,31,37,3,6,269,108,1,0,152,8,0,0
+81,D:\Z - Saved SQL Databases\44OP-159849 EERC-CHASE\JobDB.mdf,5,51,5,6,3266,0,18,1519,1286,310,133,0
+82,D:\Z - Saved SQL Databases\44OP-162224_MCC_CSC_Module_A_RTU\JobDB.mdf,11,19,2,4,193,0,0,173,20,0,0,0
+83,D:\Z - Saved SQL Databases\44OP-171494_Baylor_BRIC_Dr_Rylander\JobDB.mdf,157,171,5,9,7904,771,89,4125,2671,218,30,0
+84,D:\Z - Saved SQL Databases\44OP-106650_SETON_NW_OR\JobDB.mdf,9,12,1,2,88,0,0,86,2,0,0,0
+85,D:\Z - Saved SQL Databases\44OP-156522_TxDOT_Acid_Hood\JobDB.mdf,35,30,2,6,77,0,0,0,40,37,0,0
+86,D:\Z - Saved SQL Databases\44OP-159998 HMSL Expansion BP1\JobDB.mdf,41,79,4,6,433,70,5,285,73,0,0,0
+87,D:\Z - Saved SQL Databases\44OP-166320_TXSU_MSH\JobDB.mdf,32,31,3,3,257,0,2,249,6,0,0,0
+88,D:\Z - Saved SQL Databases\44OP-164908_UT_Dell_Medical_School_Research_Building\JobDB.mdf,37,88,3,3,241,0,0,149,62,30,0,0
+89,D:\Z - Saved SQL Databases\44OP-156536_BU_North_Russell\JobDB.mdf,42,35,2,5,197,0,5,192,0,0,0,0
+90,D:\Z - Saved SQL Databases\44OP-140409_SAMC_BMT_Oncology\JobDB.mdf,7,7,1,6,81,0,0,0,81,0,0,0
+91,D:\Z - Saved SQL Databases\44OP-148596_UT_Townes_Hall\JobDB.mdf,17,18,2,2,150,0,2,145,3,0,0,0
+92,D:\Z - Saved SQL Databases\44OP-170036_UT_Townes_Hall_HVAC_Proj_Ph_2\JobDB.mdf,8,16,2,8,96,0,0,88,8,0,0,0
+93,D:\Z - Saved SQL Databases\44OP-149635_Baylor_Migrations\JobDB.mdf,16,18,2,4,90,0,1,70,19,0,0,0
+94,D:\Z - Saved SQL Databases\44OP-136475_UT_HRC\JobDB.mdf,31,19,2,7,190,0,0,178,12,0,0,0
+95,D:\Z - Saved SQL Databases\44OP-167712_Block_23_Greenwater_Office_Bldg\JobDB.mdf,64,57,4,4,368,1,2,342,19,4,0,0
+96,D:\Z - Saved SQL Databases\44OP-159393_SDMC_32nd_PH_5\JobDB.mdf,1,1,1,1,27,0,0,27,0,0,0,0
+97,D:\Z - Saved SQL Databases\44OP-138815_TXSU_CoGen_Plant_BAS_Mods\JobDB.mdf,61,79,5,5,445,0,4,388,48,5,0,0
+98,D:\Z - Saved SQL Databases\44OP-127491_MCC_CSC_BLDG_F\JobDB.mdf,6,5,1,12,14,0,0,14,0,0,0,0
+99,D:\Z - Saved SQL Databases\44OP-132975_TFC_Rudder_Building\JobDB.mdf,13,11,2,11,107,0,2,104,1,0,0,0
+100,D:\Z - Saved SQL Databases\44OP-150007_Cirrus_Logic_Ph2\JobDB.mdf,12,19,3,6,48,0,2,35,11,0,0,0
+101,D:\Z - Saved SQL Databases\44OP-181789_TXSU_MCS\JobDB.mdf,7,24,3,8,166,0,2,45,119,0,0,0
+102,D:\Z - Saved SQL Databases\44OP-198461_TXSU_Lantana CHW\JobDB.mdf,4,8,2,8,17,0,0,2,15,0,0,0
+103,D:\Z - Saved SQL Databases\44OP-197274_TXSU_Ag_Bldg\JobDB.mdf,2,1,1,4,5,0,0,0,5,0,0,0
+104,D:\Z - Saved SQL Databases\44OP-181323_Sabinal_Renovation\JobDB.mdf,12,37,3,5,146,0,2,54,90,0,0,0
+105,D:\Z - Saved SQL Databases\44OP-176407_TFC_DSHS_LAB_MBC_29_VFDS_AHU_2\JobDB.mdf,15,34,3,5,115,0,0,19,88,8,0,0
+106,D:\Z - Saved SQL Databases\44OP-179696_TXSU_Star_One_Addition\JobDB.mdf,45,22,1,1,95,0,0,94,1,0,0,0
+107,D:\Z - Saved SQL Databases\44OP-173327_Baylor_Memorial_Dorm_Dining_Hall\JobDB.mdf,10,23,2,6,115,0,0,87,28,0,0,0
+108,D:\Z - Saved SQL Databases\44OP-185054_Baylor_Old_Main\JobDB.mdf,5,16,2,16,126,0,0,49,77,0,0,0
+109,D:\Z - Saved SQL Databases\44OP-176715_Seton\JobDB.mdf,807,796,1,2,807,0,0,807,0,0,0,0
+110,D:\Z - Saved SQL Databases\44OP-178936_ACC_Bond_Service_Center_Controls\JobDB.mdf,9,7,1,7,10,0,0,10,0,0,0,0
+111,D:\Z - Saved SQL Databases\44OP-172850_RRMC_Hybrid_OR\JobDB.mdf,2,2,1,2,14,0,0,0,14,0,0,0
+112,D:\Z - Saved SQL Databases\44OP-196125_TXSU_Strahan_AHU11\JobDB.mdf,1,8,2,2,29,0,0,16,13,0,0,0
+113,D:\Z - Saved SQL Databases\44OP-208597_ACC_Leander_Campus\JobDB.mdf,152,125,2,2,719,0,0,0,622,97,0,0
+114,D:\Z - Saved SQL Databases\44OP-186227_Baylor_Hankamer\JobDB.mdf,37,30,3,9,232,0,2,218,12,0,0,0
+115,D:\Z - Saved SQL Databases\44OP-195316_SAMC_3rd Floor PH_2_Renovation\JobDB.mdf,9,18,3,3,59,0,1,7,41,10,0,0
+116,D:\Z - Saved SQL Databases\44OP-209545_TFC_LBJ_AHU_Repl_DM2016\JobDB.mdf,46,89,3,3,723,0,2,663,58,0,0,0
+117,D:\Z - Saved SQL Databases\44OP-176796_Solarwinds_Ph_2\JobDB.mdf,4,6,1,10,24,0,0,24,0,0,0,0
+118,D:\Z - Saved SQL Databases\44OP-183291_SAMC_Flr_3_Reno_Ph_1\JobDB.mdf,8,10,2,4,52,0,1,2,39,10,0,0
+119,D:\Z - Saved SQL Databases\44OP-190047_TFC_Hobby\JobDB.mdf,24,36,3,10,167,0,0,4,151,12,0,0
+120,D:\Z - Saved SQL Databases\44OP-175920_UT_BME_Dr_Peppas_Lab\JobDB.mdf,52,41,3,4,157,0,0,56,99,2,0,0
+121,D:\Z - Saved SQL Databases\44OP-207960_TXSU_LBJ_Student_Center_Reno\JobDB.mdf,104,112,4,10,1533,1,4,1176,349,3,0,0
+122,D:\Z - Saved SQL Databases\44OP-199631_TXSU_Retama_Hall_Reno\JobDB.mdf,23,31,2,2,116,0,0,110,6,0,0,0
+123,D:\Z - Saved SQL Databases\44OP-210011_BRIC_Dr_Kim_Clean_Rm\JobDB.mdf,11,17,2,2,130,0,0,105,25,0,0,0
+124,D:\Z - Saved SQL Databases\44OP-194853_MCC_Highland_Gym\JobDB.mdf,2,1,1,1,2,0,0,2,0,0,0,0
+125,D:\Z - Saved SQL Databases\44OP-197274 TXSU Ag Bldg Rm 225\JobDB.mdf,2,2,1,4,5,0,0,0,5,0,0,0
+126,D:\Z - Saved SQL Databases\44OP-173377_TFC_IAQ_P35-E\JobDB.mdf,12,6,2,6,33,0,0,9,24,0,0,0
+127,D:\Z - Saved SQL Databases\44OP-175775_CCMC_Doctors_Regional\JobDB.mdf,6,22,2,8,133,0,115,18,0,0,0,0
+128,D:\Z - Saved SQL Databases\44OP-173466_TFC_IAQ_DSHS_DHT\JobDB.mdf,5,5,2,4,39,0,0,3,36,0,0,0
+129,D:\Z - Saved SQL Databases\44OP-200081_Intel_AN4C_3A\JobDB.mdf,1,1,1,1,14,0,0,0,14,0,0,0
+130,D:\Z - Saved SQL Databases\44OP-180310_SAMC_OR_Expansion\JobDB.mdf,6,6,3,3,99,0,0,46,48,5,0,0
+131,D:\Z - Saved SQL Databases\44OP-197265_Baylor_Martin_Dorm\JobDB.mdf,18,24,3,8,144,0,2,137,5,0,0,0
+132,D:\Z - Saved SQL Databases\44OP-180163_Baylor_Penland_Dining_RTU2\JobDB.mdf,3,1,1,1,49,0,0,49,0,0,0,0
+133,D:\Z - Saved SQL Databases\44OP-187918_UT_TNH_HVAC_Proj_Ph_3\JobDB.mdf,7,29,3,6,114,0,0,95,16,3,0,0
+134,D:\Z - Saved SQL Databases\44OP-209898 Deloitte 15_16 Floor\JobDB.mdf,3,3,1,3,12,1,0,0,11,0,0,0
+135,D:\Z - Saved SQL Databases\44OP-182498_TXSU_Alkek\JobDB.mdf,4,3,1,3,4,0,0,4,0,0,0,0
+136,D:\Z - Saved SQL Databases\44OP-184168_TFC_TCEQ_Park_35\JobDB.mdf,25,29,1,2,91,0,0,0,91,0,0,0
+137,D:\Z - Saved SQL Databases\44OP-190124_TFC_DHOP_Central_Plant\JobDB.mdf,45,79,3,4,328,84,1,164,79,0,0,0
+138,D:\Z - Saved SQL Databases\44OP-195514_Seton_HL_Surgery_Reno\JobDB.mdf,5,21,2,4,98,0,0,78,20,0,0,0
+139,D:\Z - Saved SQL Databases\44OP-179185_ACC_Highland_Reno\JobDB.mdf,22,15,3,3,44,0,2,34,8,0,0,0
+140,D:\Z - Saved SQL Databases\44OP-211276_TXSU_UEC_Strahan\JobDB.mdf,128,4,127,451,368,11,6,0,0,0,836,
+141,D:\Z - Saved SQL Databases\44OP-207233_SAMC_ED\JobDB.mdf,8,2,16,37,7,0,0,0,0,0,44,
+142,D:\Z - Saved SQL Databases\44OP-173378_TFC_IAQ_P35-D\JobDB.mdf,15,2,29,32,9,0,0,0,0,0,41,
+143,D:\Z - Saved SQL Databases\44OP-195448_UTRGV_BV_Academic\JobDB.mdf,58,2,62,199,18,0,0,0,0,0,217,
+144,D:\Z - Saved SQL Databases\44OP-190763_TXSU_Strahan_AHU12\JobDB.mdf,9,2,20,16,11,0,0,0,0,0,27,
+145,D:\Z - Saved SQL Databases\44OP-208376_TFC_WBT_DM_2016\JobDB.mdf,128,7,151,722,64,1,140,2,17,0,946,
+146,D:\Z - Saved SQL Databases\44OP-183382_INS_ANNEX\JobDB.mdf,11,3,20,27,2,0,0,0,0,0,29,
+147,D:\Z - Saved SQL Databases\44OP-173714_Baylor_Penland_Dorm_Renovation\JobDB.mdf,39,4,44,151,26,2,0,0,0,0,179,
+148,D:\Z - Saved SQL Databases\44OP-191435_BRIC_Olafsun_Lab\JobDB.mdf,11,3,11,10,1,0,0,0,0,0,11,
+149,D:\Z - Saved SQL Databases\44OP-191465_WPC_Migration\JobDB.mdf,47,2,48,95,8,0,0,0,0,0,103,
+150,D:\Z - Saved SQL Databases\44OP-200068_500_W_2nd-Google_Gates\JobDB.mdf,13,5,17,28,2,2,0,0,0,0,32,
+151,D:\Z - Saved SQL Databases\44OP-185055_TFC_LBJ_4th_Reno\JobDB.mdf,9,2,17,34,5,0,0,0,0,0,39,
+152,D:\Z - Saved SQL Databases\44OP-206348 Trammel Crow\JobDB.mdf,2,2,12,15,1,0,0,0,0,0,16,
+153,D:\Z - Saved SQL Databases\44OP-172014_Bell_County_FF\JobDB.mdf,154,4,216,201,228,2,0,0,0,0,431,
+154,D:\Z - Saved SQL Databases\44OP-189155_S&W_RR_MRI\JobDB.mdf,9,1,13,17,0,0,0,0,0,0,17,
+155,D:\Z - Saved SQL Databases\44OP-177481_FROST_PILLSBURY\JobDB.mdf,5,5,5,2,3,0,0,0,0,0,5,
+156,D:\Z - Saved SQL Databases\44OP-173487_TFC_IAQ_DSHS_RBB\JobDB.mdf,9,5,18,36,2,2,0,0,0,0,40,
+157,D:\Z - Saved SQL Databases\44OP-198971_REJ_Boiler_Plant\JobDB.mdf,24,2,25,45,5,0,0,0,0,0,50,
+158,D:\Z - Saved SQL Databases\44OP-172418_College Inn & Tower\JobDB.mdf,10,2,10,6,4,0,0,0,0,0,10,
+159,D:\Z - Saved SQL Databases\44OP-183355_MCC_CSC_Module_C_RTU_AAON\JobDB.mdf,17,2,29,21,98,0,0,0,0,0,119,
+160,D:\Z - Saved SQL Databases\44OP-193232_Baylor_Mary_Gibbs\JobDB.mdf,10,3,13,2,31,0,0,0,0,0,33,
+161,D:\Z - Saved SQL Databases\44OP-208376_TFC_WBT_AHU_REPLACEMENT\JobDB.mdf,126,6,133,838,151,153,2,1,0,0,1145,
+162,D:\Z - Saved SQL Databases\44OP-190812_UT_Bio\JobDB.mdf,39,3,50,7,105,4,0,0,0,0,116,
+163,D:\Z - Saved SQL Databases\44OP-180454_TFC_WPC_OA_Units\JobDB.mdf,46,3,89,67,254,1,0,0,0,0,322,
+164,D:\Z - Saved SQL Databases\44OP-173492_TFC_IAQ_DSHS_DHR\JobDB.mdf,7,1,13,60,0,0,0,0,0,0,60,
+165,D:\Z - Saved SQL Databases\44OP-207921_Oracle_Waterfront\JobDB.mdf,112,4,286,746,82,32,574,0,0,0,1434,
+166,D:\Z - Saved SQL Databases\44OP-179186_TFC_REJ\JobDB.mdf,116,5,120,783,84,1,2,0,0,0,870,
+167,D:\Z - Saved SQL Databases\44OP-172954_SDMC_ICU_Vertical_Exp\JobDB.mdf,110,5,114,83,175,93,6,3,0,0,360,
+168,D:\Z - Saved SQL Databases\44OP-173014_Austin_Convention_Center\JobDB.mdf,18,3,36,21,35,0,0,0,0,0,56,
+169,D:\Z - Saved SQL Databases\44OP-180791_Baylor_BEC_Chiller_8_and_CT\JobDB.mdf,32,2,40,177,8,0,0,0,0,0,185,
+170,D:\Z - Saved SQL Databases\44OP-172905_SDGH_ICU_Renovation\JobDB.mdf,41,3,45,124,1,22,0,0,0,0,147,
+171,D:\Z - Saved SQL Databases\44OP-200068_500_W_2nd-Google_Gates Jamie Original\JobDB.mdf,3,1,3,3,0,0,0,0,0,0,3,
+172,D:\Z - Saved SQL Databases\44OP-201622_TXSU_Library_Repository\JobDB.mdf,16,2,32,118,4,0,0,0,0,0,122,
+173,D:\Z - Saved SQL Databases\44OP-214947_TFC_WPC_Elevator_DM\JobDB.mdf,67,5,76,78,138,9,2,0,0,0,227,
+174,D:\Z - Saved SQL Databases\44OP-214804_ACC_Elgin_Vet_&_Ag\JobDB.mdf,15,3,15,9,5,1,0,0,0,0,15,
+175,D:\Z - Saved SQL Databases\44OP-240717_100_Congress_AHUReplacement\JobDB.mdf,15,1,18,120,0,0,0,0,0,0,120,
+176,D:\Z - Saved SQL Databases\44OP-227505_TFC_A600_Bio_Threat\JobDB.mdf,28,3,34,49,2,0,0,0,0,0,51,
+177,D:\Z - Saved SQL Databases\44OP-232081 DSMCUT Bronchoscopy\JobDB.mdf,2,1,33,47,0,0,0,0,0,0,47,
+178,D:\Z - Saved SQL Databases\44OP-224784_515_Congress_Lobby\JobDB.mdf,1,1,9,14,0,0,0,0,0,0,14,
+179,D:\Z - Saved SQL Databases\44OP-224013_TFC_REJ_Central_Plant\JobDB.mdf,28,1,34,126,0,0,0,0,0,0,126,
+180,D:\Z - Saved SQL Databases\44OP-252830 TXSU Supple Science Rm 112_116\JobDB.mdf,5,1,5,5,0,0,0,0,0,0,5,
+181,D:\Z - Saved SQL Databases\44OP-262004_ATT_Homestead_NLoop\JobDB.mdf,55,4,64,15,97,16,4,0,0,0,132,
+182,D:\Z - Saved SQL Databases\44OP-231531 St_Davids_32nd_South_Vertical Expansion\JobDB.mdf,48,4,66,112,94,1,4,0,0,0,211,
+183,D:\Z - Saved SQL Databases\44OP-244931_DSMCUT_Ambulance_Bay\JobDB.mdf,35,4,35,6,34,2,0,0,0,0,42,
+184,D:\Z - Saved SQL Databases\44OP-239983_TXSU_Supple_Science_Exh_Mods\JobDB.mdf,25,3,43,51,2,0,0,0,0,0,53,
+185,D:\Z - Saved SQL Databases\44OP-236997_Cerilliant_BAS_Retrofit-Chase\JobDB.mdf,6,1,32,42,0,0,0,0,0,0,42,
+186,D:\Z - Saved SQL Databases\44OP-239293_TXSU_Tower_Hall_BAS_Upgrade\JobDB.mdf,42,4,58,166,134,2,0,0,0,0,302,
+187,D:\Z - Saved SQL Databases\44OP-228631 TXSU Jowers AHU-14_17\JobDB.mdf,16,2,21,42,33,0,0,0,0,0,75,
+188,D:\Z - Saved SQL Databases\44OP-247866_Thermon\JobDB.mdf,6,1,12,15,0,0,0,0,0,0,15,
+189,D:\Z - Saved SQL Databases\44OP-211506_TFC_SFA_Bathroom Reno\JobDB.mdf,65,2,90,98,286,0,0,0,0,0,384,
+190,D:\Z - Saved SQL Databases\44OP-253914_Cirrus_Logic_Shoal_Creek_12th_Floor\JobDB.mdf,6,2,6,5,1,0,0,0,0,0,6,
+191,D:\Z - Saved SQL Databases\44OP-241413_Seton_SW_AHU3_Replacement\JobDB.mdf,13,4,26,34,45,2,0,0,0,0,81,
+192,D:\Z - Saved SQL Databases\44OP-218333 HCA Leander FSED\JobDB.mdf,1,1,17,83,0,0,0,0,0,0,83,
+193,D:\Z - Saved SQL Databases\44OP-257359 BTX4-BAU-Baylor Waco Hall ADA\JobDB.mdf,3,3,3,2,1,0,0,0,0,0,3,
+194,D:\Z - Saved SQL Databases\44OP-243177_VA_ITC_Chiller_Plant\JobDB.mdf,105,5,99,177,106,2,16,0,0,0,301,
+195,D:\Z - Saved SQL Databases\44OP-237947_SDGH_Rehab_Relo\JobDB.mdf,6,2,15,30,5,0,0,0,0,0,35,
+196,D:\Z - Saved SQL Databases\No_Name_9\JobDB.mdf,17,3,23,28,3,4,0,0,0,0,35,
+197,D:\Z - Saved SQL Databases\44OP-245029_TFC_TCEQ\JobDB.mdf,13,3,13,11,1,1,0,0,0,0,13,
+198,D:\Z - Saved SQL Databases\44OP-233491 SDMC 32nd North Tower Vertical Expansion\JobDB.mdf,30,3,48,92,77,1,0,0,0,0,170,
+199,D:\Z - Saved SQL Databases\44OP-212618_SDMC_ENDOSCOPY\JobDB.mdf,22,3,22,88,9,0,0,0,0,0,97,
+200,D:\Z - Saved SQL Databases\44OP-255456 GARDNER BETTS BAS SYSTEM UPGRADE\JobDB.mdf,73,3,100,254,66,3,0,0,0,0,323,
+201,D:\Z - Saved SQL Databases\44OP-237829_BSS_AUS_Seton_HL_EDExp\JobDB.mdf,16,2,24,43,20,0,0,0,0,0,63,
+202,D:\Z - Saved SQL Databases\44OP-240467_TFC_WPH_VAV_Replacement\JobDB.mdf,78,3,92,213,19,76,0,0,0,0,308,
+203,D:\Z - Saved SQL Databases\44OP-250900_401_Congress_27th_Floor\JobDB.mdf,2,2,2,2,0,0,0,0,0,0,2,
+204,D:\Z - Saved SQL Databases\44OP-236997_Cerilliant_BAS_Retrofit\JobDB.mdf,9,2,31,42,0,0,0,0,0,0,42,
+205,D:\Z - Saved SQL Databases\44OP-211506_TFC_SFA_Repl_DM2016\JobDB.mdf,96,5,100,806,174,1,2,0,0,0,983,
+206,D:\Z - Saved SQL Databases\44OP-248386_NAMC_DA_Tank\JobDB.mdf,14,2,27,6,22,0,0,0,0,0,28,
+207,D:\Z - Saved SQL Databases\44OP-212314_TXSU_Eng_Science\JobDB.mdf,32,4,41,27,6,44,18,0,0,0,95,
+208,D:\Z - Saved SQL Databases\44OP-223503_St_Davids_Surgery_Center\JobDB.mdf,71,4,88,99,26,7,6,0,0,0,138,
+209,D:\Z - Saved SQL Databases\44OP-246430_TFC_HHSC_BLDG_K\JobDB.mdf,1,1,10,20,0,0,0,0,0,0,20,
+210,D:\Z - Saved SQL Databases\44OP-255709_TFC_WPC_AHU_Replacement\JobDB.mdf,90,5,108,859,165,12,22,0,0,0,1058,
+211,D:\Z - Saved SQL Databases\44OP-215972_ACC_RoundRock\JobDB.mdf,157,3,170,429,177,9,0,0,0,0,615,
+212,D:\Z - Saved SQL Databases\44OP-260716_TXST Cogen Central Plant CH-4\JobDB.mdf,71,5,74,7,70,83,2,0,0,0,162,
+213,D:\Z - Saved SQL Databases\44OP-239338_ACC_Bond_Rio_Grande_Retro\JobDB.mdf,103,3,110,591,14,248,0,0,0,0,853,
+214,D:\Z - Saved SQL Databases\44OP-249604_TXSU_Alkek_AHU_Modifications\JobDB.mdf,70,4,77,190,188,2,0,0,0,0,380,
+215,D:\Z - Saved SQL Databases\44OP-250965_Courtyard_Marriott_Kitchen_MAU_Retrofit\JobDB.mdf,3,1,3,3,0,0,0,0,0,0,3,
+216,D:\Z - Saved SQL Databases\44OP-245351_Gardner_Betts_AHU_5_7-Chase\JobDB.mdf,2,3,22,19,12,0,0,0,0,0,31,
+217,D:\Z - Saved SQL Databases\44OP-224233 DCMC Behavioral Health\JobDB.mdf,18,1,18,18,0,0,0,0,0,0,18,
+218,D:\Z - Saved SQL Databases\44OP-263957 TXSU Theater Reno\JobDB.mdf,58,3,59,268,11,6,0,0,0,0,285,
+219,D:\Z - Saved SQL Databases\44OP-211506_TFC_SFA_AHU_Rplmnt\JobDB.mdf,108,2,104,922,202,0,0,0,0,0,1124,
+220,D:\Z - Saved SQL Databases\44OP-259693_Seton_SW_OAHU\JobDB.mdf,24,4,28,152,66,2,0,0,0,0,220,
+221,D:\Z - Saved SQL Databases\44OP-263047_UT_EERC_Vibration\JobDB.mdf,12,2,22,16,10,0,0,0,0,0,26,
+222,D:\Z - Saved SQL Databases\44OP-243013_St_Davids_CC_Expansion\JobDB.mdf,1,1,1,1,0,0,0,0,0,0,1,
+223,D:\Z - Saved SQL Databases\44OP-236582_TFC_WPC_Garage\JobDB.mdf,2,2,2,2,0,0,0,0,0,0,2,
+224,D:\Z - Saved SQL Databases\44OP-260593_HCA_NWMC_ED_AHU\JobDB.mdf,6,2,22,31,13,0,0,0,0,0,44,
+225,D:\Z - Saved SQL Databases\44OP-246728_TXSU_Chemistry_Bldg_Reno\JobDB.mdf,7,2,7,6,1,0,0,0,0,0,7,
+226,D:\Z - Saved SQL Databases\44OP-244688-BSP_Cerilliant_Synthesis_Lab\JobDB.mdf,48,4,65,106,55,1,1,0,0,0,163,
+227,D:\Z - Saved SQL Databases\44OP-241086_EERC_Freeman_Reno\JobDB.mdf,18,3,18,8,10,0,0,0,0,0,18,
+228,D:\Z - Saved SQL Databases\44OP-262509-Baylor_Goebel_Lab_2018_renovation\JobDB.mdf,5,2,14,16,3,0,0,0,0,0,19,
+229,D:\Z - Saved SQL Databases\44OP-245797_NAMC_Outpatient_Imaging\JobDB.mdf,15,1,15,15,0,0,0,0,0,0,15,
+230,D:\Z - Saved SQL Databases\44OP-253849_TFC_SHB_RM140\JobDB.mdf,4,2,24,25,19,0,0,0,0,0,44,
+231,D:\Z - Saved SQL Databases\44OP-235919_MCC_Central_Plant\JobDB.mdf,92,5,92,34,200,4,1,7,0,0,246,
+232,D:\Z - Saved SQL Databases\44OP-245597_JH_Winters_AHU_Reno\JobDB.mdf,55,3,65,256,173,6,0,0,0,0,435,
+233,D:\Z - Saved SQL Databases\44OP-247050_GW23_Google_IV_14_20_21\JobDB.mdf,6,1,13,46,0,0,0,0,0,0,46,
+234,D:\Z - Saved SQL Databases\_old_44OP-134749_ACC_JCP_Highland_Mall\JobDB.mdf,26,2,33,126,3,0,0,0,0,0,129,
+235,D:\Z - Saved SQL Databases\44OP-260186_Seton_HL_Chiller\JobDB.mdf,13,4,17,1,28,4,1,0,0,0,34,
+236,D:\Z - Saved SQL Databases\44OP-228664_UT_Welch_Hall_Reno\JobDB.mdf,156,3,160,686,141,16,0,0,0,0,843,
+237,D:\Z - Saved SQL Databases\44OP-213878_TXSU_HP1\JobDB.mdf,91,5,133,443,162,149,33,5,0,0,792,
+238,D:\Z - Saved SQL Databases\44OP-221756_ACC_Hayes_Ph2\JobDB.mdf,44,2,44,40,12,0,0,0,0,0,52,
+239,D:\Z - Saved SQL Databases\44OP-231541_MTEM_2017\JobDB.mdf,90,4,94,635,106,2,0,0,0,0,743,
+240,D:\Z - Saved SQL Databases\44OP-260688_HCA_NWMC_Boiler_Rep\JobDB.mdf,8,1,18,32,0,0,0,0,0,0,32,
+241,D:\Z - Saved SQL Databases\44OP-245696_TXSU_LBJ_Student_Center_Expansion\JobDB.mdf,22,4,41,132,40,2,0,0,0,0,174,
+242,D:\Z - Saved SQL Databases\44OP-237860_Intel_AN4_AVC_Lab\JobDB.mdf,16,2,18,30,1,0,0,0,0,0,31,
+243,D:\Z - Saved SQL Databases\44OP-223240 GW23 Flower Child\JobDB.mdf,10,1,10,10,0,0,0,0,0,0,10,
+244,D:\Z - Saved SQL Databases\44OP-237617_GW23_Google_Phase_3_21_23\JobDB.mdf,39,4,58,43,84,2,0,0,0,0,129,
+245,D:\Z - Saved SQL Databases\44OP-220099_TAMU_CT_Bldg3\JobDB.mdf,81,3,126,285,111,45,0,0,0,0,441,
+246,D:\Z - Saved SQL Databases\44OP-234662_MTEM_AHU-9_FF\JobDB.mdf,4,2,14,47,3,0,0,0,0,0,50,
+247,D:\Z - Saved SQL Databases\44OP-211506_TFC_SFA_DOAU_REPLACEMENT\JobDB.mdf,76,2,85,222,75,0,0,0,0,0,297,
+248,D:\Z - Saved SQL Databases\44OP-246935_ACC_Highland_Mall_Garage\JobDB.mdf,2,1,10,14,0,0,0,0,0,0,14,
+249,D:\Z - Saved SQL Databases\44OP-258960_Seton_Luling_RTU-5\JobDB.mdf,14,3,14,9,5,0,0,0,0,0,14,
+250,D:\Z - Saved SQL Databases\44OP-258957_TXSU_FCS_Vivarium\JobDB.mdf,23,3,23,34,8,0,0,0,0,0,42,
+251,D:\Z - Saved SQL Databases\44OP-214947_TFC_WPC_Elevator_DM_CO3\JobDB.mdf,9,4,18,32,2,1,0,0,0,0,35,
+252,D:\Z - Saved SQL Databases\44OP-215972_ACC_RoundRock_OLD\JobDB.mdf,105,3,110,429,177,9,0,0,0,0,615,
+253,D:\Z - Saved SQL Databases\44OP-259329-TFC_DROC_2018_DM\JobDB.mdf,2,1,10,18,0,0,0,0,0,0,18,
+254,D:\Z - Saved SQL Databases\44OP-232590_ACC_Highland_Phase_II\JobDB.mdf,166,3,193,577,437,28,0,0,0,0,1042,
+255,D:\Z - Saved SQL Databases\44OP-226688 GW23 North Italia\JobDB.mdf,3,1,15,16,0,0,0,0,0,0,16,

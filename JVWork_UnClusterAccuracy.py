@@ -13,11 +13,11 @@ import os
 import numpy as np
 from sklearn.manifold import MDS
 from sklearn.manifold import TSNE
-from scipy.sparse import csr_matrix
+from datetime import date
+
 import matplotlib.pyplot as plt
 from gap_statistic import OptimalK
 import inspect
-from sklearn.pipeline import Pipeline
 from JVrpy2 import nbclust_calc
 pd.options.mode.chained_assignment = None  # default='warn'
 
@@ -30,7 +30,7 @@ class AccuracyTest():
         #If file doesnt exist create file
         self.correct_k_dict_path = r".\\correct_k_dict.csv"
         self.correct_k_dict = pd.read_csv(self.correct_k_dict_path, index_col=0, header='infer')
-        self.error_df_path = r'.\\error_df.csv'
+        self.error_df_path = r'error_dfs\\error_df.csv'
         self.sequence_tag = 'DBPath'
         if not os.path.isfile(self.error_df_path):
             self.error_df = pd.DataFrame(
@@ -91,6 +91,36 @@ class AccuracyTest():
             
         return correct_k
     
+    def get_save_path(self):
+        """Return location for saving a) hyper-dict and b) calculated values
+        output
+        -------
+        (save_path_hyper, save_path_values)
+        save_path_hyper : hyperparameter file name
+        save_path_valeus : values file name"""
+        mydate = date.today().strftime('%m-%d')
+        base_dir = r'error_dfs\\'
+        idx = 1
+        save_path_values = 'error_df' + ' ' + mydate + ' ' + f'({idx})'
+        
+        def check_files(idx, save_path_values):
+            if (save_path_values+'.csv' in os.listdir(base_dir)):
+                return False
+            else:
+                return True
+        
+        def increment_file(idx, save_path_values):
+            idx += 1
+            save_path_values = 'error_df' + ' ' + mydate + ' ' + f'({idx})'
+            return save_path_values
+        
+        while not check_files(idx, save_path_values):
+            save_path_values = increment_file(idx, save_path_values)
+        
+        save_path_hyper = base_dir + save_path_values + ' ' + 'hyper.csv'
+        save_path_values = base_dir + save_path_values + '.csv'
+        return (save_path_hyper, save_path_values)
+            
     
     @staticmethod
     def tib_optimal_k(n_clusters, gap, sk):
@@ -247,7 +277,6 @@ class AccuracyTest():
         output
         -------
         error_df : dataframe containing optimalK predicted and actual K"""
-        global index, new_vals, df_clean, df_text, X
         myDBPipe = JVDBPipe()
         sequence_tag = self.sequence_tag
 
@@ -304,15 +333,6 @@ class AccuracyTest():
         new_vals = new_vals.join(count_df.set_index(sequence_tag), on=sequence_tag)
         
         self.error_df = self.error_df.append(new_vals)
-        
-#            if plot:
-#                self.plot_gaps(gapdf1_X, 
-#                               gapdf1_MDS, 
-#                               optK_X_gap_max, 
-#                               optK_MDS_gap_max, 
-#                               correct_k)
-#                self.plot_reduced_dataset(X_reduced_mds)
-#                input('Press <ENTER> to continue loop. Suggested close the figurs')
         
         #Save error DF for later reading
         new_vals.to_csv(self.error_df_path, mode='a', header=False)
@@ -378,11 +398,13 @@ class AccuracyTest():
         new_vals_reduced = {}
         new_vals_nb = {}
         if standard:
+            print('Standard')
             new_vals_standard = self._optimalk_calc(X,
                                                     correct_k, 
                                                     db_name, 
                                                     by_size=by_size)
         if reduce:
+            print('Reduce')
             new_vals_reduced = self._optimalk_calc_reduce(X, 
                                                           correct_k, 
                                                           db_name, 
@@ -390,6 +412,7 @@ class AccuracyTest():
                                                           method=method, 
                                                           n_components=n_components)
         if nbclust:
+            print('Nb')
             new_vals_nb = self._nbclust_calc(X, 
                                                 correct_k, 
                                                 db_name, 
@@ -403,11 +426,20 @@ class AccuracyTest():
         delete_keys = ['n_points','correct_k']
         for delete_key in delete_keys:
             if standard:
-                new_vals_standard.pop(delete_key)
+                try:
+                    new_vals_standard.pop(delete_key)
+                except KeyError:
+                    pass
             if reduce:
-                new_vals_reduced.pop(delete_key)
+                try:
+                    new_vals_reduced.pop(delete_key)
+                except KeyError:
+                    pass
             if nbclust:
-                new_vals_nb.pop(delete_key)
+                try:
+                    new_vals_nb.pop(delete_key)
+                except KeyError:
+                    pass
         
         new_vals = {**new_vals_standard, **new_vals_reduced, **new_vals_nb}
         new_vals = pd.DataFrame(new_vals, 
@@ -645,11 +677,15 @@ class AccuracyTest():
                 tsne = TSNE(method=params['method'],n_components=params['n_components'],
                             metric=params['metric'],perplexity=params['perplexity'])
                 
-                mds = MDS(n_components = 20)
-                X_partial = mds.fit_transform(X_partial) #Preprocess to speed computation
+#                mds = MDS(n_components = 20)
+#                X_partial = mds.fit_transform(X_partial) #Preprocess to speed computation
                 X_reduced = tsne.fit_transform(X_partial)
                 X_reduced = X_reduced/100
-
+                
+            if X_reduced.shape[0] >= 1000:
+                print('{} Skipped | size {}'.format(db_name, X_reduced.shape[0]))
+                return {}
+            
             max_clusters = self.get_max_iterations(X, X_partial, correct_k)
             
             #Calculate with NbClust method
@@ -736,121 +772,6 @@ class UserSkipException(Exception):
     pass
 class ClusterTooHigh(Exception):
     pass
-
-
-
-class DataFeatures:
-    """Take in a database and output a feature vector"""
-    
-    def __init__(self):
-        pass
-    
-    def calc_features(self, database, pipeline, tag, correct_k):
-        """Inputs
-        -------
-        database : Your database. Its input does not matter as long as the pipeline
-        passed outputs a numpy array. 
-        pipeline : Your finalized pipeline. See sklearn.Pipeline. The output of
-        the pipelines .fit_transform() method should be your encoded array
-        of instances and features of size (n,p) n=#instances, p=#features. 
-        Alternatively, you may pass a sequence of tuples containing names and 
-        pipeline objects : [('pipe1', myPipe1()), ('pipe2',myPipe2())]
-        tag : unique tag to identify each instance. The instance with feature 
-        vectors will be returned as a pandas dataframe with the tag on the index.
-        Returns
-        -------
-        df : a pandas dataframe with the following features 		
-            a. Number of points
-    		b. Correct number of clusters
-    		c. Typical cluster size (n_instances / n_clusters)
-    		d. Word length
-    		e. Variance of words lengths?
-    		f. Total number of unique words
-            g. n_instances / Total number of unique words
-            
-        #Example Usage
-        from JVWork_UnClusterAccuracy import AccuracyTest
-        myTest = AccuracyTest()
-        text_pipe = myDBPipe.text_pipeline(vocab_size='all', attributes='NAME',
-                                   seperator='.')
-        clean_pipe = myDBPipe.cleaning_pipeline(remove_dupe=False, 
-                                      replace_numbers=False, 
-                                      remove_virtual=True)
-        mypipe = Pipeline([('clean_pipe', clean_pipe),
-                           ('text_pipe',text_pipe)
-                           ])
-        correct_k = myTest.get_correct_k(db_name, df_clean, manual=True)
-        
-        
-        data_transform = DataFeatures()
-        db_feat = data_transform.calc_features(database, mypipe, 
-                                               tag=db_name, correct_k=correct_k)
-        """
-        
-        if hasattr(pipeline, '__iter__'):
-            pipeline = Pipeline(pipeline)
-        else:
-            pass
-        
-        data = pipeline.fit_transform(database)
-        if isinstance(data, csr_matrix):
-            data = data.toarray()
-        
-        #Number of points 
-        n_points = data.shape[0]
-        
-        #Number of features
-        n_features = data.shape[1]
-        
-        #Word lengths
-        count_dict = self.get_word_dictionary(data)
-        
-        #Variance of lengths
-        lengths = []
-        for key, value in count_dict.items():
-            lengths.extend([int(key[-1])] * value)
-        len_var = np.array(lengths).var(axis=0)
-        
-        features_dict = {
-                'instance':tag,
-                'n_instance':n_points,
-                'n_features':n_features,
-                'correct_k':correct_k,
-                'avg_clust':n_points/correct_k,
-                'len_var':len_var,
-                'uniq_ratio':n_points/n_features,
-                }
-        features_dict = {**features_dict, **count_dict}
-        features_df = pd.DataFrame(features_dict, index=[tag])
-        
-        return features_df
-    
-    def get_word_dictionary(self, word_array):
-    
-        count_dict = {}
-        
-        for row in word_array:
-            count = sum(row>0)
-            try:
-                count_dict[count] += 1
-            except KeyError:
-                count_dict[count] = 1
-        
-        max_key = max(count_dict.keys())
-        old_keys = list(count_dict.keys())
-        new_keys = ['n_len' + str(old_key) for old_key in old_keys]
-        
-        for old_key, new_key in zip(old_keys, new_keys):
-            count_dict[new_key] = count_dict.pop(old_key)
-            
-        required_keys = ['n_len' + str(key) for key in range(1,max_key+1)]
-        for key in required_keys:
-            count_dict.setdefault(key, 0)
-        
-        return count_dict
-
-
-
 
 
 

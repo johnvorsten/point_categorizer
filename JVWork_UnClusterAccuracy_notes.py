@@ -110,7 +110,7 @@ for _i in range(0,20):
     
     print('{}\nDB Size : {}'.format(db_name, X_reduced.shape))
     
-    if X_reduced.shape[0] >= 800:
+    if X_reduced.shape[0] >= 900:
         print('SKIPPED')
         continue
     
@@ -210,69 +210,98 @@ hyper_dict = {'by_size':[True, False],
               'clusterer':['kmeans','ward.D','ward.D2','single','average'],
               'distance':['eucledian', 'minkowski'],
               'reduce':['MDS', 'TSNE', False],
-              'n_components':[2,5,10]}
+              'n_components':[2,5,8]}
 
-by_size = True
-clusterer = 'ward.D'
+"""User defined hyperparameters"""
+by_size = False
+clusterer = 'average'
 distance = 'euclidean'
 n_components = 8
 method = 'MDS'
-index = 'alllong'
-save_path = r'.\error_df 8-17 no1.csv'
+index = 'all'
+fill_existing = True
+
+"""Save hyperparameters for later records"""
 hyper_info = pd.DataFrame({'by_size':[by_size],
               'clusterer':[clusterer],
               'distance':[distance],
               'reduce':[method],
               'n_components':[n_components]})
-hyper_info.to_csv(save_path)
+hyper_path, values_path = myTest.get_save_path() #(hyper, values)
+hyper_info.to_csv(hyper_path)
 
-for _, database in my_iter:
+
+for i in range(0,100):
+
+    #Find which databases need to be calculated
+    if all(('_names_un' not in locals(), fill_existing)):
+        #Find un-calculated databases
+        _error_df_un = pd.read_csv(values_path, index_col=0)
+        myTest.error_df_copy = _error_df_un
+        
+        #Positive column names may be variable, so use a set difference
+        #To know which column names to look at
+        _common_col = ['DBPath', 'correct_k', 'n_points', 'n_len1', 'n_len2',
+               'n_len3', 'n_len4', 'n_len5', 'n_len6', 'n_len7']
+        _opt_cols = set(_error_df_un.columns).difference(set(_common_col))
+        _names_un = [] #Uncalculated Databases
+        
+        for _name in _error_df_un['DBPath']:
+            _idx = _error_df_un[_error_df_un['DBPath'] == _name].index
+            
+            if (_error_df_un.loc[_idx, _opt_cols].values == 0).all():
+                _names_un.append(_name)
+    
+    if fill_existing:
+        #Retrieve database on tag instead of iterating through everything
+        database = myClustering.read_database_ontag(r'data\master_pts_db.csv', 'DBPath', _names_un[0])
+        _names_un.pop(0)
+        
+    else:
+        #Retrieve database from the iterator
+        _, database = next(my_iter)
+        
+    #Pass all hyperparameters to module which performs clustering
+    #The returned value is a dataframe that keeps memory of past instances
     try:
         error_df = myTest.iterate_recalc(database, by_size=by_size, standard=True,
                              reduce=True, method=method, n_components=n_components,
                              nbclust=True, index_nb=index, clusterer=clusterer,
                              distance=distance)
-                                              
+    
+    #An error in multiprocessing library - possible stack or heap overflow
     except BrokenProcessPool as ex:
         raise CustomProcessError(f'{ex} There was an unknown error, possibly'
                  ' because of limitied system resources.')
-        
+    
+    #Error returned from R
     except RRuntimeError as ex:
         print(r'{ex} There was an unknown error')
         print(str(ex))
+        
+        #Singular matricies may be dealt with by reducing dimensionality of my dataset
         try:
             if str(ex).__contains__('singular'):
-                    error_df = myTest.iterate_recalc(database, by_size=by_size, standard=True,
-                                 reduce=True, method=method, n_components=int(n_components/2),
-                                 nbclust=True, index_nb=index, clusterer=clusterer,
-                                 distance=distance)
+                print('Retry')
+                error_df = myTest.iterate_recalc(database, by_size=by_size, standard=False,
+                             reduce=False, method=method, n_components=int(n_components/2),
+                             nbclust=True, index_nb=index, clusterer=clusterer,
+                             distance=distance)
             else:
                 pass
+            
         except RRuntimeError:
+            print('Failed Retry')
             pass
         
-error_df.to_csv(save_path, mode='a')
-            
+    #Save the error dataframe to disc. Checks are performed becasue the
+    #iterate_recalc() method returns None on certain conditions
+    if all((error_df is not None, 'error_df' in locals())):
+        print('saved')
+        error_df.to_csv(values_path)
 
 
-#%% Testing 8-17
-by_size = True
-clusterer = 'ward.D'
-distance = 'euclidean'
-n_components = 8
-method = 'MDS'
-index = 'alllong'
-save_path = r'.\error_df 8-17 no1.csv'
 
 
-_, database = next(my_iter)
-
-error_df = myTest.iterate_recalc(database, by_size=by_size, standard=True,
-                     reduce=True, method=method, n_components=n_components,
-                     nbclust=True, index_nb=index, clusterer=clusterer,
-                     distance=distance)
-
-
-error_df.to_csv(save_path, mode='a')
 
 
