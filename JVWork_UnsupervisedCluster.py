@@ -175,7 +175,7 @@ class JVClusterTools():
                            index_col=0,
                            encoding='mac_roman',
                            nrows=0).columns.tolist()
-        indicies = np.where(df.index == column_tag)[0]
+        indicies = np.where(df.index == column_tag)[0] + 1
         
         df_whole = pd.read_csv(file_path, 
                          names=cols,
