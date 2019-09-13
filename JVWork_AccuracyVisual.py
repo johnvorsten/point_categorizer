@@ -2,18 +2,111 @@
 """
 Created on Thu Aug  8 22:04:17 2019
 
+#Example Usage
+
+#Import required modules
+from JVWork_AccuracyVisual import (plt_accuracy, plt_accuracy2, 
+                                   plt_distance, import_error_dfs)
+import numpy as np
+import pandas as pd
+
+#Import records
+records = import_error_dfs()
+
+#Fun plotting functions
+#plot all datasets (bar graph hyperparameter set v accuracy)
+plt_accuracy([records[1]])
+
+#plot a single dataset (bar graph hyperparameter set v accuracy)
+plt_accuracy([records[1]], instance_tag=r'D:\Z - Saved SQL Databases\44OP-093324_Baylor_Bric_Bldg\JobDB.mdf')
+
+plt_accuracy2([records[1]])
+
+#Sort the x axis on correct number of clusters
+plt_distance([records[1]], sort=True, sort_on='correct_k')
+
+#Sort the x axis on number of database points & only plot the closest optimal k index (best prediction)
+plt_distance([records[1]], sort=True, sort_on='n_points', closest_meth=True)
+
+for record in records:
+    plt_accuracy2([record])
+    
+#%% Relationship hyperparameters v. loss plotting
+
+# Third party imports
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+from sklearn.neighbors import KernelDensity
+from sklearn.preprocessing import OneHotEncoder
+
+# Local Imports
+from JVWork_AccuracyVisual import import_error_dfs
+from JVWork_AccuracyVisual import plt_hyperparameters
+from JVWork_Labeling import ExtractLabels
+Extract = ExtractLabels()
+
+
+# Import your database (.csv)
+csv_file = r'data\master_pts_db.csv'
+sequence_tag = 'DBPath'
+
+# Get unique names
+unique_tags = pd.read_csv(csv_file, index_col=0, usecols=['DBPath'])
+unique_tags = list(set(unique_tags.index))
+
+# Calculate best hyperparameters
+# Labels is a nested dictionary of all hyperparameters ranked best to worst
+tag = unique_tags[0]
+records = import_error_dfs()
+labels, hyper_dict = Extract.calc_labels(records, tag, best_n='all')
+
+# Plot 'by_size' versus position
+plt_hyperparameters(list(labels.values()), 
+                    hyper_param_field = 'by_size', 
+                    hyper_param_value=False, 
+                    plt_density=True, 
+                    plt_values=False)
+
+# Plot 'clusterer' versus position
+plt_hyperparameters(list(labels.values()), 
+                    hyper_param_field = 'clusterer', 
+                    hyper_param_value=False, 
+                    plt_density=True, 
+                    plt_values=False)
+
+# Plot 'n_components' versus position
+plt_hyperparameters(list(labels.values()), 
+                    hyper_param_field = 'n_components', 
+                    hyper_param_value=False, 
+                    plt_density=True, 
+                    plt_values=False)
+
+# Plot 'reduce' versus position
+plt_hyperparameters(list(labels.values()), 
+                    hyper_param_field = 'reduce', 
+                    hyper_param_value=False, 
+                    plt_density=True, 
+                    plt_values=False)
+
+# Plot 'index' versus position
+plt_hyperparameters(list(labels.values()), 
+                    hyper_param_field = 'index', 
+                    hyper_param_value=False, 
+                    plt_density=True, 
+                    plt_values=False)
+
 @author: z003vrzk
 """
 
 import pandas as pd
-from collections import namedtuple
+from sklearn.neighbors import KernelDensity
 import numpy as np
 import matplotlib.markers as markers
 import matplotlib.pyplot as plt
-from scipy.sparse import csr_matrix
-from sklearn.pipeline import Pipeline
 import os
 from path import Path
+import re
 
 class Record():
     """Keep track of individual dataframes and their related information
@@ -22,7 +115,8 @@ class Record():
     dataframe : a dataframe containing error metric information. 
     See import_error_dfs()
     parent_file : original csv file
-    hyper_dict : #TODO Learn from imported file"""
+    hyper_dict : a dictionary on the predicted sets hyperparameters. For example
+    {'hyper1':value1, [...]}"""
     
     def __init__(self, dataframe, parent_file, hyper_dict):
         self.dataframe = dataframe
@@ -34,6 +128,7 @@ class Record():
         self.best_cols = self.best_metric()
         
     def accuracy_simple(self):
+        """Calculate hte l2 loss for a set of optimal k predictions"""
         
         non_opt_cols = ['DBPath', 'correct_k','n_points', 'n_len1', 
                         'n_len2', 'n_len3', 'n_len4',
@@ -52,6 +147,7 @@ class Record():
         return accuracy_df
     
     def accuracy_log(self):
+        """Calculate the log l2 loss for a set of optimal k predictions"""
         
         non_opt_cols = ['DBPath', 'correct_k','n_points', 'n_len1', 
                         'n_len2', 'n_len3', 'n_len4',
@@ -70,6 +166,9 @@ class Record():
         return accuracy_df
     
     def dict2str(self):
+        """Convert the record hyperparameter into a string for storing in
+        dictionary keys"""
+        
         x = str()
         for key, value in self.hyper_dict.items():
             x = x + str(key) + ':' + str(value) + '\n'
@@ -93,214 +192,6 @@ class Record():
         cols_df = pd.DataFrame(cols_name, index=self.dataframe[sequence_tag])
         return cols_df
         
-class ExtractLabels():
-    
-    def __init__(self):
-        pass
-
-    def calc_features(self, database, pipeline, tag):
-        """Calculate the features of a dataset. These will be used to 
-        predict a good clustering algorithm.
-        Inputs
-        -------
-        database : Your database. Its input does not matter as long as the pipeline
-        passed outputs a numpy array. 
-        pipeline : Your finalized pipeline. See sklearn.Pipeline. The output of
-        the pipelines .fit_transform() method should be your encoded array
-        of instances and features of size (n,p) n=#instances, p=#features. 
-        Alternatively, you may pass a sequence of tuples containing names and 
-        pipeline objects : [('pipe1', myPipe1()), ('pipe2',myPipe2())]
-        tag : unique tag to identify each instance. The instance with feature 
-        vectors will be returned as a pandas dataframe with the tag on the index.
-        Returns
-        -------
-        df : a pandas dataframe with the following features 		
-            a. Number of points
-    		b. Correct number of clusters
-    		c. Typical cluster size (n_instances / n_clusters)
-    		d. Word length
-    		e. Variance of words lengths?
-    		f. Total number of unique words
-            g. n_instances / Total number of unique words
-            
-        #Example Usage
-        from JVWork_UnClusterAccuracy import AccuracyTest
-        myTest = AccuracyTest()
-        text_pipe = myDBPipe.text_pipeline(vocab_size='all', attributes='NAME',
-                                   seperator='.')
-        clean_pipe = myDBPipe.cleaning_pipeline(remove_dupe=False, 
-                                      replace_numbers=False, 
-                                      remove_virtual=True)
-        mypipe = Pipeline([('clean_pipe', clean_pipe),
-                           ('text_pipe',text_pipe)
-                           ])
-        correct_k = myTest.get_correct_k(db_name, df_clean, manual=True)
-        
-        
-        data_transform = DataFeatures()
-        db_feat = data_transform.calc_features(database, mypipe, 
-                                               tag=db_name, correct_k=correct_k)
-        """
-        
-        if hasattr(pipeline, '__iter__'):
-            pipeline = Pipeline(pipeline)
-        else:
-            pass
-        
-        data = pipeline.fit_transform(database)
-        if isinstance(data, csr_matrix):
-            data = data.toarray()
-        
-        #Number of points 
-        n_points = data.shape[0]
-        
-        #Number of features
-        n_features = data.shape[1]
-        
-        #Word lengths
-        count_dict = self.get_word_dictionary(data)
-        
-        #Variance of lengths
-        lengths = []
-        for key, value in count_dict.items():
-            lengths.extend([int(key[-1])] * value)
-        len_var = np.array(lengths).var(axis=0)
-        
-        features_dict = {
-                'instance':tag,
-                'n_instance':n_points,
-                'n_features':n_features,
-                'len_var':len_var,
-                'uniq_ratio':n_points/n_features,
-                }
-        features_dict = {**features_dict, **count_dict}
-        features_df = pd.DataFrame(features_dict, index=[tag])
-        
-        return features_df
-    
-    def get_word_dictionary(self, word_array):
-    
-        count_dict = {}
-        
-        for row in word_array:
-            count = sum(row>0)
-            try:
-                count_dict[count] += 1
-            except KeyError:
-                count_dict[count] = 1
-        
-        for key, label in count_dict.items():
-            count_dict[key] = count_dict[key] / len(word_array) #Percentage
-        
-        max_key = max(count_dict.keys())
-        old_keys = list(count_dict.keys())
-        new_keys = ['n_len' + str(old_key) for old_key in old_keys]
-        
-        for old_key, new_key in zip(old_keys, new_keys):
-            count_dict[new_key] = count_dict.pop(old_key)
-            
-        required_keys = ['n_len' + str(key) for key in range(1,max_key+1)]
-        for key in required_keys:
-            count_dict.setdefault(key, 0)
-        
-        return count_dict
-
-    def calc_labels(self, records, instance_name, best_n):
-        """Given an instance_name (database name in this case) and set of records
-        output the correct labels for that database.
-        inputs
-        -------
-        records : a list of records from the Record class
-        instance_name : The column/key of the database sequence you wish to 
-        return labels for. In my case, it will be a path similar to D:\[...]\JobDB.mdf
-        output
-        -------
-        A list a labels in string form. The list includes : 
-            by_size
-            clusterer
-            distance metric
-            reduced dimensionality
-            best index 1
-            best index 2
-            best index 3
-        """ 
-        non_opt_cols = ['DBPath', 'correct_k','n_points', 'n_len1', 
-                        'n_len2', 'n_len3', 'n_len4',
-                        'n_len5', 'n_len6', 'n_len7']
-        sequence_tag = 'DBPath'
-        hyper_dict = {}
-        loss = namedtuple('loss',['clusters', 'l2error', 'variance', 'loss'])
-        losses = []
-        var_scale = 0.3 #% Contribute to total loss
-        error_scale = 0.7 #% Contribute to total loss
-        
-        for idx, record in enumerate(records): #Dictionary of unique dictionaries
-            try:
-                hyper_dict[self.dict2str(record.hyper_dict)]['records'].append(record)
-            except KeyError:
-                hyper_dict[self.dict2str(record.hyper_dict)] = {'records':[record]}
-        
-        non_opt_cols2 = ['instance','correct_k','records']
-        
-        for hyper_set, subdict in hyper_dict.items():
-            subdict['instance'] = instance_name
-            for record in subdict['records']:
-                idx = np.where(record.dataframe[sequence_tag] == instance_name)[0]
-                subdict['correct_k'] = record.dataframe.loc[idx[0], 'correct_k']
-                
-                for opt_k in set(record.dataframe.columns).difference(set(non_opt_cols)):
-                    #Easier to access values corresponding to a database instance
-                    col_name = str(opt_k)
-                    try:
-                        _loss = loss(record.dataframe.loc[idx[0], opt_k], None, None, None)
-        #                hyper_dict[hyper_set][col_name].append(record.dataframe.loc[idx[0], opt_k])
-                        hyper_dict[hyper_set][col_name].clusters.append(_loss.clusters)
-                    except KeyError:
-                        hyper_dict[hyper_set][col_name] = loss([_loss.clusters], None, None, None)
-        #                hyper_dict[hyper_set][col_name] = [record.dataframe.loc[idx[0], opt_k]]
-        
-            #Calculate relevant metrics for each database on each hyperparameter set
-            #Replace optimal_k calculations with errors (l2)
-            for opt_k in set(subdict.keys()).difference(set(non_opt_cols2)):
-                l2norm = sum(abs(np.array(subdict[opt_k].clusters) - subdict['correct_k'])**2)
-                
-                if len(subdict[opt_k].clusters) == 1:
-                    variance = l2norm #Variance of predictions
-                else:
-                    variance = np.var(np.array(subdict[opt_k].clusters)) #Variance of predictions
-                
-                calc_loss = l2norm*error_scale + variance*len(subdict[opt_k].clusters)*var_scale
-                subdict[opt_k] = loss(subdict[opt_k].clusters,
-                        l2norm, 
-                       variance*len(subdict[opt_k].clusters), 
-                       calc_loss)
-                losses.append(calc_loss)
-        
-        best_labels = {}
-        for i in range(1, best_n+1):
-            best_labels[i] = {}
-        best_errors = sorted(losses)[:best_n]
-        for hyper_set, subdict in hyper_dict.items():
-            for opt_k in set(subdict.keys()).difference(set(non_opt_cols2)):
-                if subdict[opt_k].loss in best_errors:
-                    position = best_errors.index(subdict[opt_k].loss) + 1
-                    best_labels[position]['by_size'] = subdict['records'][0].hyper_dict['by_size']
-                    best_labels[position]['distance'] = subdict['records'][0].hyper_dict['distance']
-                    best_labels[position]['clusterer'] = subdict['records'][0].hyper_dict['clusterer']
-                    best_labels[position]['n_components'] = subdict['records'][0].hyper_dict['n_components']
-                    best_labels[position]['reduce'] = subdict['records'][0].hyper_dict['reduce']
-                    best_labels[position]['index'] = opt_k
-                    
-        return best_labels, hyper_dict
-    
-    def dict2str(self, hyper_dict):
-        x = str()
-        for key, value in hyper_dict.items():
-            x = x + str(key) + ':' + str(value) + '\n'
-        return x
-
-            
-
 
 def import_error_dfs():
     """Imports error_df csv files and converts to custom Record objects
@@ -308,19 +199,6 @@ def import_error_dfs():
     -------
     [data1, data2, data3, data4, data5,data6]"""
     
-    error_df_list = [r"C:\Users\z003vrzk\.spyder-py3\Scripts\ML\Point database categorizer\error_dfs\error_df 8-6 (1).csv",
-                     r"C:\Users\z003vrzk\.spyder-py3\Scripts\ML\Point database categorizer\error_dfs\error_df 8-6 (2).csv",
-                     r"C:\Users\z003vrzk\.spyder-py3\Scripts\ML\Point database categorizer\error_dfs\error_df 8-6 (3).csv",
-                     r"C:\Users\z003vrzk\.spyder-py3\Scripts\ML\Point database categorizer\error_dfs\error_df 8-7 (2).csv",
-                     r"C:\Users\z003vrzk\.spyder-py3\Scripts\ML\Point database categorizer\error_dfs\error_df 8-20 (1).csv",
-                     r"C:\Users\z003vrzk\.spyder-py3\Scripts\ML\Point database categorizer\error_dfs\error_df 8-20 (2).csv"
-                     ]
-    reduce_cols = ['DBPath', 'correct_k', 'optk_MDS_gap_max', 'optk_MDS_gap_Tib',
-           'optk_MDS_gap*_max', 'n_points', 'n_len1', 'n_len2', 'n_len3', 'n_len4',
-           'n_len5', 'n_len6', 'n_len7']
-    standard_cols = ['DBPath', 'correct_k', 'optk_X_gap_max', 'optk_X_gap_Tib',
-           'optk_X_gap*_max', 'n_points', 'n_len1', 'n_len2', 'n_len3', 'n_len4',
-           'n_len5', 'n_len6', 'n_len7']
     #Possible values, for notes
     hyper_dict = {'by_size':[True, False],
                   'clusterer':['kmeans','agglomerative'],
@@ -328,6 +206,25 @@ def import_error_dfs():
                   'reduce':['MDS', 'TSNE', False],
                   'n_components':[2,5,10]
                   }
+    def get_error_dfs(base_dir=r'error_dfs'):
+        #regex
+        hyper_pattern = r'hyper'
+        std_pattern = 'error_df.csv'
+        
+        files = os.listdir(base_dir)
+        for idx, _file in enumerate(files):
+            new_file = base_dir + '\\' + _file
+            files[idx] = new_file
+        
+        new_files = []
+        for idx, _file in enumerate(files):
+            is_standard = bool(re.search(std_pattern, _file))
+            is_hyper = bool(re.search(hyper_pattern, _file))
+            if not any((is_standard, is_hyper)):
+                new_files.append(_file)
+#                print('popped {} at {}'.format(_file, idx))
+                
+        return new_files
     
     def get_hyper_dict(df_path):
         #Get directory files same as df_path
@@ -339,11 +236,14 @@ def import_error_dfs():
         base_dir = parts[0]
         name = parts[1]
 
-        hyper_path = base_dir.glob('*' + name[:-4] + '*' + 'hyper' + '*')
+        hyper_path = list(base_dir.glob('*' + name[:-4] + '*' + 'hyper' + '*'))
         if len(hyper_path) == 1:
             hyper_path = hyper_path[0]
         else:
             print('Error with hyper_path : {}'.format(hyper_path))
+            print('Error with name : {}'.format(name))
+            print(len(hyper_path))
+            print('Error with df_path : {}'.format(df_path))
             raise LookupError('Hyperparameter file matches multiple possibilities')
             
         hyper_df = pd.read_csv(hyper_path, index_col=0)
@@ -358,6 +258,7 @@ def import_error_dfs():
     
     error_dfs = []
     records = []
+    error_df_list = get_error_dfs()
     for idx, error_df_path in enumerate(error_df_list):
         error_df = pd.read_csv(error_df_path, header=0, index_col=0)
         error_dfs.append(error_df)
@@ -368,27 +269,41 @@ def import_error_dfs():
     return records
 
 
-def plt_accuracy(records):
+def plt_accuracy(records, 
+                 column_tag='DBPath', 
+                 instance_tag=None):
     """parameters
     -------
     records : iterable of Record objects
+    output
+    -------
+    A bar graph showing the hyperparameters on the x axis, and the simple accuracy of each
+    clustering index on the y axis. This is useful for seeing how well a clustering index
+    performs on a dataset. Multiple hyperparameter sets can be graphed, but
+    the plot quickly becomes crowded
     """
-    global rect
     fig, ax = plt.subplots(1)
     tags = np.arange(len(records))
     hypers = {}
     
+    #Create all unique x labels from hyperparameter sets
     for tag in tags:
         x = str()
         for key, value in records[tag].hyper_dict.items():
             x = x + str(value) + '\n'
         hypers[tag] = x
-    accuracies = {}
     
+    #Calculate accuracies on each optimal_k index for the hyperparameter set
+    accuracies = {}
     for tag in tags:
         accuracies[tag] = {}
         for col in records[tag].accuracy_df.columns:
-            y = np.mean(abs(records[tag].accuracy_df.loc[:,col]))
+            if instance_tag is None:
+                y = np.mean(abs(records[tag].accuracy_df.loc[:,col]))
+            else:
+                df = records[tag].dataframe
+                idx = df[df[column_tag]==instance_tag].index
+                y = np.mean(abs(records[tag].accuracy_df.loc[idx, col]))
             accuracies[tag][col] = y
             
     ind = np.arange(len(records))
@@ -418,11 +333,21 @@ def plt_accuracy(records):
             
     autolabel(rects, labels)
     plt.show()
+    pass
 
 def plt_accuracy2(records):
     """parameters
     -------
     records : iterable of Record objects
+    output
+    -------
+    A plot showing each dataset on the x axis, and the simple accuracy of each
+    clustering index on the y axis. This is useful for seeing how error is distributed
+    relative to the "correct_k". Simple accuracy (y axis) values of 1 indicate
+    the clustering index underestimated the number of clusters 
+    (correct_k - optimal_k) / (correct_k) ~ 1
+    Negative Simple accuracy (y axis) values indicate the clustering index overestimated 
+    the number of clusters (correct_k - optimal_k) / (correct_k) < 0
     """
     sequence_tag = 'DBPath'
     fig, ax = plt.subplots(1)
@@ -431,6 +356,7 @@ def plt_accuracy2(records):
     dbs_set = set() #For x indicies
     hyper_set = set()
     marker_keys = list(markers.MarkerStyle.markers.keys())
+    
     #Get unique list of all column names
     for record in records:
         col_set = set(record.accuracy_simple().columns)
@@ -547,7 +473,119 @@ def plt_distance(records, sort=True, sort_on='correct_k', closest_meth=False):
     ax.grid(True)
     ax.legend()
 
+def plt_hyperparameters(label_list, 
+                        hyper_param_field, 
+                        hyper_param_value=None,
+                        plt_density=True,
+                        plt_values=False):
+    """Plot a set of ordered hyper parameter arrays. 
+    Inputs
+    -------
+    label_list : A list of hyperparameter dictiodnaries, ranked by order of their 
+    effectiveness / accuracy / loss
+    hyper_param_field : the general name of the hyperparameter you want to plot
+    hyper_param_value : (optional) the specific hyperparameter value relating
+    to hyper_param_field to plot
+    plt_density : plot the values using a gaussian density kernel probability 
+    density function (kernel density estimation)
+    plt_values : plot the actual values of the hyperparameter. Not useful in string
+    or non-plottable data types"""
+    
+    # Create X axis for plotting
+    X = np.arange(len(label_list))
 
+    # Extract only the specific hyper parameter from the dictionaries in label_list
+    y = [dictionary[hyper_param_field] for dictionary in label_list]
+    y = np.array(y)
+    feature_names = list(set(y))
+    
+    # Legacy
+#    y_onehot = one_hot.fit_transform(y.reshape(-1,1)).toarray()
+    
+#    for y_col, name in zip(np.rollaxis(y_onehot, 1), one_hot.get_feature_names()):
+#        if hyper_param_value and not name==hyper_param_value:
+#            continue
+#        plt.scatter(X, y_col, label=name)
+        
+    for name in feature_names:
+        if plt_density:
+            kde = KernelDensity(kernel='gaussian', bandwidth=0.75).fit(X[y==name].reshape(-1,1))
+            log_density = kde.score_samples(X.reshape(-1,1))
+            density = np.exp(log_density)
+            plt.plot(X, density, label=str(name) + ' kde')
+            
+        if plt_values:
+            plt.scatter(X[y==name], y[y==name], label=name)
+        
+        
+    plt.title(f'Accuracy ranking v. {hyper_param_field}')
+    plt.xlabel('Accuracy Ranking (sequential)')
+    plt.ylabel(f'{hyper_param_field}')
+    plt.legend()
+    pass
+
+
+def plt_loss_curve(labels):
+    """Plot the curve of losses of hyperparameter rankings
+    input
+    -------
+    labels : a list of labels calculated from ExtractLabels.calc_labels()
+    output
+    -------
+    A graph of ranked hyperparamter set losses. The curve will probably
+    show elbows of loss, indicating a desirable set of hyperparameters that
+    minimize the error in estimating optimal_k
+    
+    Example usage :
+    #Import your database (.csv)
+    csv_file = r'data\master_pts_db.csv'
+    sequence_tag = 'DBPath'
+    
+    #Get unique names
+    unique_tags = pd.read_csv(csv_file, index_col=0, usecols=['DBPath'])
+    unique_tags = list(set(unique_tags.index))
+    
+    tag_iter = iter(unique_tags)
+    tag = next(tag_iter)
+    labels, hyper_dict = Extract.calc_labels(records, tag, best_n='all')
+    
+    ## OR ## With MongoDB ##
+    a = collection.find_one({'database_tag':tag}) # Or iterate over documents
+    db_dict = next(a)
+    labels = db_dict['hyper_labels']
+    
+    # Plot
+    plt_loss_curve(labels)
+    
+    
+    """
+    
+    X = list(labels.keys())
+    Y = [_label['loss'] for _key, _label in labels.items()]
+    Yd1 = np.gradient(Y)
+    Yd2 = np.gradient(Yd1)
+    
+    plt.figure(1)
+    plt.plot(X, Y, label='loss')
+    plt.title('loss curve')
+    plt.xlabel('Ranking')
+    plt.ylabel('loss')
+    
+    plt.figure(2)
+    plt.plot(X, Yd1, label='1st diff')
+    plt.ylim((-50,100))
+    plt.title('loss curve (1st diff)')
+    plt.xlabel('Ranking')
+    plt.ylabel('loss (1st diff)')
+    
+    plt.figure(3)
+    plt.plot(X, Yd2, label='2nd diff')
+    plt.ylim((-50,50))
+    plt.title('loss curve (2nd diff)')
+    plt.xlabel('Ranking')
+    plt.ylabel('loss (2nd diff)')
+    
+    pass
 
 
 

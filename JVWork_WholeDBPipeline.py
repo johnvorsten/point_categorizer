@@ -22,29 +22,49 @@ processing data. This module contains :
  'WordDictToSparseTransformer' - Converts your word dictionary to a sparse 
  matrix of encoded words
  
- Example usage : 
+Example usage : 
 
+#Local Imports
+from JVWork_UnClusterAccuracy import AccuracyTest
+from JVWork_UnsupervisedCluster import JVClusterTools
+from JVWork_WholeDBPipeline import JVDBPipe
+
+#Instantiate classes
 myTest = AccuracyTest() #For performing unsupervised clustering
 myClustering = JVClusterTools() #For retrieving data
 myDBPipe = JVDBPipe() #Class in this module
 
+# Optionally, create an iterator over databases on disc
 _master_pts_db = r"D:\Z - Saved SQL Databases\master_pts_db.csv"
-my_iter = myClustering.read_database_set(_master_pts_db) #Create an interator over database
+my_iter = myClustering.read_database_set(_master_pts_db)
+
 
 sequence_tag = 'DBPath'
 _, database = next(my_iter)
 error_df = myTest.error_df
     
+# Create a pipeline for cleaning the raw dataset
 clean_pipe = myDBPipe.cleaning_pipeline(remove_dupe=False, 
                                       replace_numbers=False, 
                                       remove_virtual=True)
+
+# Apply cleaning pipeline
 df_clean = clean_pipe.fit_transform(database)
+
+# Create a pipeline for encoding text features
 text_pipe = myDBPipe.text_pipeline(vocab_size='all', attributes='NAME',
                                    seperator='.')
+
+# Extract text features
 X = text_pipe.fit_transform(df_clean).toarray()
+
+# Tip : examine the word vocabulary
 word_vocab = text_pipe.named_steps['WordDictToSparseTransformer'].vocabulary #Total dictionary of words in dataset
-df_text = pd.DataFrame(X, columns=_word_vocab) #Dataframe with each column 
-naming the encoded word (feature). Instances are along (axis 0)
+
+# Dataframe with each column naming the encoded word (feature). 
+# Instances are along (axis 0)
+df_text = pd.DataFrame(X, columns=_word_vocab)  
+
 
 @author: z003vrzk
 """

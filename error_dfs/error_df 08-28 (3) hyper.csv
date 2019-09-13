@@ -1,2 +1,2 @@
 ,by_size,clusterer,distance,reduce,n_components
-0,False,ward.D2,euclidean,TSNE,8
+0,FALSE,ward.D2,euclidean,TSNE,8

@@ -30,7 +30,7 @@ class AccuracyTest():
         #If file doesnt exist create file
         self.correct_k_dict_path = r".\\correct_k_dict.csv"
         self.correct_k_dict = pd.read_csv(self.correct_k_dict_path, index_col=0, header='infer')
-        self.error_df_path = r'error_dfs\\error_df.csv'
+        self.error_df_path = r'error_dfs\error_df.csv'
         self.sequence_tag = 'DBPath'
         if not os.path.isfile(self.error_df_path):
             self.error_df = pd.DataFrame(

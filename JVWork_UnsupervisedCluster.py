@@ -46,35 +46,7 @@ print(df_clean.loc[_indicies[0], 'DBPath'])
 for _i in range(0, min(5, len(_point_names))):
     print(_point_names[_i])
 """
-##OR##
-"""
-myDBPipe = JVDBPipe()
-myClustering = JVClusterTools()
 
-_master_pts_db = r"D:\Z - Saved SQL Databases\master_pts_db.csv"
-_master_pts_db_clean = r"D:\Z - Saved SQL Databases\master_pts_db_clean.csv"
-_ptname_hot_path = r"D:\Z - Saved SQL Databases\master_pts_db_name_onehot.csv"
-_sys_hot_path = r"D:\Z - Saved SQL Databases\master_pts_db_system_onehot.csv"
-_desc_hot_path = r"D:\Z - Saved SQL Databases\master_pts_db_description_onehot.csv"
-
-my_iter = myClustering.read_database_set(_master_pts_db)
-ind, df = next(my_iter)
-
-df_clean = myDBPipe.cleaning_pipeline(df, remove_dupe=False, 
-                                      replace_numbers=False, remove_virtual=True)
-
-df_text = myDBPipe.text_pipeline(df_clean, vocab_size='all')
-
-_vocabulary = df_text.columns.tolist()
-
-X = df_text.values
-
-#Visualize some data
-_point_names = myClustering.get_word_name(X, _vocabulary)
-print(df_clean.loc[0, 'DBPath'])
-for _i in range(0, min(5, len(_point_names))):
-    print(_point_names[_i])
-"""
 
 class JVClusterTools():
     
