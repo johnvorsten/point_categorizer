@@ -214,12 +214,12 @@ hyper_dict = {'by_size':[True, False],
 
 """User defined hyperparameters"""
 by_size = False
-clusterer = 'average'
+clusterer = 'ward.D2'
 distance = 'euclidean'
 n_components = 8
-method = 'MDS'
+method = 'TSNE'
 index = 'all'
-fill_existing = True
+fill_existing = False
 
 """Save hyperparameters for later records"""
 hyper_info = pd.DataFrame({'by_size':[by_size],
@@ -231,7 +231,7 @@ hyper_path, values_path = myTest.get_save_path() #(hyper, values)
 hyper_info.to_csv(hyper_path)
 
 
-for i in range(0,100):
+for i in range(0,200):
 
     #Find which databases need to be calculated
     if all(('_names_un' not in locals(), fill_existing)):
@@ -264,8 +264,8 @@ for i in range(0,100):
     #Pass all hyperparameters to module which performs clustering
     #The returned value is a dataframe that keeps memory of past instances
     try:
-        error_df = myTest.iterate_recalc(database, by_size=by_size, standard=True,
-                             reduce=True, method=method, n_components=n_components,
+        error_df = myTest.iterate_recalc(database, by_size=by_size, standard=False,
+                             reduce=False, method=method, n_components=n_components,
                              nbclust=True, index_nb=index, clusterer=clusterer,
                              distance=distance)
     

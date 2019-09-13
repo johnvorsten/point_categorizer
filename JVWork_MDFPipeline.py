@@ -2,6 +2,29 @@
 """
 Created on Thu Jun 13 12:29:09 2019
 
+
+#Attach a database
+
+mysql = jvsql.MySQLHandling()
+cursmaster, connmaster = mysql.create_master_connection()
+_pathMDF = r"D:\Z - Saved SQL Databases\44OP-112425_East_Village_North\JobDB.mdf"
+_database_name = 'PipelineDB'
+mysql.attach(_pathMDF, _database_name)
+engine, conn, cursor = mysql.create_PBDB_connection(_database_name)
+
+
+
+#mysql.detach(database_name)
+
+#Create dataframes for each relevant table
+pointbas = pd.read_sql_table('POINTBAS', engine)
+pointfun = pd.read_sql_table('POINTFUN', engine)
+pointsen = pd.read_sql_table('POINTSEN', engine)
+netdev = pd.read_sql_table('NETDEV', engine)
+
+mysql.detach(_database_name)
+
+
 @author: z003vrzk
 """
 
@@ -54,22 +77,6 @@ def search_databases(base_directory, idx=1, print_flag=False):
             continue
 
 
-"""Two ways to iterate thorugh items 
-
-#By specific range
-base_directory = r"D:\Z - Saved SQL Databases"
-db_iterator = search_databases(base_directory)
-for i in range(5):
-    database_path, log_path = next(db_iterator)
-    print('\n', database_path, '\n', log_path)
-   
-#Unitl iterator runs out
-base_directory = r"D:\Z - Saved SQL Databases"
-db_iterator = search_databases(base_directory)
-for i in db_iterator:
-    database_path, log_path = next(db_iterator)
-    print('\n', database_path, '\n', log_path)
-"""
 
 def main():
 
@@ -135,27 +142,7 @@ def join_dataframes(dataframes):
     return merged_df
 
 
-##Attach a database
-#
-#mysql = jvsql.MySQLHandling()
-#cursmaster, connmaster = mysql.create_master_connection()
-#_pathMDF = r"D:\Z - Saved SQL Databases\44OP-112425_East_Village_North\JobDB.mdf"
-#_database_name = 'PipelineDB'
-#mysql.attach(_pathMDF, _database_name)
-#engine, conn, cursor = mysql.create_PBDB_connection(_database_name)
-#
-#
-#
-##mysql.detach(database_name)
-#
-##Create dataframes for each relevant table
-#pointbas = pd.read_sql_table('POINTBAS', engine)
-#pointfun = pd.read_sql_table('POINTFUN', engine)
-#pointsen = pd.read_sql_table('POINTSEN', engine)
-#netdev = pd.read_sql_table('NETDEV', engine)
-#
-#mysql.detach(_database_name)
-#
+
 
 
 

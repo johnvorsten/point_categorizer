@@ -1,2 +1,2 @@
 ,by_size,clusterer,distance,reduce,n_components
-0,False,ward.D,euclidean,MDS,8
+0,FALSE,ward.D,euclidean,MDS,8
