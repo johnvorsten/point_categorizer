@@ -5,6 +5,8 @@ __pycache__/**
 *.png
 
 #Tensorflow stuff
+TF_Logs/**
+final_model/**
 
 #SQL Scripts
 *.sql
@@ -17,7 +19,6 @@ DatabaseCategorizer (2).xml
 test.py
 user_input.csv
 
-
 #Word files
 *.docx
 
@@ -28,4 +29,8 @@ OneNote_RecycleBin/**
 
 #Git notes
 git notes.txt
+
+# Large files
+vocab_ANTIQUE.txt
+train_ANTIQUE.tfrecords
 

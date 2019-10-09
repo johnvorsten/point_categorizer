@@ -73,7 +73,10 @@ for column_tag in unique_tags:
                                                 column_tag)
     df2mongo(database, client)
 
-#%%
+#%% Creating a unique index on a text field
+# This will not work becasue text fields are divided into keys
+# And the set of keys is used as an index - this means if two
+# fields have overlapping keys there will be duplicate index
 
 
 
