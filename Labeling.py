@@ -19,7 +19,7 @@ extract = ExtractLabels()
 
 records = import_error_dfs()
 db_tag = r'D:\Z - Saved SQL Databases\44OP-093324_Baylor_Bric_Bldg\JobDB.mdf'
-labels, hyper_dict = extract.calc_labels(records, db_tag, best_n=3)
+labels, hyper_dict = extract.calc_labels(records, db_tag)
 
 #%% Calculate database features Example Usage
 
@@ -180,7 +180,7 @@ class ExtractLabels():
         
         return count_dict
 
-    def calc_labels(self, records, instance_name, best_n):
+    def calc_labels(self, records, instance_name, var_scale=0.2, error_scale=0.8):
         """Given an instance_name (database name in this case) and set of records
         output the correct labels for that database.
         inputs
@@ -188,16 +188,24 @@ class ExtractLabels():
         records : a list of records from the Record class
         instance_name : The column/key of the database sequence you wish to 
         return labels for. In my case, it will be a path similar to D:\[...]\JobDB.mdf
+        var_scale : (float) contribution of prediction variance to total loss
+        of a clustering hyperparameter set. The idea is less variance in predictions
+        is better
+        error_scale : (flaot) contribution of prediction error to total loss
+        of a clustering hyperparameter set. error = 
+
         output
         -------
         A list a labels in string form. The list includes : 
-            by_size
-            clusterer
-            distance metric
-            reduced dimensionality
-            best index 1
-            best index 2
-            best index 3
+            by_size : (bool) True to cluster by size, False otherwise
+            distance : (str) 'euclidean' only
+            clusterer : (str) clustering algorithm
+            reduce : (str) 'MDS','TSNE','False' dimensionality reduction metric
+            index : (str) clustering index to determine best number of clusters
+            loss : (float) loss indicating error between predicted number
+            of clusters and actual number of clusters, and variance of predictions
+            n_components : (str) 8, 0, 2 number of dimensions reduced to. 0 if
+            no dimensionality reduction was used
         
         Example Usage
         #Local Imports
@@ -212,7 +220,7 @@ class ExtractLabels():
         
         records = import_error_dfs()
         db_tag = r'D:\Z - Saved SQL Databases\44OP-093324_Baylor_Bric_Bldg\JobDB.mdf'
-        labels, hyper_dict = extract.calc_labels(records, db_tag, best_n=3)
+        labels, hyper_dict = extract.calc_labels(records, db_tag)
         """
         non_opt_cols = ['DBPath', 'correct_k','n_points', 'n_len1', 
                         'n_len2', 'n_len3', 'n_len4',
@@ -228,8 +236,6 @@ class ExtractLabels():
         # loss is a custom weighted loss used to find the best prediction index
         
         losses = []
-        var_scale = 0.3 #% Contribute to total loss
-        error_scale = 0.7 #% Contribute to total loss
         
         # Create a unique set of hyper_dict
         # The hyper_dict stores all unique combinations of hyperparameters
@@ -281,21 +287,24 @@ class ExtractLabels():
             # Replace optimal_k calculations with errors (l2)
             for opt_k in set(subdict.keys()).difference(set(non_opt_cols2)):
                 
-                # Calculate the l2 norm
-                l2norm = sum(abs(np.array(subdict[opt_k].clusters) - subdict['correct_k'])**2)
+                # Calculate the l2 norm (sum of squared error)
+                abs_error = abs(np.array(subdict[opt_k].clusters) - subdict['correct_k'])
+                l2norm = sum(abs_error**2)
                 
-                # If there is only one prediction, then the variance = l2 norm so we dont over-penalize
-                # Predictions with multiple predictions
+                # If there is only one prediction, then the variance = l2 norm 
+                # so we dont over-penalize Predictions with multiple predictions
                 if len(subdict[opt_k].clusters) == 1:
                     # Variance of predictions
                     variance = l2norm 
+                    
                 else:
                     variance = np.var(np.array(subdict[opt_k].clusters))
                 
                 # Custom loss to find the best clustering index
                 # basically, custom loss is a combination of the l2 norm error
                 # and variance of predictions
-                calc_loss = l2norm*error_scale + variance*len(subdict[opt_k].clusters)*var_scale
+                calc_loss = (l2norm * error_scale + variance * 
+                             len(subdict[opt_k].clusters) * var_scale)
                 subdict[opt_k] = loss(subdict[opt_k].clusters,
                         l2norm, 
                        variance*len(subdict[opt_k].clusters), 
@@ -316,23 +325,35 @@ class ExtractLabels():
         
         #Return the best predicted clustering index based on loss in namedtuple loss.loss
         #Create a dictionary for returning
-        if best_n == 'all':
-            best_n = len(best_errors)
-            
+        
         best_labels = {}
-        for i in range(1, best_n+1):
+        for i in range(1, len(best_errors)+1):
             best_labels[i] = {}
         
-        for i in range(0, best_n):
+        for i in range(0, len(best_errors)):
             error = best_errors[i]
+            
+            # The "best" starts at 1, not 0
             position = i + 1
-            best_labels[position]['by_size'] = bool(hyper_dict[error.hyper_key]['records'][0].hyper_dict['by_size'])
-            best_labels[position]['distance'] = hyper_dict[error.hyper_key]['records'][0].hyper_dict['distance']
-            best_labels[position]['clusterer'] = hyper_dict[error.hyper_key]['records'][0].hyper_dict['clusterer']
-            best_labels[position]['n_components'] = hyper_dict[error.hyper_key]['records'][0].hyper_dict['n_components']
-            best_labels[position]['reduce'] = hyper_dict[error.hyper_key]['records'][0].hyper_dict['reduce']
-            best_labels[position]['index'] = error.opt_key
-            best_labels[position]['loss'] = best_errors[i].loss
+            
+            by_size = bool(hyper_dict[error.hyper_key]['records'][0].hyper_dict['by_size'])
+            distance = hyper_dict[error.hyper_key]['records'][0].hyper_dict['distance']
+            clusterer = hyper_dict[error.hyper_key]['records'][0].hyper_dict['clusterer']
+            n_components = hyper_dict[error.hyper_key]['records'][0].hyper_dict['n_components']
+            reduce = hyper_dict[error.hyper_key]['records'][0].hyper_dict['reduce']
+            index = error.opt_key
+            loss = best_errors[i].loss
+            
+            # Enforce conversion to strings
+            # The output should be strings for use in tensorflow conversion
+            # Of features to indicator columns or embedding columns
+            best_labels[position]['by_size'] = str(by_size)
+            best_labels[position]['distance'] = str(distance)
+            best_labels[position]['clusterer'] = str(clusterer)
+            best_labels[position]['n_components'] = str(n_components)
+            best_labels[position]['reduce'] = str(reduce)
+            best_labels[position]['index'] = str(index)
+            best_labels[position]['loss'] = str(loss)
         
         return best_labels, hyper_dict
     

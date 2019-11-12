@@ -153,37 +153,49 @@ def context_feature_columns():
 
 def example_feature_columns():
     """Returns the example feature columns.
-    DEPRECIATED : 
-     Default value is -1 to ignore its importance
-    peritem_feature_spec = {
-        'relevance':tf.io.FixedLenFeature([], tf.float32, default_value=[-1]),
-        'encoded_clust_index':tf.VarLenFeature(tf.float32)
-        }
     """
     
-    encoded_clust_index = tf.feature_column.numeric_column(
-        'encoded_clust_index', 
-        dtype=tf.float32, 
-        shape=[_Encoded_labels_dimension],
-        default_value=np.zeros((_Encoded_labels_dimension))
-        )
+#    encoded_clust_index = tf.feature_column.numeric_column(
+#        'encoded_clust_index', 
+#        dtype=tf.float32, 
+#        shape=[_Encoded_labels_dimension],
+#        default_value=np.zeros((_Encoded_labels_dimension))
+#        )
+#    
+#    peritem_feature_cols = {
+#        'encoded_clust_index':encoded_clust_index
+#        }
     
+    _file_name_bysize = r'./data/JV_vocab_bysize.txt'
+    _file_name_clusterer = r'./data/JV_vocab_clusterer.txt'
+    _file_name_index = r'./data/JV_vocab_index.txt'
+    _file_name_n_components = r'./data/JV_vocab_n_components.txt'
+    _file_name_reduce = r'./data/JV_vocab_reduce.txt'
+    
+    clusterer = tf.feature_column.categorical_column_with_vocabulary_file(
+        'clusterer', 
+        _file_name_clusterer,
+        dtype=tf.string)
+    index = tf.feature_column.categorical_column_with_vocabulary_file(
+        'index', 
+        _file_name_index,
+        dtype=tf.string)
+    
+    clusterer_indicator = tf.feature_column.indicator_column(clusterer)
+    index_indicator = tf.feature_column.indicator_column(index)
+
     peritem_feature_cols = {
-        'encoded_clust_index':encoded_clust_index
+        'clusterer':clusterer_indicator,
+        'index':index_indicator
         }
+    
     return peritem_feature_cols
 
-    
-def z_scaler(col):
-    mean = tf.math.reduce_mean(col, axis=1)
-    mean = tf.reshape(mean, (-1,1))
-    std = tf.math.reduce_std(col, axis=1)
-    std = tf.reshape(std, (-1,1))
-    zscore = (col - mean) / std
-    return zscore
 
-
-def input_fn(path, num_epochs=None):
+def input_fn(path, num_epochs=None, shuffle=True):
+  """path : (str) path of tfrecord EIE file
+  num_epochs : (int) or (None) how many times to iterate through dataset
+  shuffle : (bool) shuffle dataset or not"""
   global _iter_track
   # {'key': tf.io.FixedLenFeature}
   #  context_feature_spec = context_feature_columns()
@@ -205,8 +217,8 @@ def input_fn(path, num_epochs=None):
     context_feature_spec=context_feature_spec,
     example_feature_spec=example_feature_spec,
     reader=tf.data.TFRecordDataset,
-    shuffle=True, # TODO Should this be true?
-    num_epochs=None) # this suffles through the dataset forever
+    shuffle=shuffle, 
+    num_epochs=num_epochs)
 
   #  iterator = tf.data.make_one_shot_iterator(dataset)
   features = tf.data.make_one_shot_iterator(dataset).get_next()
@@ -222,8 +234,10 @@ features, label = input_fn(_TRAIN_DATA_PATH)
 
 
 def make_transform_fn():
+    
   def _transform_fn(features, mode):
     """Defines transform_fn."""
+    
     context_features, example_features = tfr.feature.encode_listwise_features(
         features=features,
         input_size=_LIST_SIZE,
@@ -233,6 +247,7 @@ def make_transform_fn():
         scope="transform_layer")
 
     return context_features, example_features
+
   return _transform_fn
 
 
@@ -320,9 +335,12 @@ optimizer = tf.compat.v1.train.AdagradOptimizer(
 def _train_op_fn(loss):
   """Defines train op used in ranking head."""
   update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+  
   minimize_op = optimizer.minimize(
       loss=loss, global_step=tf.compat.v1.train.get_global_step())
+  
   train_op = tf.group([update_ops, minimize_op])
+  
   return train_op
 
 ranking_head = tfr.head.create_ranking_head(
@@ -342,6 +360,7 @@ def train_and_eval_fn():
   run_config = tf.estimator.RunConfig(
       save_checkpoints_steps=100,
       model_dir=_MODEL_DIR)
+  
   ranker = tf.estimator.Estimator(
       model_fn=model_fn,
       model_dir=_MODEL_DIR,
@@ -349,13 +368,16 @@ def train_and_eval_fn():
 
   train_input_fn = lambda: input_fn(_TRAIN_DATA_PATH)
   eval_input_fn = lambda: input_fn(_TEST_DATA_PATH, num_epochs=1)
-
+  
   train_spec = tf.estimator.TrainSpec(
       input_fn=train_input_fn, max_steps=_NUM_TRAIN_STEPS)
+  
   eval_spec =  tf.estimator.EvalSpec(
           name="eval",
           input_fn=eval_input_fn,
-          throttle_secs=15)
+          throttle_secs=15, 
+          exporters=None) # TODO make this export to reuse
+  
   return (ranker, train_spec, eval_spec)
 
 #! rm -rf "/tmp/ranking_model_dir"  # Clean up the model directory.
@@ -425,8 +447,7 @@ export_dir = os.path.join('final_model\Run_20191006011340model2')
 def serving_input_receiver_fn():
     
     serialized_tfrecord = tf.placeholder(dtype=tf.string, 
-                                         shape=[None], 
-                                         name='input_EIE')  # placeholder
+                                         shape=[None])  # placeholder
     receiver_tensors = {'EIE_input':serialized_tfrecord}
     
     # Building the input reciever
@@ -465,21 +486,28 @@ def serving_input_receiver_fn():
         )
     
     context_feature_spec = tf.feature_column.make_parse_example_spec(
-          [n_instance, n_features, len_var,
-           uniq_ratio, n_len1, n_len2,
-                  n_len3, n_len4, n_len5, 
-                  n_len6, n_len7])
+          [n_instance, 
+           n_features, 
+           len_var,
+           uniq_ratio, 
+           n_len1, 
+           n_len2,
+           n_len3, 
+           n_len4, 
+           n_len5, 
+           n_len6, 
+           n_len7])
   
     example_feature_spec = tf.feature_column.make_parse_example_spec(
           [encoded_clust_index])
     
     # Parse receiver_tensors
     features = tfr.python.data.parse_from_example_in_example(
-          serialized_tfrecord,
+          [serialized_tfrecord],
           context_feature_spec=context_feature_spec,
           example_feature_spec=example_feature_spec)
     
-    return tf.estimator.export.ServingInputReveiver(features, receiver_tensors)
+    return tf.estimator.export.ServingInputReceiver(features, receiver_tensors)
 
 
 
@@ -490,11 +518,11 @@ model_dir = ranker.export_saved_model(export_dir,
                           as_text=False
                           )
 
+from model_serving import encode_input_transmitter_fn_v1
 
-
-
-#%% Alternative serving_input_reciever_fn
-
+serialized_tfrecord = encode_input_transmitter_fn_v1(document,
+                                                     text_features=False,
+                                                     list_size=_LIST_SIZE)
 
 
 

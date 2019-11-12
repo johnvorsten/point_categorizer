@@ -50,16 +50,16 @@ import pandas as pd
 import numpy as np
 import pickle
 
-def df2mongo_raw(dataframe, client):
-    """Save a dataframe to a mongo database collection. Function is specially suited
+def _df2mongo_raw(dataframe, client):
+    """DEPRECIATED
+    Save a dataframe to a mongo database collection. Function is specially suited
     for my database. Collection and database names are handled by function
     inputs
     -------
     dataframe : a pandas dataframe to be converted to mongo collection object
     client : a  mongo db client object
     output
-    -------
-    TODO : return an error on failure for some reason"""
+    -------"""
 
     default_collections = ['raw_databases'] #TODO Expand as necessary
     default_dbs = ['master_points']
