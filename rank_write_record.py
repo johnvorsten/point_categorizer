@@ -77,7 +77,8 @@ def tf_feature_mapper(value, dtype=None):
                    float:_float_feature,
                    np.float64:_float_feature,
                    bytes:_bytes_feature,
-                   np.bytes_:_bytes_feature}
+                   np.bytes_:_bytes_feature,
+                   bool:_int64_feature}
     
     # Make sure all list items are same dtype
     if hasattr(value, '__iter__'):
@@ -166,6 +167,7 @@ def relevance_scorer(relevance, n_bins=None, reciprocal=None):
             ranks = [float(n)] * (upper - lower)
             ranked_by_bin.extend(ranks)
         
+        # Ranking should be decreasing - highest value ranks at the beginning
         return list(reversed(ranked_by_bin))
     
     raise(ValueError('Invalid function arguments'))
@@ -214,16 +216,22 @@ def serialize_context(document):
     return context_proto_str
 
 
-def serialize_examples(document, 
-                        reciprocal=False, 
-                        n_bins=5, 
-                        example_text=False):
+def serialize_examples_v1(document,
+                       example_features,
+                       reciprocal=False, 
+                       n_bins=5, 
+                       text_features=False):
     """Create a list of serialized tf.train.Example proto from a document 
       stored in mongo-db
       input
       -------
       document : (dict) must have ['encoded_hyper']['clust_index']['val']
       and ['hyper_labels'] fields
+      example_features : (list) name of example feautres to include in per-item
+      feature list. Must be one of 'clust_index' or 'all'. If 'clust_index' is 
+      chosen, only (clusterer, index) pairs are included. If 'all' then
+      ['by_size','clusterer','n_components','reduce','index'] are all included
+      as indicator columns.
       reciprocal : the reciprocal of scores will be used 
       n_bins : (int) number of bins to place relevance in. 
       example_text : (bool) Process clust_index as text (TRUE) or load 
@@ -244,7 +252,7 @@ def serialize_examples(document,
     
     """
     
-    if example_text: # TEXT FEATURES
+    if text_features: # TEXT FEATURES
         # Create dictionary of peritem features (encoded cat_index)
         # Extract saved labels (text -> bytes)
         
@@ -259,7 +267,6 @@ def serialize_examples(document,
         # Create dictionary of peritem features (encoded cat_index)
         # Labels are clust_index encoding - not example labels (relevance)
         peritem_features = pickle.loads(document['encoded_hyper']['clust_index']['val'])
-    
     
     # Extract labels and relevance for iteration
     relevances = [subdict['loss']
@@ -289,6 +296,114 @@ def serialize_examples(document,
         peritem_list.append(peritem_proto_str)
         
     return peritem_list
+
+
+def serialize_examples_v2(document,
+                       reciprocal=False, 
+                       n_bins=5,
+                       shuffle_peritem=True):
+    """Create a list of serialized tf.train.Example proto from a document 
+      stored in mongo-db
+      input
+      -------
+      document : (dict) must have ['encoded_hyper']['clust_index']['val']
+          and ['hyper_labels'] fields
+      reciprocal : (bool) the reciprocal of scores will be used. If True,
+          n_bins must be False
+      n_bins : (int) number of bins to place relevance in. 
+      example_text : (bool) Process clust_index as text (TRUE) or load 
+      from encoded (True)
+      shuffle_peritem : (bool) set to True if you want to shuffle peritem examples
+          this will make peritem features in a non-default order
+      output
+      -------
+      peritem_list : (list) a list of serialized per-item (exmpale) featuers
+      in the form of tf.train.Example protos
+      
+      The per_item feature spec is of the form 
+      {'peritem_features': FixedLenFeature(shape=(37,), 
+            dtype=tf.float32, 
+            default_value=np.array.zeros((1,37))),
+       'relevance': FixedLenFeature(shape=(1,), 
+           dtype=tf.float32, 
+           default_value=(-1,))
+       }
+    
+    """
+    
+    assert bool(n_bins) ^ bool(reciprocal), 'n_bins and reciprocal arguments\
+        must not both be defined. One must be False if the other is defined'
+    
+    # Create dictionary of peritem features based on function input
+    # Extract saved labels (text -> bytes)
+    # ALl per-item features are saved as text and encoded or transformed later
+    hyper_labels = document['hyper_labels'] # Dictionary, keys are order
+    
+    peritem_features = [] # For iterating through and saving
+    for key, subdict in hyper_labels.items():
+        single_item_feature_dict = {} # Append to list
+        
+        # Append all features to peritem features
+        by_size = str(subdict['by_size'])
+        clusterer = str(subdict['clusterer'])
+        index = str(subdict['index'])
+        n_components = str(subdict['n_components'])
+        reduce = str(subdict['reduce'])
+        single_item_feature_dict['by_size'] = by_size.encode()
+        single_item_feature_dict['n_components'] = n_components.encode()
+        single_item_feature_dict['reduce'] = reduce.encode()
+        single_item_feature_dict['clusterer'] = clusterer.encode()
+        single_item_feature_dict['index'] = index.encode()
+        peritem_features.append(single_item_feature_dict)
+            
+    # Extract labels and relevance for iteration
+    relevances = [subdict['loss']
+        for key, subdict in document['hyper_labels'].items()]
+    
+    # Scale or transform relevance
+    relevances = relevance_scorer(relevances, 
+                                  reciprocal=reciprocal,
+                                  n_bins=n_bins)
+    
+    if shuffle_peritem:
+        # Shuffle per-item examples
+        peritem_features_shuffled = np.random.permutation(peritem_features)
+        relevances_shuffled = np.random.permutation(relevances)
+        
+        relevances = relevances_shuffled
+        peritem_features = peritem_features_shuffled
+        
+    # Create a list of serialized per-item features
+    peritem_list = []
+    
+    for single_item_feature_dict, relevance_label in zip(peritem_features, 
+                                                         relevances):
+        peritem_dict = {}
+        
+        # Add peritem features to dictionary
+        peritem_dict['relevance'] = tf_feature_mapper(
+                relevance_label)
+        peritem_dict['by_size'] = tf_feature_mapper(
+                [single_item_feature_dict['by_size']])
+        peritem_dict['n_components'] = tf_feature_mapper(
+                [single_item_feature_dict['n_components']])
+        peritem_dict['reduce'] = tf_feature_mapper(
+                [single_item_feature_dict['reduce']])
+        peritem_dict['clusterer'] = tf_feature_mapper(
+                [single_item_feature_dict['clusterer']])
+        peritem_dict['index'] = tf_feature_mapper(
+                [single_item_feature_dict['index']])
+        
+        # Create EIE and append to serialized peritem_list
+        peritem_proto = tf.train.Example(
+                features=tf.train.Features(feature=peritem_dict))
+        peritem_proto_str = peritem_proto.SerializeToString() # Serialized
+    
+        # List of serialized tf.train.Example
+        peritem_list.append(peritem_proto_str)
+        
+    return peritem_list
+
 
 def get_test_train_id(collection, train_pct=0.8):
     """Returns Mongo-db _id's for training and testing instances. document _ids

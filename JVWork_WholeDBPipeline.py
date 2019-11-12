@@ -71,13 +71,15 @@ df_text = pd.DataFrame(X, columns=_word_vocab)
 
 import pandas as pd
 from sklearn.pipeline import Pipeline, FeatureUnion
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.base import BaseEstimator, TransformerMixin
+from scipy.sparse import csr_matrix
 import numpy as np
 from pathlib import Path
-from sklearn.base import BaseEstimator, TransformerMixin
 import re
-from scipy.sparse import csr_matrix
 from collections import Counter
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+import statistics
+
 
 
 class RemoveAttribute(BaseEstimator, TransformerMixin):
@@ -210,11 +212,22 @@ class UnitCleaner(BaseEstimator, TransformerMixin):
 
 class TextToWordDict(BaseEstimator, TransformerMixin):
     
-    def __init__(self, seperator = ' '):
+    def __init__(self, seperator = ' ', heirarchial_weight_word_pattern=False):
         """parameters
         -------
-        seperator : seperator between each text instance. Used in str.split()"""
+        seperator : (str or list of str) seperator between each text instance. 
+        Used in re.split()
+        heirarchial_weight_word_pattern : (bool) setting this to True will
+        weight each word by the order that it appears in the input sequence.
+        For example, the word phrase 'foo.bar.baz.fizz' will be given
+        counts that relate inversely to their position in the sequence. The
+        resulting word count will be a counter object of 
+        Counter({'foo': 4, 'bar': 2, 'baz': 1, 'fizz': 1}). If used with 
+        the text_pipeline or WordDictToSparseTransformer this will be 
+        encoded into the array [4,3,2,1].
+        """
         self.seperator = seperator
+        self.heirarchial_weight_word_pattern = heirarchial_weight_word_pattern
         
     def fit(self, X, y=None):
         return self
@@ -223,13 +236,42 @@ class TextToWordDict(BaseEstimator, TransformerMixin):
         """Takes a text iterable and returns a dictionary of key:value
         where key is a word/phrase that appears in each instance of X, and value
         is the total number of times key appears in an instance"""
-        X_ListDictionary = []
         regex_pattern = '|'.join(map(re.escape, self.seperator))
+        X_ListDictionary = []
+        word_lengths = []
         
-        for point_names in X:
+        # Find mode of word lengths for heirarchial_weight_word_pattern
+        for point_name in X:
+            word_length = len(re.split(regex_pattern, point_name))
+            word_lengths.append(word_length)
+        
+        word_length_mode = statistics.mode(word_lengths)
+        
+        # Create counter dictionary to save word counts
+        for point_name in X:
             
-            wordCounts = Counter(re.split(regex_pattern, point_names))
-            X_ListDictionary.append(wordCounts)
+            if self.heirarchial_weight_word_pattern:
+                
+                # Give different weights
+                word_counts = Counter(re.split(regex_pattern, point_name))
+                n_words = len(word_counts)
+                weight_sequence = [_idx for _idx in range(word_length_mode, 0, -1)]
+                
+                if n_words > len(weight_sequence):
+                    # If n_words is greater than the mode some values in
+                    # word_counts will be set to 0 or error will happen 
+                    # For out of range
+                    n_ones_to_append = [1] * (n_words-len(weight_sequence))
+                    weight_sequence.extend(n_ones_to_append)
+                    
+                for key, new_count in zip(word_counts.keys(), 
+                                       weight_sequence):
+                    word_counts[key] = new_count
+                
+            else:
+                word_counts = Counter(re.split(regex_pattern, point_name))
+            
+            X_ListDictionary.append(word_counts)
             
         return np.array(X_ListDictionary)
 
@@ -434,15 +476,6 @@ class JVDBPipe():
                                                    replace_numbers=replace_numbers, 
                                                    remove_virtual=remove_virtual)
         
-        name_pipeline = self.name_pipeline(seperator=seperator,
-                                       vocabulary_size=vocabulary_size) #5000?
-        
-        descriptor_pipeline = self.descriptor_pipeline(seperator=seperator, 
-                                       vocabulary_size=vocabulary_size) #2000?
-        
-        system_pipeline = self.system_pipeline(seperator=seperator,
-                                       vocabulary_size=vocabulary_size) #2000?
-        
         cat_pipeline = Pipeline([
                 ('selector', DataFrameSelector(self._cat_attributes)),
                 ('catEncoder', OneHotEncoder())
@@ -472,84 +505,74 @@ class JVDBPipe():
         
     def text_pipeline(self, 
                       vocab_size, 
-                      attributes='NAME', 
+                      attributes, 
+                      heirarchial_weight_word_pattern,
                       seperator='.'):
         """Run raw data through the data and text pipelines. The point of this 
         function is to control removing duplicates and removing numbers
-        parameters
+        
         NOTE : To use this pipeline you should pass a pandas dataframe to its
         fit_transform() method
         NOTE : This pipeline returns a sparse metrix. To get values use 
         result.toarray(). To create a dataframe use pd.DataFrame(text_prepared.toarray(), 
         columns=word_vocab)
         word_vocab = name_pipeline.named_steps['WordDictToSparseTransformer'].vocabulary
+        
+        parameters
         -------
-        vocab_size : vocabulary size for one-hot text attributes. Pass int() or 
-        string 'all'
-        attributes : column names to select. Should be iterable to return a 2D
-        array, or a string to return a 1D array
-        seperator : seperator for text features in the'Name' column. Used in 
-        TextToWordDict transformer. Can be single character or iterable of characters
+        vocab_size : (int or str) vocabulary size for one-hot text attributes. 
+        Pass int or string 'all' to include all vocabulary
+        attributes : (string or list) column names to select. Should be list to 
+        return a 2D array, or a string to return a 1D array. Values should
+        be one or multiple of ['NAME', 'SYSTEM','DESCRIPTOR']
+        seperator : (string or list) seperator for text features in the'attribute'.
+        Typical values are '.' for NAME, or ' ' for SYSTEM or DESCRIPTOR
+        feature. Used in TextToWordDict transformer. Can be single character 
+        string or iterable of character strings
+        heirarchial_weight_word_pattern : (bool) setting this to True will
+        weight each word by the order that it appears in the input sequence.
+        For example, the word phrase 'foo.bar.baz.fizz' will be given
+        counts that relate inversely to their position in the sequence. The
+        resulting word count will be a counter object of 
+        Counter({'foo': 4, 'bar': 2, 'baz': 1, 'fizz': 1}). If used with 
+        the text_pipeline or WordDictToSparseTransformer this will be 
+        encoded into the array [4,3,2,1].
+        
         ouput
         -------
         A sklearn pipeline object containing modifier classes. To view the modifiers
-        see Pipeline.named_steps attribute or Pipeline.__getitem__(ind) """
+        see Pipeline.named_steps attribute or Pipeline.__getitem__(ind) 
+        
+        Example Usage
+        
+        database = pd.DataFrame
+        
+        # Create 'clean' data processing pipeline
+        clean_pipe = myDBPipe.cleaning_pipeline(remove_dupe=False, 
+                                              replace_numbers=False, 
+                                              remove_virtual=True)
+        
+        # 'clean' transformed pandas dataframe
+        df_clean = clean_pipe.fit_transform(database)
+        
+        # Create pipeline specifically for clustering text features
+        text_pipe = myDBPipe.text_pipeline(vocab_size='all', 
+                                           attributes='NAME',
+                                           seperator='.')
+        X = text_pipe.fit_transform(df_clean).toarray()
+        _word_vocab = text_pipe.named_steps['WordDictToSparseTransformer'].vocabulary
+        df_text = pd.DataFrame(X, columns=_word_vocab)
+        """
         
         name_pipeline = Pipeline([
                 ('dataframe_selector', DataFrameSelector(attributes)),
-                ('text_to_dict', TextToWordDict(seperator=seperator)),
-                ('WordDictToSparseTransformer', WordDictToSparseTransformer(vocabulary_size=vocab_size))
+                ('text_to_dict', TextToWordDict(seperator=seperator,
+                    heirarchial_weight_word_pattern=heirarchial_weight_word_pattern)),
+                ('WordDictToSparseTransformer', WordDictToSparseTransformer(
+                        vocabulary_size=vocab_size))
         ])
 
         return name_pipeline
-    
-    def name_pipeline(self, 
-                      seperator, 
-                      attributes='NAME', 
-                      vocabulary_size='all'):
-        """Returns a pipeline for use on the name feature"""
-        
-        name_pipeline = Pipeline([
-            ('dataframe_selector', DataFrameSelector(attributes)),
-            ('text_to_dict', TextToWordDict(seperator=seperator)),
-            ('WordDictToSparseTransformer', WordDictToSparseTransformer(vocabulary_size=vocabulary_size))
-        ])
-        
-        #How to use this to create a clean dataframe
-#        word_dict = name_pipeline.named_steps['WordDictToSparseTransformer'].master_dict
-#        word_vocab = name_pipeline.named_steps['WordDictToSparseTransformer'].vocabulary
-#        _df2_name_cols = [word_vocab]
-#        df2_name_onehot = pd.DataFrame(text_prepared.toarray(), 
-#                                   columns=_df2_name_cols)
-        return name_pipeline
-        
-    def descriptor_pipeline(self, 
-                            seperator, 
-                            vocabulary_size, 
-                            attributes='DESCRIPTOR'):
-        """Returns a pipeline to use on the descriptor feature"""
-        
-        descriptor_pipeline = Pipeline([
-                ('dataframe_selector', DataFrameSelector(attributes)),
-                ('text_to_dict', TextToWordDict(seperator=seperator)),
-              ('WordDictToSparseTransformer', WordDictToSparseTransformer(vocabulary_size=vocabulary_size))
-        ])
-            
-        return descriptor_pipeline
-    
-    def system_pipeline(self, 
-                        seperator, 
-                        vocabulary_size, 
-                        attributes='SYSTEM'):
-        """Returns a pipeline to use on the system feature"""
-        
-        system_pipeline = Pipeline([
-            ('dataframe_selector', DataFrameSelector(attributes)),
-            ('text_to_dict', TextToWordDict(seperator=seperator)),
-            ('WordDictToSparseTransformer', WordDictToSparseTransformer(vocabulary_size=vocabulary_size))
-              ])
-            
-        return system_pipeline
     
     def text_pipeline_calc(self, 
                            X, 

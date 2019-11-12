@@ -5,20 +5,23 @@ Created on Sat Jul 20 20:39:41 2019
 @author: z003vrzk
 """
 
+# Local imports
 from JVWork_UnsupervisedCluster import JVClusterTools
 from JVWork_WholeDBPipeline import JVDBPipe
+from JVrpy2 import nbclust_calc
 
+# Third party imports
 import pandas as pd
 import os
 import numpy as np
 from sklearn.manifold import MDS
 from sklearn.manifold import TSNE
-from datetime import date
-
-import matplotlib.pyplot as plt
 from gap_statistic import OptimalK
+
+from datetime import date
+import matplotlib.pyplot as plt
 import inspect
-from JVrpy2 import nbclust_calc
+
 pd.options.mode.chained_assignment = None  # default='warn'
 
 #%% Iterate and track accuracy
@@ -61,6 +64,7 @@ class AccuracyTest():
         want the user to manually enter in K.
         skip : to skip the database set to True, else user will manually enter
         database correct_k or program will try to infer it"""
+        
         sequence_tag = self.sequence_tag
         
         try:

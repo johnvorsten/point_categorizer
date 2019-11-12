@@ -28,6 +28,7 @@ def rmatrix_2df(r_matrix):
     This method assumed the matrix is 2D and has named dimensions"""
     assert type(r_matrix) is rpy2.robjects.Matrix, 'r_matrix argument is not\
     type rpy2.robjects.Matrix'
+    
     values = np.array(r_matrix)
     row_names = list(r_matrix.rownames)
     col_names = list(r_matrix.colnames)
@@ -36,8 +37,43 @@ def rmatrix_2df(r_matrix):
                       columns=col_names)
     return df
 
-def nbclust_calc(data, min_nc, max_nc, 
-                 distance='euclidean', method='kmeans', 
+def nbclust_list_2df(r_list):
+    """Method for converting the nbclust list_vector to a pandas dataframe.
+    This method assumes the list has elements answer.names 
+    Should be ['All.index', 'Best.nc', 'Best.partition']. r_lsit is a 
+    rpy2.robjects.vectors.ListVector. with the names above
+    
+    All.index is a list of the calculated clustering index values
+    
+    Best.nc is a rpy2.robjects.vectors.FloatVector which should have 2 values
+    [best_n_clusters, index_value]. See answer.__getitem__(1).names
+    should be ['Number_clusters', 'Value_Index']
+    
+    Best.partition is the best number of clusters at each of the calculated 
+    number of clusters. For example, given min_nc=2, max_nc=5, Best.Partion
+    would give the best number of clusters at each of 2,3,4,5"""
+    
+    assert type(r_list) is rpy2.robjects.vectors.ListVector, 'r_matrix\
+    argument is not type rpy2.robjects.vectors.ListVector'
+    
+    # TODO delete
+
+    
+    values = np.array(r_list.__getitem__(0))
+    
+    row_names = list(r_list.names)
+    col_names = list(r_list.colnames)
+    df = pd.DataFrame(data=values, 
+                      index=row_names, 
+                      columns=col_names)
+    return df
+    
+
+def nbclust_calc(data, 
+                 min_nc, 
+                 max_nc, 
+                 distance='euclidean', 
+                 clusterer='kmeans', 
                  index='all'):
     """Uses the R package NbClust to find the optimal number of clusters
     in a dataset.  Returns the results in a python-friendly way
@@ -66,15 +102,46 @@ def nbclust_calc(data, min_nc, max_nc,
            'Beale', 'Ratkowsky', 'Ball', 'PtBiserial', 'Gap', 'Frey', 'McClain',
            'Gamma', 'Gplus', 'Tau', 'Dunn', 'SDindex', 'SDbw']
     
-    answer = nbclust.NbClust(data, distance=distance,
-            min_nc=min_nc, max_nc=max_nc,
-            method=method, index=index)
+    answer = nbclust.NbClust(data, 
+                             distance=distance,
+                             min_nc=min_nc, 
+                             max_nc=max_nc,
+                             method=clusterer, 
+                             index=index)
     
-    index_df = rmatrix_2df(answer.__getitem__(0))
-    best_nc_df = rmatrix_2df(answer.__getitem__(2))
+    if isinstance(answer.__getitem__(0), rpy2.robjects.vectors.FloatVector):
+        
+        # Single index was passed - retrieve values
+        # answer.names Should be ['All.index', 'Best.nc', 'Best.partition']
+        # as 0, 1, 2 items in the list vector
+        
+        # All.index
+        values = np.array(answer.__getitem__(0))
+        row_names = list(answer.__getitem__(0).names)
+        col_names = [index] # index, cant access from answer.__getitem__(0)
+        index_df = pd.DataFrame(data=values, 
+                          index=row_names, 
+                          columns=col_names)
+        
+        # Best.nc
+        values = np.array(answer.__getitem__(1)) 
+        row_names = answer.__getitem__(1).names
+        col_names = [index] # index, cant access from answer.__getitem__(0)
+        best_nc_df = pd.DataFrame(data=values, 
+                          index=row_names, 
+                          columns=col_names)
+    
+    
+    elif isinstance(answer.__getitem__(0), rpy2.robjects.Matrix):
+        # dataframe of number_clusters v. clustering index
+        index_df = rmatrix_2df(answer.__getitem__(0))
+        # dataframe of index = [number_clusters, Value_Index] to 
+        # columns = index_names
+        best_nc_df = rmatrix_2df(answer.__getitem__(2))
     
     return NbClustResults(index_df, best_nc_df)
-    
+
+
 
 """Records
 #all_index = rmatrix_2df(answer[0])

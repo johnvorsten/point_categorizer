@@ -34,10 +34,11 @@ import pandas as pd
 from sklearn.pipeline import Pipeline
 from pymongo import MongoClient
 import numpy as np
+import pickle
 
 #Local Imports
-from JVWork_Labeling import ExtractLabels
-from JVWork_UnsupervisedCluster import JVClusterTools
+from Labeling import ExtractLabels
+from UnsupervisedCluster import JVClusterTools
 from JVWork_WholeDBPipeline import JVDBPipe
 from JVWork_AccuracyVisual import import_error_dfs
 
@@ -131,7 +132,7 @@ for tag in unique_tags:
 
     #Calculate Features
     new_labels = {}
-    labels, hyper_dict = Extract.calc_labels(records, tag, best_n='all')
+    labels, hyper_dict = Extract.calc_labels(records, tag)
     
     for key in labels.keys():
         new_labels[str(key)] = labels[key]
@@ -323,23 +324,107 @@ for document in collection.find():
                            {'$set':{'encoded_hyper.clust_index.cat':cat_pickle,
                                     'encoded_hyper.clust_index.val':encoded_pickle}})
 
-
-
-
-
+#%% Save a vocabulary of all hyperparameter tags
     
+from Labeling import get_unique_labels
+
+unique_labels = get_unique_labels() # Dictionary
+
+string_vocab = []
+for key, value in unique_labels.items():
     
+    for vocab in value: # value is list
+        string_vocab.append(str(vocab))
+
+_file_name = r'./data/JV_vocab_all.txt'
+
+with open(_file_name, 'w') as f:
+    for vocab in string_vocab:
+        f.write(vocab)
+        f.write('\n')
+    
+_file_name_bysize = r'./data/JV_vocab_bysize.txt'
+_file_name_clusterer = r'./data/JV_vocab_clusterer.txt'
+_file_name_index = r'./data/JV_vocab_index.txt'
+_file_name_n_components = r'./data/JV_vocab_n_components.txt'
+_file_name_reduce = r'./data/JV_vocab_reduce.txt'
+
+with open(_file_name_bysize, 'w') as f:
+    for vocab in unique_labels['by_size']:
+        f.write(str(vocab))
+        f.write('\n')
+
+with open(_file_name_clusterer, 'w') as f:
+    for vocab in unique_labels['clusterer']:
+        f.write(str(vocab))
+        f.write('\n')
+        
+with open(_file_name_index, 'w') as f:
+    for vocab in unique_labels['index']:
+        f.write(str(vocab))
+        f.write('\n')
+
+with open(_file_name_n_components, 'w') as f:
+    for vocab in unique_labels['n_components']:
+        f.write(str(vocab))
+        f.write('\n')
+
+with open(_file_name_reduce, 'w') as f:
+    for vocab in unique_labels['reduce']:
+        f.write(str(vocab))
+        f.write('\n')
 
 
+#%% Save a list of clustering hyperparameters for later use in model serving
+"""The ranking model imputs a tensor of context features and per-item features
+The per-item features are clusterering hyperparameters turned to indicator
+columns.
+In order to do prediction on a new database, I must input the per-item
+clustering hyperparameters into the model.
+In training, I have been doing this with actual recorded hyperparameters
+For prediction I must generate the clustering hyperparameters - the must 
+be known before
+This module will generate an array of clustering hyperparameters like :
+[['False', 'kmeans', '8', 'TSNE', 'optk_TSNE_gap*_max'],
+ ['True', 'ward.D', '8', 'MDS', 'SDbw'],
+ [...]]
+This can be fed to tf.feature_columns or TFRecords in order to generate 
+inputs to a ranking model for prediction
+"""
 
+document = collection.find_one()
 
+hyper_labels = document['hyper_labels']
+_file_name = r'data/JV_default_serving_peritem_features'
+peritem_features = []
 
+for key, subdict in hyper_labels.items():
+    peritem_dict = {}
+    
+    by_size = str(subdict['by_size'])
+    clusterer = str(subdict['clusterer'])
+    index = str(subdict['index'])
+    n_components = str(subdict['n_components'])
+    reduce = str(subdict['reduce'])
+    
+    # Add peritem features to dictionary
+    peritem_dict['by_size'] = by_size
+    peritem_dict['n_components'] = n_components
+    peritem_dict['reduce'] = reduce
+    peritem_dict['clusterer'] = clusterer
+    peritem_dict['index'] = index
+    
+    peritem_features.append(peritem_dict)
 
+# Write pickled list
+with open(_file_name, 'wb') as f:
+    pickle.dump(peritem_features, f)
 
+# Test pickled list
+with open(_file_name, 'rb') as f:
+    test_list = pickle.load(f)
 
-
-
-
+test_list == peritem_features # True
 
 
 
