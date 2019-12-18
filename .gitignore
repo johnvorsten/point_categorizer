@@ -5,8 +5,8 @@ __pycache__/**
 *.png
 
 #Tensorflow stuff
-TF_Logs/**
-final_model/**
+ranking/TF_Logs/**
+ranking/final_model/**
 
 #SQL Scripts
 *.sql

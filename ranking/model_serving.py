@@ -11,7 +11,7 @@ import numpy as np
 from collections import namedtuple
 
 # Local imports
-from rank_write_record import (tf_feature_mapper,
+from point_database_categorizer.rank_write_record import (tf_feature_mapper,
                                serialize_context, 
                                _bytes_feature)
 

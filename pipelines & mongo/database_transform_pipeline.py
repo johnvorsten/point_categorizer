@@ -69,6 +69,7 @@ df_text = pd.DataFrame(X, columns=_word_vocab)
 @author: z003vrzk
 """
 
+# Third party imports
 import pandas as pd
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -80,6 +81,7 @@ import re
 from collections import Counter
 import statistics
 
+#%% 
 
 
 class RemoveAttribute(BaseEstimator, TransformerMixin):

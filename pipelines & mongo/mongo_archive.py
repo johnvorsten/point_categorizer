@@ -35,7 +35,7 @@ collection.aggregate([
                     {<pipeline2>}
                     ])
 
-#The '_id' field is mandatory. I optionally chose to define it as a object/documetn
+#The '_id' field is mandatory. I optionally chose to define it as a object/document
 # Instead, I could do {'_id':'database_tag'} instead of {'_id':{<field>:<operator>}}
 # Note, the <operator_expression>:<argument> can also be called an aggregator
 <pipeline1> = {<aggregator>: {
