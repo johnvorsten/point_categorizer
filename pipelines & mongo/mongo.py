@@ -43,6 +43,7 @@ labels = pickle.loads(document['encoded_hyper']['clust_index']['val'])
 
 """Pandas to mongo example"""
 
+# Third party imports
 from pymongo.errors import ConfigurationError
 from pymongo import MongoClient
 from pymongo.collection import Collection
@@ -97,6 +98,7 @@ def _df2mongo_raw(dataframe, client):
     collection.insert_one(default_structure)
     
     return True
+
 
 def mongo2df(database_tag, client, 
              collection='raw_databases', 

@@ -1,3 +1,10 @@
+"""
+Dont use this module in the future - use the graded version in a different package...
+
+Deprecated
+"""
+
+
 import pyodbc
 import sqlalchemy
 import subprocess
