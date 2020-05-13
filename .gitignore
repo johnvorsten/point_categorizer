@@ -1,5 +1,9 @@
 #Cached files
-__pycache__/**
+**/__pycache__/**
+
+# SQL Databases
+*/*.mdf
+*/*.ldf
 
 #Pictures
 *.png
