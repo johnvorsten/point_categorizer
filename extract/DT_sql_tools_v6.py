@@ -119,6 +119,8 @@ class SQLHandling:
         # For pyodbc connection only
         self.master_connection_str= 'DRIVER={}; SERVER={}; DATABASE=master; Trusted_Connection=yes;'.format(self.driver_name, self.server_name)
 
+        return None
+
     def get_pyodbc_master_connection_str(self):
         """Return the master database connection string"""
         return self.master_connection_str

@@ -9191,3 +9191,22 @@ Existing Database : PipelineDB
 2020-05-12 20:52:27,779 Database : PipelineDB connected
 2020-05-12 20:52:27,780 ('08S01', '[08S01] [Microsoft][SQL Server Native Client 10.0]Shared Memory Provider: No process is on the other end of the pipe.\r\n (233) (SQLSetConnectAttr(SQL_ATTR_AUTOCOMMIT)); [08S01] [Microsoft][SQL Server Native Client 10.0]Communication link failure (233)')
 2020-05-12 20:52:28,423 Database PipelineDB removed
+2020-05-20 07:32:05,760 Error closing cursor
+Traceback (most recent call last):
+  File "C:\ProgramData\Anaconda3\envs\tf\lib\site-packages\sqlalchemy\engine\result.py", line 1273, in fetchall
+    l = self.process_rows(self._fetchall_impl())
+  File "C:\ProgramData\Anaconda3\envs\tf\lib\site-packages\sqlalchemy\engine\result.py", line 1219, in _fetchall_impl
+    return self.cursor.fetchall()
+pyodbc.ProgrammingError: Attempt to use a closed cursor.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\ProgramData\Anaconda3\envs\tf\lib\site-packages\sqlalchemy\engine\base.py", line 1339, in _safe_close_cursor
+    cursor.close()
+pyodbc.ProgrammingError: Attempt to use a closed cursor.
+2020-05-20 07:34:18,050 Error closing cursor
+Traceback (most recent call last):
+  File "C:\ProgramData\Anaconda3\envs\tf\lib\site-packages\sqlalchemy\engine\base.py", line 1339, in _safe_close_cursor
+    cursor.close()
+pyodbc.ProgrammingError: Attempt to use a closed cursor.

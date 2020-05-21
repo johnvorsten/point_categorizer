@@ -12,7 +12,7 @@ from collections import namedtuple
 # Third party imports
 
 # Local imports
-import extract
+from . import extract
 
 # Local declarations
 Extract = extract.Extract()

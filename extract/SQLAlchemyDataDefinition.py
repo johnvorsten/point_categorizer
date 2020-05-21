@@ -13,11 +13,19 @@ SQLAlchemy Table Definitions
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.mssql import NVARCHAR, NUMERIC, BIT
+from sqlalchemy.dialects.mssql import NVARCHAR, NUMERIC, BIT, VARBINARY
 from sqlalchemy import create_engine
 
 # Local imports
-from DT_sql_tools_v6 import SQLHandling
+if __name__ == '__main__':
+    # Remove the drive letter on windows
+    _CWD = os.path.splitdrive(os.getcwd())[1]
+    _PARTS = _CWD.split(os.sep)
+    # Project dir is one level above cwd
+    _PROJECT_DIR = os.path.join(os.sep, *_PARTS[:-1])
+    if _PROJECT_DIR not in sys.path:
+        sys.path.insert(0, _PROJECT_DIR)
+from extract.DT_sql_tools_v6 import SQLHandling
 
 # Table schema
 Base = declarative_base()
@@ -137,7 +145,79 @@ class Customers(Base):
         return"<customer(name='%s')>" % (self.name)
 
 
+class Clustering(Base):
+    __tablename__ = 'clustering'
 
+    id = Column(Integer, primary_key=True)
+
+    # Clustering results in pickled form
+    best_nc = Column('best_nc', VARBINARY(), nullable=True) # Pickled dataframe
+    indicies = Column('indicies', VARBINARY(), nullable=True) # Pickled dataframe
+
+    # Database features
+    correct_k = Column('correct_k', Integer, nullable=False)
+    n_points = Column('n_points', Integer, nullable=False)
+    n_len1 = Column('n_len1', Integer, nullable=False)
+    n_len2 = Column('n_len2', Integer, nullable=False)
+    n_len3 = Column('n_len3', Integer, nullable=False)
+    n_len4 = Column('n_len4', Integer, nullable=False)
+    n_len5 = Column('n_len5', Integer, nullable=False)
+    n_len6 = Column('n_len6', Integer, nullable=False)
+    n_len7 = Column('n_len7', Integer, nullable=False)
+
+    # Clustering results in explicit form (best number of clusters predicted)
+    # By index
+    KL = Column('KL', Integer, nullable=True)
+    CH = Column('CH', Integer, nullable=True)
+    Hartigan = Column('Hartigan', Integer, nullable=True)
+    CCC_Scott = Column('CCC_Scott', Integer, nullable=True)
+    Marriot = Column('Marriot', Integer, nullable=True)
+    TrCovW = Column('TrCovW', Integer, nullable=True)
+    TraceW = Column('TraceW', Integer, nullable=True)
+    Friedman = Column('Friedman', Integer, nullable=True)
+    Rubin = Column('Rubin', Integer, nullable=True)
+    Cindex = Column('Cindex', Integer, nullable=True)
+    DB = Column('DB', Integer, nullable=True)
+    Silhouette = Column('Silhouette', Integer, nullable=True)
+    Duda = Column('Duda', Integer, nullable=True)
+    PseudoT2 = Column('PseudoT2', Integer, nullable=True)
+    Beale = Column('Beale', Integer, nullable=True)
+    Ratkowsky = Column('Ratkowsky', Integer, nullable=True)
+    Ball = Column('Ball', Integer, nullable=True)
+    PtBiserial = Column('PtBiserial', Integer, nullable=True)
+    Frey = Column('Frey', Integer, nullable=True)
+    McClain = Column('McClain', Integer, nullable=True)
+    Dunn = Column('Dunn', Integer, nullable=True)
+    Hubert = Column('Hubert', Integer, nullable=True)
+    SDindex = Column('SDindex', Integer, nullable=True)
+    Dindex = Column('Dindex', Integer, nullable=True)
+    SDbw = Column('SDbw', Integer, nullable=True)
+    gap_tib = Column('gap_tib', Integer, nullable=True)
+    gap_star = Column('gap_star', Integer, nullable=True)
+    gap_max = Column('gap_max', Integer, nullable=True)
+
+    # Relationships
+    customer_id = Column(Integer, ForeignKey('customers.id'))
+    hyperparameter_id = Column(Integer, ForeignKey('hyperparameter.id'))
+
+    def __repr__(self):
+        return "<clustering(customer_id='%s', 'id='%s')>"\
+            % (self.customer_id, self.id)
+
+
+class ClusteringHyperparameter(Base):
+    __tablename__ = 'hyperparameter'
+
+    id = Column(Integer, primary_key=True)
+    by_size = Column('by_size', BIT(), nullable=False)
+    clusterer = Column('clusterer', NVARCHAR(50), nullable=False)
+    distance = Column('distance', NVARCHAR(50), nullable=False)
+    reduce = Column('reduce', NVARCHAR(50), nullable=False)
+    n_components = Column('n_components', NVARCHAR(50), nullable=False)
+
+    def __repr__(self):
+        return "<clusteringhyperparameter(by_size='%s', 'clusterer='%s')>"\
+            % (self.by_size, self.clusterer)
 
 
 
