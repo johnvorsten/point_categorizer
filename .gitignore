@@ -1,4 +1,4 @@
-#Cached files
+# Cached files
 **/__pycache__/**
 
 # SQL Databases
@@ -8,30 +8,35 @@
 #Pictures
 *.png
 
-#Tensorflow stuff
+# Tensorflow stuff
 ranking/TF_Logs/**
 ranking/final_model/**
 
-#SQL Scripts
+# Log directories
+*/logs/*
+
+# SQL Scripts
 *.sql
 
-#Draw.io files
+# Draw.io files
 *.drawio
 
-#Random Files
+# Random Files
 DatabaseCategorizer (2).xml
 test.py
 user_input.csv
+*.ini
+*.csv
 
-#Word files
+# Word files
 *.docx
 
-#One note files
+# One note files
 *.onetoc2
 *.one
 OneNote_RecycleBin/**
 
-#Git notes
+# Git notes
 git notes.txt
 
 # Large files

@@ -19,8 +19,17 @@ import sqlalchemy
 from pyodbc import DatabaseError, ProgrammingError
 
 # Local imports
-from DT_sql_tools_v6 import SQLHandling
-from DT_sql_tools_v6 import NameUsedError
+if __name__ == '__main__':
+    # Remove the drive letter on windows
+    _CWD = os.path.splitdrive(os.getcwd())[1]
+    _PARTS = _CWD.split(os.sep)
+    # Project dir is one level above cwd
+    _PROJECT_DIR = os.path.join(os.sep, *_PARTS[:-1])
+    if _PROJECT_DIR not in sys.path:
+        sys.path.insert(0, _PROJECT_DIR)
+
+from extract.DT_sql_tools_v6 import SQLHandling
+from extract.DT_sql_tools_v6 import NameUsedError
 
 
 #%%
@@ -76,17 +85,30 @@ class UNCMapping():
         return drive_dict
 
 
+#%%
+
+
 class Extract():
 
     def __init__(self):
-
+        """Retrieve SQL databases from remote servers and save them to a local
+        disc.
+        """
         self.sql_path_tuple = namedtuple('sql_files', ['mdf_path','ldf_path'])
 
         return None
 
 
     def search_and_save(self, search_directory, save_directory):
-
+        """Iterate through a directory searching for database files and
+        save them to save_directory
+        inputs
+        -------
+        search_directory : (str) Directory to look for .mdf files
+        save_directory : (str) Directory to save .mdf files into
+        outputs
+        -------
+        None"""
         if isinstance(search_directory, str):
             search_directory = Path(search_directory)
         elif isinstance(search_directory, Path):
@@ -324,6 +346,12 @@ class Extract():
 
         inputs
         -------
+        server_name : (str) SQL Server name, defaults to named instance DT_SQLEXPR2008
+            On local machine
+        driver_name : (str) SQL driver name, defaults to
+            'SQL Server Native Client 10.0'
+        database_name : (str) Name of database to attach SQL databases as
+        search_directory : (str) Directory to search for .mdf files
         outputs
         -------
         """
@@ -423,14 +451,17 @@ class Extract():
 
 #%%
 
-class Insert():
+class Insert(SQLHandling):
 
-    def __init__(self, server_name='.\DT_SQLEXPR2008',
+    def __init__(self,
+                 server_name='.\DT_SQLEXPR2008',
                  driver_name='SQL Server Native Client 10.0',
                  database_name='Clustering'):
+        super().__init__(server_name=server_name, driver_name=driver_name)
 
-        SQLHelper = SQLHandling(server_name=server_name, driver_name=driver_name)
-        self.connection_str = SQLHelper.get_sqlalchemy_connection_str(database_name, driver_name=driver_name)
+        # SQLHelper = SQLHandling(server_name=server_name, driver_name=driver_name)
+        # self.connection_str = SQLHelper.get_sqlalchemy_connection_str(database_name, driver_name=driver_name)
+        self.connection_str = self.get_sqlalchemy_connection_str(database_name, driver_name=driver_name)
 
         # For interaction with SQLAlchemy ORM
         self.engine = sqlalchemy.create_engine(self.connection_str)
@@ -439,11 +470,13 @@ class Insert():
 
     @staticmethod
     def clean_dataframe(dataframe):
-        """Clean a dataframe and correct datatypes
+        """Delete duplicated columns and replace np.nan values with None
+        None is mapped to Null in SQL
         inputs
         -------
         dataframe : (pd.DataFrame)
         outputs
+        -------
         dataframe : (pd.DataFrame) cleaned dataframe"""
 
         # Remove duplicate columns
@@ -499,18 +532,25 @@ class Insert():
         return res
 
 
-    def get_customer_pk(self, customer_name):
-        """inputs
+    def core_select_execute(self, select):
+        """Given a sqlalchemy.sql.selectable.Select object, execute the select
+        and return the result
+        inputs
         -------
-        customer_name : (str) name of customer pk to retrieve
-        outputs
-        -------
-        pk : (int) primary key"""
-        sel = sqlalchemy.select([Customers]).where(Customers.name == customer_name)
+        BaseClass : (sqlalchemy.ext.declarative.api.DeclarativeMeta) the base
+        class used for declarative class definitions. This is used to get the
+        metadata associated with BaseClass. The metadata is needed to link the
+        ORM and hte SQLAlchemy core. This method use the SQLAlchemy core to
+        insert objects (I like it more than the ORM)
+        select : (sqlalchemy.sql.selectable.Select)
+
+        Example
+        """
         with self.engine.connect() as connection:
-            result = connection.execute(sel)
-        pk = result.fetchone.id
-        return pk
+            res = connection.execute(select)
+
+        return res
+
 
     @staticmethod
     def _min_check_size(dataframe):
