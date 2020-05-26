@@ -39,7 +39,6 @@ for _i in range(0, min(5, len(_point_names))):
 
 # Python imports
 import os
-import copy
 import sys
 from collections import namedtuple
 
@@ -50,6 +49,7 @@ import numpy as np
 from sklearn.manifold import MDS
 from sklearn.manifold import TSNE
 from gap_statistic import OptimalK
+import matplotlib.pyplot as plt
 
 # Local imports
 """Add modules in lateral packages to python path. This is necessary because
@@ -64,8 +64,9 @@ if __name__ == '__main__':
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
 
-from clustering.nbclust_rpy2 import nbclust_calc
-from transform.transform_pipeline import JVDBPipe # TODO update
+    from clustering.nbclust_rpy2 import nbclust_calc
+else:
+    from clustering.nbclust_rpy2 import nbclust_calc
 
 # Local declarations
 class DepreciationError(Exception):
@@ -194,114 +195,78 @@ class UnsupervisedClusterPoints():
                             'sdindex',
                             'all',
                             'alllong']
+        return None
 
 
-    def cluster_with_hyperparameter_list(self,
-                                         hyperparam_list,
-                                         X):
+    def cluster_with_hyperparameters(self, hyperparam_dict, X):
         """Clusteres an input points_dataframe with the clustering
         hyperparameters in hyperparam_list.  The output is a list of results
         for each hyperparameter specification in hyperparam_list
         It is important to note the form of hyperparam_list and its contents
         Inputs
         -------
-        hyperparam_list : (list) of dictionaries. Each dictionary should contain
+        hyperparam_dict : (dict) The dictionary should contain
             specifications for how points_dataframe should be clustered. The
-            required keys are ['clusterer','n_components','index','reduce',
-            'distance']
+            required keys are {'by_size','clusterer','n_components',
+                               'index','reduce', 'distance'}
+            by_size : (bool) cluster by size (Depreciated)
+            clusterer : (str) one of [ward.D, ward.D2, kmeans, single, complete,
+                                      average, mcquitty, median, centroid]
+            n_components : (int) number of features to reduce to, usually 5 or 8
+            index : (str) see NbClust, or one of ['all','gap','ccc','cindex']
+            reduce : (bool) if True perform dimensionality reduction
+            distance : (str) distance measure, one of [euclidean, maximum,
+                                                       binary, minkowski]
         X : (np.array) of encoded point names. Extract these from document
             in mongodb or other. This should be an array of encoded points
             which has been passed through a cleaning pipeline.  See
             make_cleaning_pipeline for creating and using a cleaning pipeline.
         outputs
         -------
-        cluster_results : (list) of dictionaries defining your results. There
+        cluster_results : (tuple) defining your results. There
             are two keys ['hyperparameters','best_nc_dataframe'].
-            'hyperparameters' are the hyperparameters used to cluster that
+            'hyperparameters' are the hyperparameters used to cluster
 
         Example usage :
-        client = MongoClient('localhost', 27017)
-        db = client['master_points']
-        collection = db['raw_databases']
 
-        _cursor = collection.find()
+        hyperparameters = {'by_size':False,
+                           'distance': 'euclidean',
+                           'clusterer': 'ward.D',
+                           'n_components': 8,
+                           'reduce': 'MDS',
+                           'index': 'Hartigan'}
 
-        #for document in _cursor:
-        document = next(_cursor)
-
-        best_hyperparam_list = [{
-       'distance': 'euclidean',
-       'clusterer': 'ward.D',
-       'n_components': 8,
-       'reduce': 'MDS',
-       'index': 'Ratkowsky'},
-      {'distance': 'euclidean',
-      'clusterer': 'ward.D',
-      'n_components': 8,
-      'reduce': 'MDS',
-      'index': 'Cindex'},
-     {'distance': 'euclidean',
-      'clusterer': 'ward.D',
-      'n_components': 8,
-      'reduce': 'MDS',
-      'index': 'CCC'},
-     {'distance': 'euclidean',
-      'clusterer': 'ward.D',
-      'n_components': 8,
-      'reduce': 'MDS',
-      'index': 'Silhouette'},
-     {'distance': 'euclidean',
-      'clusterer': 'ward.D',
-      'n_components': 8,
-      'reduce': 'MDS',
-      'index': 'Hartigan'}]
-
-        myClusterer = UnsupervisedClusterPoints()
-        database_iterator = myClusterer.split_database_on_panel(document)
-        #for sub_database in database_iterator:
-        sub_database = next(database_iterator)
-
-        my_pipeline = myClusterer.make_cleaning_pipe(remove_dupe=False,
-                         replace_numbers=False,
-                         remove_virtual=True,
-                         vocab_size='all',
-                         attributes='NAME',
-                         seperator='.',
-                         heirarchial_weight_word_pattern=True)
-        database, df_clean, X = my_pipeline(sub_database,
-                                            input_type='DataFrame')
-
-        result = myClusterer.cluster_with_hyperparameter_list(best_hyperparam_list,
+        raw_database = pd.DataFrame(data)
+        clean_database = cleaning_pipeline.fit_transform(raw_database)
+        text_features = text_pipeline.fit_transform()
+        X = text_features.toarray()
+        # Cluster X
+        result = myClusterer.cluster_with_hyperparameter_list(hyperparameters,
                                                               X)"""
-        # Save results over the whole list
-        cluster_results = []
         # Save the results of each item in the list
         results_tuple = namedtuple('cluster_results',
                                    ['hyperparameters','best_nc_dataframe'])
 
-        # Controller for clustering
-        for hyper_dict in hyperparam_list:
 
-            # Parse the hyperparameter dictionary
-            hyper_dict = self._parse_hyperparameter_dictionary(hyper_dict)
-            index = hyper_dict['index']
-            reduce = hyper_dict['reduce']
-            clusterer = hyper_dict['clusterer']
-            n_components = hyper_dict['n_components']
-            distance = hyper_dict['distance']
+        # Parse the hyperparameter dictionary
+        hyper_dict = self._parse_hyperparameter_dictionary(hyperparam_dict)
+        index = hyper_dict['index']
+        reduce = hyper_dict['reduce']
+        clusterer = hyper_dict['clusterer']
+        n_components = hyper_dict['n_components']
+        distance = hyper_dict['distance']
 
-            # Build results
-            cluster_result = results_tuple
-            cluster_result.hyperparameters = hyper_dict
+        # Build results
+        cluster_result = results_tuple
+        cluster_result.hyperparameters = hyper_dict
 
-            # Cluster
-            best_nc_df = self._cluster(X, index,
-                                       clusterer, n_components,
-                                       distance, reduce)
-            cluster_result.best_nc_dataframe = best_nc_df
-            cluster_results.append(cluster_result)
+        # Cluster
+        best_nc_df = self._cluster(X, index,
+                                   clusterer, n_components,
+                                   distance, reduce)
+        cluster_result.best_nc_dataframe = best_nc_df
 
-        return cluster_results
+        return cluster_result
 
 
     def _cluster_by_size(self, X,
@@ -408,7 +373,7 @@ class UnsupervisedClusterPoints():
         # based on input clustering hyperparameters
         if index in self.nbclust_indicies:
             # Cluster with nbclust and clustering algorithm
-            min_nc = 1 # Static
+            min_nc = 2 # Static
             max_nc = self._get_max_nc(X) # Based on actual data
 
             best_nc_df = self._nbclust_calc(X_dim_reduced,
@@ -498,74 +463,6 @@ class UnsupervisedClusterPoints():
         return max_nc
 
 
-    def make_cleaning_pipe(self, remove_dupe=False,
-                           replace_numbers=False,
-                           remove_virtual=True,
-                           vocab_size='all',
-                           attributes='NAME',
-                           seperator='.',
-                           heirarchial_weight_word_pattern=True):
-        """Make a cleaning pipeline. This document will namespace the cleaning pipe
-        so it can be re-used to prepare raw input data. This function returns a
-        function that can be used to run the cleaning pipeline
-
-        inputs
-        -------
-        remove_dupe : see JVDBPipe.cleaning_pipeline
-        replace_numbers : see JVDBPipe.cleaning_pipeline
-        remove_virtual : see JVDBPipe.cleaning_pipeline
-        vocab_size : see JVDBPipe.text_pipeline
-        attributes : see JVDBPipe.text_pipeline
-        seperator : see JVDBPipe.text_pipeline
-        heirarchial_weight_word_pattern : see JVDBPipe.text_pipeline
-
-        outputs
-        -------
-        database : (pd.DataFrame) dataframe of raw input data
-        df_clean : (pd.DataFrame) cleaned raw input data
-        X : (np.array) specified text features transformed as specified by cleaning
-            pipeline
-
-        Example usage
-        # Make a total pipeline
-        my_pipeline = make_cleaning_pipe(remove_dupe=False, [...])
-        # process input data with the pipeline
-        database, df_clean, X = my_pipe(document)
-        """
-        raise DepreciationError("Dont use this anymore")
-        myDBPipe = JVDBPipe()
-
-        # Create 'clean' data processing pipeline
-        clean_pipe = myDBPipe.cleaning_pipeline(remove_dupe=remove_dupe,
-                                              replace_numbers=replace_numbers,
-                                              remove_virtual=remove_virtual)
-
-        # Create pipeline specifically for clustering text features
-        text_pipe = myDBPipe.text_pipeline(vocab_size=vocab_size,
-                                           attributes=attributes,
-                                           seperator=seperator,
-                                           heirarchial_weight_word_pattern=heirarchial_weight_word_pattern)
-
-        def _cleaning_pipe_output(document, input_type='mongodb'):
-
-            if input_type == 'mongodb':
-                database = pd.DataFrame.from_dict(document['points'],
-                                                  orient='columns')
-            elif input_type == 'DataFrame':
-                database = document
-            else:
-                raise ValueError("Invalid parameter input_type. Try 'mongodb' or\
-                                 DataFrame")
-
-            # pass data through cleaning and text pipeline
-            df_clean = clean_pipe.fit_transform(database)
-            X = text_pipe.fit_transform(df_clean).toarray()
-
-            return database, df_clean, X
-
-        return _cleaning_pipe_output
-
-
     def split_database_on_panel(self, document):
         """Divide a whole database up on NETDEVID. This will divide a whole database
         into single-controller databases
@@ -615,6 +512,7 @@ class UnsupervisedClusterPoints():
         else:
             raise(ValueError('Fuck me unsupervised_cluster.py'))
 
+        # index
         if hyper_dict['index'].lower() in self.nbclust_indicies:
             # just calculate all of them. Not worth it to do individual calcs
             index = 'all'
@@ -651,6 +549,7 @@ class UnsupervisedClusterPoints():
                 'index': index}
 
         return parsed_clustering_params
+
 
     def _dimensionality_reduction(self, X, method, n_components):
         """Reduce dimensionality of encoded text
@@ -746,10 +645,13 @@ class UnsupervisedClusterPoints():
         The keys returned are variable based on 'index'"""
         # Calculate with NbClust method
 
-        if X.shape[0] >= 1200:
+        max_instances = 1200
+        if X.shape[0] >= max_instances:
             # More than 1200 instances causes unacceptably slow calculations
             # (greater than 3 hours)
-            return None
+            msg = ('More than {} instances will caluse unacceptably slow '\
+                   .format(max_instances) + 'calculation times')
+            raise ValueError(msg)
 
         Nb_result = nbclust_calc(X,
                      min_nc=min_nc,
@@ -821,4 +723,52 @@ class UnsupervisedClusterPoints():
 
         return df_bestnc
 
+
+    @staticmethod
+    def plt_gap(n_cluster_index, gap_values, optimal_k,
+                artist, label='Gap1', correct_k=None):
+
+        artist.plot(k_vals, gap_vals, linewidth=2, label=label)
+        artist.scatter(optimal_k, gap_vals[optimal_k - 1], s=200, c='r')
+        if correct_k:
+            artist.axvline(x=correct_k, ymin=0.05, ymax=0.95, c='g', label='Correct k', linestyle='--')
+
+        artist.grid(True)
+        artist.set_xlabel('Cluster Count')
+        artist.set_ylabel('Gap Values (mean(log(refDisps)) - log(origDisp))')
+        artist.set_title('Gap Value v. Cluster Count')
+        artist.legend()
+
+        return None
+
+
+    @staticmethod
+    def plot_reduced_dataset(self, X):
+        """Given a non-reduced dataset, perform dimensionality reduction and
+        plot the dimensionality reduced dataset
+        inputs
+        ------
+        X : (np.array) data to plot"""
+        # Perform dimensionality reduction
+        n_components=2
+        mds = MDS(n_components = n_components)
+        X_dim_reduce = mds.fit_transform(X)
+
+        # Create a figure and artist (axis)
+        figure = plt.figure(1)
+        ax = figure.subplots(1,1)
+
+        # Define data
+        x = X_dim_reduce[:,0]
+        y = X_dim_reduce[:,1]
+
+        # Plot data
+        artist.scatter(x, y)
+        artist.set_title('MDS Reduction')
+        artist.legend()
+        artist.set_xlabel('$z_1$')
+        artist.set_ylabel('$z_2$')
+        artist.grid(True)
+
+        return None
 
