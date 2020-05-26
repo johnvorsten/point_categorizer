@@ -992,5 +992,3 @@ class Transform():
                 ])
 
         return cleaning_pipeline
-
-

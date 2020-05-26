@@ -27,14 +27,14 @@ if __name__ == '__main__':
 
 from extract import extract
 from extract.SQLAlchemyDataDefinition import (Customers, Points, Netdev,
-                                              ClusteringHyperparameter, Clustering)
+                                              ClusteringHyperparameter, Clustering,
+                                              Labeling)
 
 # Local declarations
 Extract = extract.Extract()
-server_name = '.\DT_SQLEXPR2008'
-driver_name = 'SQL Server Native Client 10.0'
-database_name = 'Clustering'
-Insert = extract.Insert(server_name, driver_name, database_name)
+Insert = extract.Insert(server_name='.\DT_SQLEXPR2008',
+                        driver_name='SQL Server Native Client 10.0',
+                        database_name='Clustering')
 
 #%%
 """
@@ -288,5 +288,56 @@ def insert_csv_to_sql():
             df_dict = remove_unused_keys(Clustering, df_dict)
             df_dict = enforce_clustering_null(df_dict)
             Insert.core_insert_instance(Clustering, df_dict)
+
+    return None
+
+
+#%% Convert mongoDB to SQL
+
+from pymongo import MongoClient
+
+def mongo_to_sql():
+    """Convert labeled Monto documents to SQL relationships"""
+
+    # Loop through mongo documents
+    client = MongoClient('localhost', 27017)
+    db = client['master_points']
+    clustered_points = db['clustered_points']
+
+    document = clustered_points.find_one()
+    document.keys()
+    cluster = document['clustered_points'][0]
+    document['clustered_points'][0].keys()
+
+    # Iterate through all mongo documents
+    for document in clustered_points.find():
+
+        # Get database tag
+        customer_name = document['database_tag']
+
+        # Get customer ID
+        sel = sqlalchemy.select([Customers]).where(Customers.name.__eq__(customer_name))
+        customers = Insert.core_select_execute(sel)
+        customer_id = customers[0].id
+
+        # Iterate through clustered points
+        for cluster in document['clustered_points']:
+            points = cluster['points'] # dictionary of lists
+            label = cluster['label'][0] # Get object from list
+
+            # Create a groupid and insert it
+            values = {'bag_label':label}
+            res = Insert.core_insert_instance(Labeling, values)
+            group_id = res.inserted_primary_key[0]
+
+            # Filter points in this cluster
+            pointids = points['POINTID']
+            # For each clustered point set the group_id foreign key
+            update = Points.__table__.update()\
+                .where(Points.POINTID.in_(pointids))\
+                .where(Points.customer_id.__eq__(customer_id))\
+                .values(group_id=group_id)
+            with Insert.engine.connect() as connection:
+                res = connection.execute(update)
 
     return None

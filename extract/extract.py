@@ -17,6 +17,7 @@ import time
 # Third party imports
 import sqlalchemy
 from pyodbc import DatabaseError, ProgrammingError
+import pandas as pd
 
 # Local imports
 if __name__ == '__main__':
@@ -547,10 +548,27 @@ class Insert(SQLHandling):
         Example
         """
         with self.engine.connect() as connection:
-            res = connection.execute(select)
+            res = connection.execute(select).fetchall()
 
         return res
 
+    def pandas_select_execute(self, select):
+        """Given a sqlalchemy.sql.selectable.Select object, execute the select
+        object through pandas.read_sql and output a dataframe
+        inputs
+        -------
+        select : (sqlalchemy.sql.selectable.Select) query
+        outputs
+        -------
+        result : (pd.DataFrame) query result
+
+        Example
+        """
+
+        with self.engine.connect() as connection:
+            res = pd.read_sql(select, connection)
+
+        return res
 
     @staticmethod
     def _min_check_size(dataframe):

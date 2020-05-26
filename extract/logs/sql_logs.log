@@ -9210,3 +9210,17 @@ Traceback (most recent call last):
   File "C:\ProgramData\Anaconda3\envs\tf\lib\site-packages\sqlalchemy\engine\base.py", line 1339, in _safe_close_cursor
     cursor.close()
 pyodbc.ProgrammingError: Attempt to use a closed cursor.
+2020-05-20 20:45:12,443 Error closing cursor
+Traceback (most recent call last):
+  File "C:\ProgramData\Anaconda3\envs\tf\lib\site-packages\sqlalchemy\engine\result.py", line 1324, in fetchone
+    row = self._fetchone_impl()
+  File "C:\ProgramData\Anaconda3\envs\tf\lib\site-packages\sqlalchemy\engine\result.py", line 1204, in _fetchone_impl
+    return self.cursor.fetchone()
+pyodbc.ProgrammingError: Attempt to use a closed cursor.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\ProgramData\Anaconda3\envs\tf\lib\site-packages\sqlalchemy\engine\base.py", line 1339, in _safe_close_cursor
+    cursor.close()
+pyodbc.ProgrammingError: Attempt to use a closed cursor.

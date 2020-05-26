@@ -8,6 +8,8 @@ SQLAlchemy Table Definitions
 """
 
 # Python imports
+import os
+import sys
 
 # Third party imports
 from sqlalchemy.ext.declarative import declarative_base
@@ -15,6 +17,8 @@ from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.mssql import NVARCHAR, NUMERIC, BIT, VARBINARY
 from sqlalchemy import create_engine
+from sqlalchemy import CheckConstraint
+import numpy as np
 
 # Local imports
 if __name__ == '__main__':
@@ -85,7 +89,12 @@ class Points(Base):
     TYPE = Column('TYPE', NVARCHAR(5)) #
     UNITSTYPE = Column('UNITSTYPE', NVARCHAR(3))
 
+    # Relationships
     customer_id = Column(Integer, ForeignKey('customers.id'), nullable=False)
+    customer = relationship('Customers',back_populates='')
+    # Many points are grouped under one label
+    group_id = Column(Integer, ForeignKey('labeling.id'), nullable=True)
+    group = relationship('Labeling', back_populates='points')
 
     def __repr__(self):
         return "<points(name='%s', type='%s', 'id='%s')>"\
@@ -125,7 +134,9 @@ class Netdev(Base):
     TBLOCKID = Column('TBLOCKID', NUMERIC(19,5))
     TYPE = Column('TYPE', NVARCHAR(40))
 
+    # Relationships
     customer_id = Column(Integer, ForeignKey('customers.id'))
+    customer = relationship('Customers', back_populates='netdev')
 
     def __repr__(self):
         return "<netdev(name='%s', 'id='%s')>"\
@@ -137,9 +148,11 @@ class Customers(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(150), nullable=False, unique=True)
+    correct_k = Column(Integer, nullable=True)
 
-    points = relationship('Points', order_by=Points.id)
-    netdev = relationship('Netdev', order_by=Netdev.id)
+    # Relationships
+    points = relationship('Points', back_populates='customer', order_by=Points.id)
+    netdev = relationship('Netdev', back_populates='customer', order_by=Netdev.id)
 
     def __repr__(self):
         return"<customer(name='%s')>" % (self.name)
@@ -170,7 +183,8 @@ class Clustering(Base):
     KL = Column('KL', Integer, nullable=True)
     CH = Column('CH', Integer, nullable=True)
     Hartigan = Column('Hartigan', Integer, nullable=True)
-    CCC_Scott = Column('CCC_Scott', Integer, nullable=True)
+    CCC = Column('CCC', Integer, nullable=True)
+    Scott = Column('Scott', Integer, nullable=True)
     Marriot = Column('Marriot', Integer, nullable=True)
     TrCovW = Column('TrCovW', Integer, nullable=True)
     TraceW = Column('TraceW', Integer, nullable=True)
@@ -204,6 +218,38 @@ class Clustering(Base):
         return "<clustering(customer_id='%s', 'id='%s')>"\
             % (self.customer_id, self.id)
 
+    @staticmethod
+    def get_n_len_features(X):
+        """Calculate n_len1, n_len2, [...], n_len7 from a given dataset. n_len1 is
+        calculated by finding the number of instances that have at least
+        1 feature. A dataset with n_len3 value of 53 has 53 instances with
+        3 features. n_len represents the number of instances that are
+        at least n words long (used for text clustering)
+
+        inputs
+        -------
+        X : (np.array) input features.
+        outputs
+        -------
+        n_len_features : (dict) with keys n_len1, n_len2, [...] for X"""
+
+        assert X.ndim == 2, "X Must have 2 dimensions. X passed has {}".format(X.ndim)
+        assert np.sum(np.isnan(X), axis=(0,1)) == 0, 'X Must not have nan values'
+        n_len_features = {'n_len1':None,'n_len2':None,'n_len3':None,
+                          'n_len4':None,'n_len5':None,'n_len6':None,
+                          'n_len7':None}
+        lengths = np.sum(X > 0, axis=1)
+        n_len_features['n_points'] = X.shape[0]
+        n_len_features['n_len1'] = np.sum(lengths == 1)
+        n_len_features['n_len2'] = np.sum(lengths == 2)
+        n_len_features['n_len3'] = np.sum(lengths == 3)
+        n_len_features['n_len4'] = np.sum(lengths == 4)
+        n_len_features['n_len5'] = np.sum(lengths == 5)
+        n_len_features['n_len6'] = np.sum(lengths == 6)
+        n_len_features['n_len7'] = np.sum(lengths == 7)
+
+        return n_len_features
+
 
 class ClusteringHyperparameter(Base):
     __tablename__ = 'hyperparameter'
@@ -218,6 +264,35 @@ class ClusteringHyperparameter(Base):
     def __repr__(self):
         return "<clusteringhyperparameter(by_size='%s', 'clusterer='%s')>"\
             % (self.by_size, self.clusterer)
+
+class TypesCorrection(Base):
+    __tablename__ = 'typescorrection'
+
+    id = Column(Integer, primary_key=True)
+    depreciated_type = Column('depreciated_type', NVARCHAR(50), nullable=False, unique=True)
+    new_type = Column('new_type', NVARCHAR(50), nullable=True)
+
+    def __repr__(self):
+        return "<typescorrection(depreciated_type='%s', 'new_type='%s')>"\
+            % (self.depreciated_type, self.new_type)
+
+
+class Labeling(Base):
+    __tablename__ = 'labeling'
+
+    valid_labels = ['ahu','rtu','exhaust_fan','misc','chiller','boiler',
+                    'alarm','room','unknown','skip']
+    bag_label_constraint = "bag_label in ('ahu','rtu','exhaust_fan','misc','chiller',\
+                'boiler', 'alarm','room','unknown','skip')"
+
+    id = Column(Integer, primary_key=True)
+    bag_label = Column(NVARCHAR(100), CheckConstraint(bag_label_constraint), nullable=True)
+
+    # Relationships - reverse query Points on lableing.id (each label id is a group)
+    points = relationship('Points', back_populates='group', order_by=Points.id)
+
+    def __repr__(self):
+        return "<labeling(id={}, label={})>".format(self.id, self.bag_label)
 
 
 
@@ -254,3 +329,16 @@ def create_tables(server_name='.\DT_SQLEXPR2008',
     Base.metadata.create_all(engine)
 
     return (customer_table, points_table, netdev_table)
+
+"""
+# How to remove a table from metadata
+table_object = BaseClass.__table__
+Base.metadata.remove(tale_object)
+
+# Create a single table
+engine = sqlalchemy.create_engine('connection_string')
+table_object = BaseClass.__table__
+table_object.create(engine)
+
+# Allow altering of metadata
+Base."""

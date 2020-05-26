@@ -5,17 +5,6 @@ Created on Sun Nov 17 15:43:14 2019
 @author: z003vrzk
 """
 
-"""This class will use known or predicted number of clusters for a database
-to partition the database into their partitions.
-For example a database with point names :
-BANC.RTU0202.CCT
-BANC.EF0101.PRF
-BANC.EF0101.RMT
-BANC.EF0101.SS
-BANC.EF0201.PRF
-BANC.EF0201.SS
-should be separated into BANC.RTU0202*, BANC.EF101*, BANC.EF0201* groups"""
-
 # Python imports
 import os
 import sys
@@ -43,61 +32,18 @@ if __name__ == '__main__':
     from extract import extract
     from extract.SQLAlchemyDataDefinition import (Customers, Points,
                                       Clustering, ClusteringHyperparameter)
+    from clustering import unsupervised_cluster
 else:
     # The module is not a top-level module
     from ..pipeline import transform_pipeline
     from ..extract import extract
 
 
-#%% New
+#%%
 
-# Instantiate local classes
-Transform = transform_pipeline.Transform()
-# Create 'clean' data processing pipeline
-cleaning_pipeline = Transform.cleaning_pipeline(remove_dupe=False,
-                                      replace_numbers=False,
-                                      remove_virtual=True)
-# Create pipeline specifically for clustering text features
-text_pipe = Transform.text_pipeline(vocab_size='all',
-                                   attributes='NAME',
-                                   seperator='.',
-                                   heirarchial_weight_word_pattern=True)
-# Retrieve information from SQL
-server_name = '.\DT_SQLEXPR2008'
-driver_name = 'SQL Server Native Client 10.0'
-database_name = 'Clustering'
-Insert = extract.Insert(server_name=server_name,
-                        driver_name=driver_name,
-                        database_name=database_name)
-
-# Get a specific customer
-customer_name = r'D:\Z - Saved SQL Databases\44OP-148387_BU_FORMAN_LAB\JobDB.mdf'
-sel = sqlalchemy.select([Customers]).where(Customer.name.__eq__(customer_name))
-with Insert.engine.connect() as connection:
-    customer_result = connection.execute(sel).fetchall()
-
-if customer_result.__len__() == 0:
-    # No result found
-    raise ValueError("No customer named {} exists in database".format(customer_name))
-else:
-    customer_row = customer_result[0]
-
-# Get related points into dataframe
-sel = sqlalchemy.select([Points]).where(Points.customer_id.__eq__(customer_row.id))
-df = pd.read_sql(sel, Insert.engine)
-
-# Run dataframe through pipeline
-df_clean = cleaning_pipeline.fit_transform(df)
-X = text_pipe.fit_transform(df_clean).toarray()
-# word_vocab = text_pipe.named_steps['WordDictToSparseTransformer'].vocabulary
-# df_text = pd.DataFrame(X, columns=word_vocab)
-
-# Perform clustering
-sel = sqlalchemy.select([Clustering]).where(Clustering.customer_id.__eq__(customer_row.id))
-with Insert.engine.connect() as connection:
-    res = connection.execute(sel).fetchall()
-correct_n_clusters = res.correct_k
-
+"""Cluster with a pre-defined correct number of clusters
+The clusterer chosen is agglomerative with euclidena affinity and ward linkage
+"""
 
 def cluster_agglomerative(X, correct_n_clusters, affinity='euclidean', linkage='ward'):
     """Cluster a given set of points with agglomerative method
@@ -126,156 +72,160 @@ def cluster_agglomerative(X, correct_n_clusters, affinity='euclidean', linkage='
     return prediction_agglo
 
 
-#%%
-
 # Instantiate local classes
-JVDBPipe = transform_pipeline.JVDBPipe()
+Transform = transform_pipeline.Transform()
 # Create 'clean' data processing pipeline
-cleaning_pipeline = JVDBPipe.cleaning_pipeline(remove_dupe=False,
+clean_pipe = Transform.cleaning_pipeline(remove_dupe=False,
                                       replace_numbers=False,
                                       remove_virtual=True)
+
 # Create pipeline specifically for clustering text features
-text_pipe = JVDBPipe.text_pipeline(vocab_size='all',
+text_pipe = Transform.text_pipeline(vocab_size='all',
                                    attributes='NAME',
                                    seperator='.',
                                    heirarchial_weight_word_pattern=True)
-# Retrieve information from Mongo
-client = MongoClient('localhost', 27017)
-db = client['master_points']
-collection_raw = db['raw_databases']
-collection_clustered = db['clustered_points']
 
-_cursor = collection_raw.find()
-for document in _cursor:
+# Set up connection to SQL
+Insert = extract.Insert(server_name='.\\DT_SQLEXPR2008',
+                        driver_name='SQL Server Native Client 10.0',
+                        database_name='Clustering')
 
-    # pass data through cleaning and text pipeline
-    database = pd.DataFrame.from_dict(document['points'],
-                                      orient='columns')
+# Get a points dataframe
+customer_id = 15
+sel = sqlalchemy.select([Points]).where(Points.customer_id.__eq__(customer_id))
+with Insert.engine.begin() as connection:
+    # res = connection.execute(sel).fetchone()
+    database = pd.read_sql(sel, connection)
 
-    # Test if document already exists
-    exists_cursor = collection_clustered.find({'database_tag':document['database_tag']}, {'_id':1})
-    if exists_cursor.alive:
-        # Dont recalculate
-        continue
+df_clean = clean_pipe.fit_transform(database)
+X = text_pipe.fit_transform(df_clean).toarray()
+#_word_vocab = text_pipe.named_steps['WordDictToSparseTransformer'].vocabulary
+#df_text = pd.DataFrame(X, columns=_word_vocab)
 
-    df_clean = cleaning_pipeline.fit_transform(database)
-    X = text_pipe.fit_transform(df_clean).toarray()
-    #_word_vocab = text_pipe.named_steps['WordDictToSparseTransformer'].vocabulary
-    #df_text = pd.DataFrame(X, columns=_word_vocab)
+# Get number of clusters
+sel = sqlalchemy.select([Customers])\
+    .where(Customers.id.__eq__(customer_id))
+with Insert.engine.begin() as connection:
+    res = connection.execute(sel).fetchone()
+    correct_k = res.correct_k
+
+result = cluster_agglomerative(X, correct_k,
+                               affinity='euclidean', linkage='ward')
 
 
-    # perform clustering
-    actual_n_clusters = document['correct_k']
-    if actual_n_clusters == 1:
-        # Dont cluster - why would you?
-        prediction_agglo = np.ones((X.shape[0]))
+#%%
+"""Cluster poitns databases based on given hyperparameters
+Save the results to SQL"""
 
-    if X.shape[0] <= 3:
-        # Dont cluster - just pass 1 cluster total
-        prediction_agglo = np.ones((X.shape[0]))
+def main():
 
+    # Hyperparameters
+    hyperparams = {
+        'by_size':False,
+        'n_components':8,
+        'reduce':'MDS',
+        'clusterer':'ward.D',
+        'distance':'euclidean',
+        'index':'all'}
+
+    # Instantiate local classes
+    Transform = transform_pipeline.Transform()
+    # Create 'clean' data processing pipeline
+    clean_pipe = Transform.cleaning_pipeline(remove_dupe=False,
+                                          replace_numbers=False,
+                                          remove_virtual=True)
+
+    # Create pipeline specifically for clustering text features
+    text_pipe = Transform.text_pipeline(vocab_size='all',
+                                       attributes='NAME',
+                                       seperator='.',
+                                       heirarchial_weight_word_pattern=True)
+
+    # Set up connection to SQL
+    Insert = extract.Insert(server_name='.\\DT_SQLEXPR2008',
+                            driver_name='SQL Server Native Client 10.0',
+                            database_name='Clustering')
+
+    # Clustering class
+    UnsupervisedCluster = unsupervised_cluster.UnsupervisedClusterPoints()
+
+    # Save hyperparameters to SQL
+    # See if its already inserted
+    sel = sqlalchemy.select([ClusteringHyperparameter]).where(
+        sqlalchemy.sql.and_(ClusteringHyperparameter.by_size == hyperparams['by_size'],
+                            ClusteringHyperparameter.clusterer == hyperparams['clusterer'],
+                            ClusteringHyperparameter.distance == hyperparams['distance'],
+                            ClusteringHyperparameter.reduce == hyperparams['reduce'],
+                            ClusteringHyperparameter.n_components == hyperparams['n_components']))
+    with Insert.engine.connect() as connection:
+        res = connection.execute(sel).fetchall()
+
+    if res.__len__():
+        # Get hyperparameters id of existing hyperparameter set
+        hyperparameter_id = res[0].id
     else:
-        # Cluster
-        agglomerative = AgglomerativeClustering(n_clusters=actual_n_clusters,
-                                                affinity='euclidean',
-                                                linkage='ward')
-        prediction_agglo = agglomerative.fit_predict(X)
+        # Insert new object
+        res = Insert.core_insert_instance(ClusteringHyperparameter, hyperparams)
+        hyperparameter_id = res.inserted_primary_key[0]
 
-    # Format of clustered_points_dict is {setid:}
-    clustered_points_list = []
-    for setid in set(prediction_agglo):
-        cluster_dict = {}
-        indicies = (prediction_agglo==setid)
-        cluster_names = df_clean.iloc[indicies]
-        points_dict = cluster_names.to_dict(orient='list')
-        cluster_dict['points'] = points_dict
+    # Get customer list from SQL
+    sel = sqlalchemy.select([Customers])
+    customers = Insert.core_select_execute(sel)
 
-        # Add entries into clustered_points_dict
-        clustered_points_list.append(cluster_dict)
+    # Iterate through customers and cluster
+    for customer in customers:
 
-    try:
-        database_tag = document['database_tag']
-        collection_clustered.insert_one({'clustered_points':clustered_points_list,
-                                         'database_tag':database_tag,
-                                         'correct_k':actual_n_clusters})
+        # Get points from SQL
+        sel = sqlalchemy.select([Points]).where(Points.customer_id.__eq__(customer.id))
+        database = Insert.pandas_select_execute(sel)
+        if database.shape[0] == 0:
+            print('Customer ID {} Skipped, points shape {}'.format(customer.id, database.shape[0]))
+            continue
+        else:
+            df_clean = clean_pipe.fit_transform(database)
+            X = text_pipe.fit_transform(df_clean).toarray()
+            #_word_vocab = text_pipe.named_steps['WordDictToSparseTransformer'].vocabulary
+            #df_text = pd.DataFrame(X, columns=_word_vocab)
 
-    except pymongo.errors.WriteError:
-        continue
+        # NbClust clustering
+        print('Customer ID {}\nDB Size : {}'.format(customer_id, X_reduced.shape))
+        try:
+            print('Starting NbClust')
+            # Perform clustering with NbClust package
+            result = UnsupervisedCluster.cluster_with_hyperparameters(hyperparams, X)
+            best_nc_df = result.best_nc_dataframe
+        except RRuntimeError as e:
+            if str(e).__contains__('computationally singular'):
+                # The eigenvalue matrix is singular. Reduce the number of dimensions
+                _hyperparams = hyperparams
+                _hyperparams['n_components'] = int(_hyperparams['n_components'] / 2)
+                result = UnsupervisedCluster.cluster_with_hyperparameters(hyperparams, X)
+                best_nc_df = result.best_nc_dataframe
+            else:
+                print(e)
+                continue
 
-#%% TestUnsupervisedClusterPoints
+        # Build dictionary for SQL
+        sel = sqlalchemy.select([Customers]).where(Customers.id.__eq__(customer.id))
+        with Insert.engine.connect() as connection:
+            res = connection.execute(sel).fetchone()
+            correct_k = res.correct_k
+        values = best_nc_df.loc['Number_clusters'].to_dict()
+        values['correct_k'] = correct_k
+        values['customer_id'] = customer.id
+        values['hyperparameter_id'] = hyperparameter_id
+        n_lens = Clustering.get_n_len_features(X)
+        for key, val in n_lens.items():
+            values[key] = int(val)
 
-from UnsupervisedCluster import UnsupervisedClusterPoints
+        # Save results to SQL
+        res = Insert.core_insert_instance(Clustering, values)
+        print("Inserted {}".format(res.inserted_primary_key))
 
-# Create list of 5 best hyperparam dicts
-best_hyperparam_list = [{'by_size': False,
-  'distance': 'euclidean',
-  'clusterer': 'ward.D',
-  'n_components': 8,
-  'reduce': 'MDS',
-  'index': 'Ratkowsky'},
- {'by_size': True,
-  'distance': 'euclidean',
-  'clusterer': 'ward.D',
-  'n_components': 8,
-  'reduce': 'MDS',
-  'index': 'Cindex'},
- {'by_size': True,
-  'distance': 'euclidean',
-  'clusterer': 'ward.D',
-  'n_components': 8,
-  'reduce': 'MDS',
-  'index': 'CCC'},
- {'by_size': True,
-  'distance': 'euclidean',
-  'clusterer': 'ward.D',
-  'n_components': 8,
-  'reduce': 'MDS',
-  'index': 'Silhouette'},
- {'by_size': True,
-  'distance': 'euclidean',
-  'clusterer': 'ward.D',
-  'n_components': 8,
-  'reduce': 'MDS',
-  'index': 'Hartigan'}]
+    pass
 
 
 
-client = MongoClient('localhost', 27017)
-db = client['master_points']
-collection = db['raw_databases']
-
-_cursor = collection.find()
-
-#for document in _cursor:
-document = next(_cursor)
-
-myClusterer = UnsupervisedClusterPoints()
-database_iterator = myClusterer.split_database_on_panel(document)
-#for sub_database in database_iterator:
-sub_database = next(database_iterator)
-
-my_pipeline = myClusterer.make_cleaning_pipe(remove_dupe=False,
-                 replace_numbers=False,
-                 remove_virtual=True,
-                 vocab_size='all',
-                 attributes='NAME',
-                 seperator='.',
-                 heirarchial_weight_word_pattern=True)
-database, df_clean, X = my_pipeline(sub_database,
-                                    input_type='DataFrame')
-
-
-
-
-test_list = [{'by_size': False,
-  'distance': 'euclidean',
-  'clusterer': 'ward.D',
-  'n_components': 8,
-  'reduce': 'MDS',
-  'index': 'all'}]
-
-result = myClusterer.cluster_with_hyperparameter_list(test_list,
-                                                      X)
 
 
 
