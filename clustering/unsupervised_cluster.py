@@ -75,30 +75,28 @@ class DepreciationError(Exception):
 
 #%%
 
-
-
 class OptimalKCluster():
 
     def __init__(self):
         pass
 
     @staticmethod
-    def optimalK2(data, nrefs=3, maxClusters=15):
+    def optimalK(data, nrefs=3, max_clusters=15):
         """
         Calculates KMeans optimal K using Gap Statistic from Tibshirani,
         Walther, Hastie
         Params:
             data: ndarry of shape (n_samples, n_features)
             nrefs: number of sample reference datasets to create
-            maxClusters: Maximum number of clusters to test for
+            max_clusters: Maximum number of clusters to test for
         Returns: (gaps, optimalK)
         """
-        gaps = np.zeros((len(range(1, maxClusters)),))
+        gaps = np.zeros((len(range(1, max_clusters)),))
         resultsdf = pd.DataFrame({'n_clusters':[],
                                   'gap_value':[],  'gap*':[],
                                   'obs_dispersion':[],
                                   'ref_dispersion':[] })
-        for gap_index, k in enumerate(range(1, maxClusters)):
+        for gap_index, k in enumerate(range(1, max_clusters)):
 
             # Holder for reference dispersion results
             refDisps = np.zeros(nrefs)
