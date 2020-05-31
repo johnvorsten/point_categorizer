@@ -55,23 +55,15 @@ if __name__ == '__main__':
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
 
-from ranking import Labeling
+from ranking import Labeling, get_unique_labels, save_unique_labels
 from transform import transform_pipeline
 from extract import extract
 from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev, Customers,
                                               ClusteringHyperparameter, Labeling)
+from clustering.accuracy_visualize import Record, get_records
 
 # Local declarations
 ExtractLabels = Labeling.ExtractLabels()
-
-# ClusterTools = JVClusterTools()
-# myDBPipe = JVDBPipe()
-
-
-#%% Setup MongoDB connection
-client = MongoClient('localhost', 27017)
-db = client['master_points']
-collection = db['raw_databases']
 
 #%%
 
@@ -108,237 +100,40 @@ def test_get_database_features():
     database_features = ExtractLabels.get_database_features(database,
                                                             full_pipeline,
                                                             instance_name=customer_name)
-    return None
+    return database_features
 
+#%%
 
-#%% Extract features for all datasets
+def test_get_database_labels():
 
-#Import your database (.csv)
-csv_file = r'data\master_pts_db.csv'
-sequence_tag = 'DBPath'
+    # Set up connection to SQL
+    Insert = extract.Insert(server_name='.\\DT_SQLEXPR2008',
+                            driver_name='SQL Server Native Client 10.0',
+                            database_name='Clustering')
 
-#Get unique names
-unique_tags = pd.read_csv(csv_file, index_col=0, usecols=['DBPath'])
-unique_tags = list(set(unique_tags.index))
+    # Get all records relating to one customer
+    customer_id = 15
+    sel = sqlalchemy.select([Clustering.id, Clustering.correct_k])\
+        .where(Clustering.customer_id.__eq__(customer_id))
+    res = Insert.core_select_execute(sel)
+    primary_keys = [x.id for x in res]
+    correct_k = res[0].correct_k
 
-#Import pipelines for use in calculating features
-text_pipe = myDBPipe.text_pipeline(vocab_size='all', attributes='NAME',
-                           seperator='.')
-clean_pipe = myDBPipe.cleaning_pipeline(remove_dupe=False,
-                              replace_numbers=False,
-                              remove_virtual=True)
-mypipe = Pipeline([('clean_pipe', clean_pipe),
-                   ('text_pipe',text_pipe)
-                   ])
+    sel = sqlalchemy.select([Customers.name]).where(Customers.id.__eq__(customer_id))
+    customer_name = Insert.core_select_execute(sel)[0].name
 
+    # Calculate ranking of all records
+    records = get_records(primary_keys)
+    best_labels = ExtractLabels.calc_labels(records, correct_k, error_scale=0.8, var_scale=0.2)
 
-for tag in unique_tags:
-    #Extract database
-    database = ClusterTools.read_database_ontag(csv_file, 'DBPath', tag)
+    return best_labels
 
-    #Calculate Features
-    db_feat = Extract.calc_features(database, mypipe, tag=tag)
-    db_feat = db_feat.to_dict()
 
-    #Remote the nested dictinoary in db_feat pandas creates
-    for key, subdict in db_feat.items():
-        db_feat[key] = list(db_feat[key].values())
-    assert db_feat['instance'][0] == tag, 'Non-matching tag'
+def test_get_unique_labels():
 
-    #Remove unnecessary informatino. 'instance' matches 'tag' and 'database_tag'
-    db_feat.pop('instance') #Dont need to duplicate this information
+    unique_labels = get_unique_labels()
 
-    #Save labels for all datasets in mongo
-    collection.update_one({'database_tag':tag}, {'$set':{'db_features':db_feat}})
-
-#Make sure everything is tagged
-a = collection.find( {'db_features':{'$exists':False}} )
-a = collection.aggregate([
-        {'$match': {'db_features': {'$exists':False} } },
-        {'$group': {'_id': {'my_tag':'$database_tag'},
-                    'obj_id': {'$push':'$_id'}
-                    }
-        }
-        ])
-
-
-
-
-#%% Extract labels for all datasets
-
-from pymongo.errors import InvalidDocument
-from JVWork_Mongo import correct_encoding
-from JVWork_Labeling import ExtractLabels
-from JVWork_AccuracyVisual import import_error_dfs
-Extract = ExtractLabels()
-
-# New Database
-db = client['master_points']
-collection = db['raw_databases']
-
-#Import your database (.csv)
-csv_file = r'data\master_pts_db.csv'
-sequence_tag = 'DBPath'
-
-#Get unique names
-unique_tags = pd.read_csv(csv_file, index_col=0, usecols=['DBPath'])
-unique_tags = list(set(unique_tags.index))
-
-records = import_error_dfs()
-
-for tag in unique_tags:
-
-    #Calculate Features
-    new_labels = {}
-    labels, hyper_dict = Extract.calc_labels(records, tag)
-
-    for key in labels.keys():
-        new_labels[str(key)] = labels[key]
-
-    #Save labels for all datasets in mongo
-    try:
-        collection.update_one({'database_tag':tag}, {'$set':{'hyper_labels':new_labels}})
-    except InvalidDocument:
-        # Python on Windows and Pymongo are not forgiving
-        # If you have foreign data types you have to convert them
-        corrected_dict = correct_encoding(new_labels)
-        collection.update_one({'database_tag':tag},
-                              {'$set':{'hyper_labels':corrected_dict}})
-
-#Make sure everything is tagged
-a = collection.find( {'hyper_labels':{'$exists':False}} )
-
-a = collection.aggregate([
-        {'$match': {'hyper_labels': {'$exists':False} } },
-        {'$group': {'_id': {'my_tag':'$database_tag'},
-                    'obj_id': {'$push':'$_id'} }}])
-
-a = collection.aggregate([
-        {'$group': {'_id':'$database_tag', 'hypers':{'$first':'$hyper_labels'}}},
-        {'$project': {'num_fields':{'$size':{'$objectToArray':'$hypers'}}}},
-        {'$match': {'num_fields':{'$lt':30}}}
-        ])
-
-# This document has no points and causes errors
-collection.delete_one({'database_tag':r'D:\Z - Saved SQL Databases\44OP-263742-AUS_TFC_TRC_Renovation\JobDB.mdf'})
-pass
-
-
-#%% Save by_size label
-
-#Third party imports
-from pymongo import MongoClient
-
-# Local Imports
-from JVWork_Labeling import choose_best_hyper
-
-# New Database
-client = MongoClient('localhost', 27017)
-db = client['master_points']
-collection = db['raw_databases']
-
-# Goal : choose the best by_size hyperparameter for a database
-
-for db_dict in collection.find():
-    # Extract saved labels
-    labels = db_dict['hyper_labels']
-
-    best_by_size = choose_best_hyper(labels, 'by_size')
-
-    collection.update_one({'_id':db_dict['_id']},
-                          {'$set':{'best_hyper.by_size':best_by_size}})
-
-
-
-a = collection.aggregate([
-        {'$group': {'_id':'$database_tag', 'hypers':{'$first':'$hyper_labels'}}},
-        {'$project': {'num_fields':{'$size':{'$objectToArray':'$hypers'}}}},
-        {'$match': {'num_fields':{'$lt':30}}}
-        ])
-
-b = collection.aggregate([
-        {'$group':{'_id':'$database_tag', 'by_size':{'$first':'$best_hyper.by_size'}}}
-        ])
-pass
-
-for doc in a:
-    print(doc['num_fields'])
-
-for doc in b:
-    print(doc['by_size'])
-
-
-#%% Clusterer OR Index
-
-
-for document in collection.find():
-    # Extract saved labels
-    labels = document['hyper_labels']
-
-    ranked_item = []
-    for key, label in labels.items():
-        ranked_item.append(label['index'])
-
-    collection.update_one({'_id':document['_id']},
-                           {'$set':{'best_hyper.index':ranked_item}})
-
-
-#%% n_components
-
-for db_dict in collection.find():
-    # Extract saved labels
-    labels = db_dict['hyper_labels']
-
-    best_n_components = choose_best_hyper(labels, 'n_components')
-
-    collection.update_one({'_id':db_dict['_id']},
-                           {'$set':{'best_hyper.n_components':best_n_components}})
-
-a = collection.aggregate([
-        {'$group': {'_id':'$database_tag', 'hypers':{'$first':'$best_hyper'}}},
-        {'$project': {'num_fields':{'$size':{'$objectToArray':'$hypers'}}}},
-        {'$match': {'num_fields':{'$lt':2}}}
-        ])
-
-b = collection.aggregate([
-        {'$group':{'_id':'$database_tag', 'n_components':{'$first':'$best_hyper.n_components'}}}
-        ])
-pass
-
-for doc in a:
-    print(doc['num_fields'])
-
-for doc in b:
-    print(doc['n_components'])
-
-#%% reduce
-
-for db_dict in collection.find():
-    # Extract saved labels
-    labels = db_dict['hyper_labels']
-
-    best_reduce = choose_best_hyper(labels, 'reduce')
-
-    collection.update_one({'_id':db_dict['_id']},
-                           {'$set':{'best_hyper.reduce':best_reduce}})
-
-a = collection.aggregate([
-        {'$group': {'_id':'$database_tag', 'hypers':{'$first':'$best_hyper'}}},
-        {'$project': {'num_fields':{'$size':{'$objectToArray':'$hypers'}}}},
-        {'$match': {'num_fields':{'$lt':3}}}
-        ])
-
-b = collection.aggregate([
-        {'$group':{'_id':'$database_tag', 'reduce':{'$first':'$best_hyper.reduce'}}}
-        ])
-pass
-
-for doc in a:
-    print(doc['num_fields'])
-
-for doc in b:
-    print(doc['reduce'])
-
+    return unique_labels
 
 #%% Save encoded labels
 pass
@@ -384,53 +179,11 @@ for document in collection.find():
 
 #%% Save a vocabulary of all hyperparameter tags
 
-from Labeling import get_unique_labels
+def test_save_unique_labels():
 
-unique_labels = get_unique_labels() # Dictionary
+    save_unique_labels()
 
-string_vocab = []
-for key, value in unique_labels.items():
-
-    for vocab in value: # value is list
-        string_vocab.append(str(vocab))
-
-_file_name = r'./data/JV_vocab_all.txt'
-
-with open(_file_name, 'w') as f:
-    for vocab in string_vocab:
-        f.write(vocab)
-        f.write('\n')
-
-_file_name_bysize = r'./data/JV_vocab_bysize.txt'
-_file_name_clusterer = r'./data/JV_vocab_clusterer.txt'
-_file_name_index = r'./data/JV_vocab_index.txt'
-_file_name_n_components = r'./data/JV_vocab_n_components.txt'
-_file_name_reduce = r'./data/JV_vocab_reduce.txt'
-
-with open(_file_name_bysize, 'w') as f:
-    for vocab in unique_labels['by_size']:
-        f.write(str(vocab))
-        f.write('\n')
-
-with open(_file_name_clusterer, 'w') as f:
-    for vocab in unique_labels['clusterer']:
-        f.write(str(vocab))
-        f.write('\n')
-
-with open(_file_name_index, 'w') as f:
-    for vocab in unique_labels['index']:
-        f.write(str(vocab))
-        f.write('\n')
-
-with open(_file_name_n_components, 'w') as f:
-    for vocab in unique_labels['n_components']:
-        f.write(str(vocab))
-        f.write('\n')
-
-with open(_file_name_reduce, 'w') as f:
-    for vocab in unique_labels['reduce']:
-        f.write(str(vocab))
-        f.write('\n')
+    return None
 
 
 #%% Save a list of clustering hyperparameters for later use in model serving

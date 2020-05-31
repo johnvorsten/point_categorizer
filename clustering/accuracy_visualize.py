@@ -216,8 +216,7 @@ class Record():
                 accuracy_dict[indicy] = acc
                 continue
 
-
-        return accuracy_df
+        return accuracy_dict
 
     @staticmethod
     def dict2str(hyperparameters):
@@ -260,7 +259,13 @@ class Record():
 
         return minimum
 
-#%% Left off
+    def __repr__(self):
+        return "Record<id=%r,customer_id=%r,hyperparameter_id=%r>" % \
+            (self.indicies_dictionary['id'],
+             self.indicies_dictionary['customer_id'],
+             self.indicies_dictionary['hyperparameter_id'])
+
+
 
 def import_error_dfs(base_dir):
     """Imports error_df csv files and converts to custom Record objects
@@ -341,25 +346,14 @@ def get_hyper_dict(df_path):
 
     return hyper_dict
 
-# Doesnt work anymore
-records = import_error_dfs(base_dir=r"C:\Users\z003vrzk\.spyder-py3\Scripts\ML\point_categorizer\error_dfs")
 
-
-#%%
-"""
-Record needs to have
-a) Hyperparameter information
-b) Indicy information"""
-
-
-primary_keys = [1,2,3,4,5]
 
 def get_records(primary_keys):
     """
     inputs
     -------
     primary_keys : (list) of integers representing SQL primary keys OR
-        (str) 'all' representing you want the whole database. Primary keys are
+        (str) 'all' representing you want the whole Table. Primary keys are
         on the 'clustering' table. The function retruns the related
         clustering hyperparameters for each row in 'clustering'
     outputs
@@ -394,9 +388,7 @@ def get_records(primary_keys):
 
     return records
 
-records = get_records(primary_keys)
 
-#%%
 
 def plt_indicy_accuracy_bar(records,
                  customer_id=None):
@@ -482,9 +474,6 @@ def plt_indicy_accuracy_bar(records,
 
     return None
 
-records = get_records([8])
-plt_indicy_accuracy_bar(records)
-
 
 
 def plt_indicy_accuracy_scatter(records,
@@ -563,9 +552,6 @@ def plt_indicy_accuracy_scatter(records,
 
     return None
 
-
-records = get_records([8,9,10,11])
-plt_indicy_accuracy_scatter(records)
 
 
 def plt_distance(records,
@@ -658,9 +644,6 @@ def plt_distance(records,
 
     return None
 
-
-records = get_records([8,9,10,11])
-plt_distance(records)
 
 
 def plt_best_n_indicies(records,
@@ -766,9 +749,6 @@ def plt_best_n_indicies(records,
     return None
 
 
-records = get_records([8,9,10,11])
-plt_best_n_indicies(records)
-
 
 def plt_hyperparameters(records,
                         hyperparameter_name,
@@ -842,8 +822,6 @@ def plt_hyperparameters(records,
 
     return None
 
-records = get_records([8,9,10,11])
-plt_hyperparameters(records, hyperparameter_name='clusterer')
 
 
 def plt_loss_curve(labels):
