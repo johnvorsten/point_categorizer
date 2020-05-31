@@ -46,6 +46,7 @@ db_feat = extract.calc_features(database, mypipe, tag=db_name)
 
 # Python imports
 import os
+import sys
 import pickle
 import statistics
 from collections import namedtuple
@@ -58,6 +59,17 @@ from sklearn.preprocessing import OneHotEncoder
 import numpy as np
 import pandas as pd
 
+# Local imports
+if __name__ == '__main__':
+    # Remove the drive letter on windows
+    _CWD = os.path.splitdrive(os.getcwd())[1]
+    _PARTS = _CWD.split(os.sep)
+    # Project dir is one level above cwd
+    _PROJECT_DIR = os.path.join(os.sep, *_PARTS[:-1])
+    if _PROJECT_DIR not in sys.path:
+        sys.path.insert(0, _PROJECT_DIR)
+from extract import extract
+
 # Local declarations
 loss = namedtuple('loss',['clusters', 'l2error', 'variance', 'loss'])
 
@@ -68,6 +80,8 @@ class ExtractLabels():
 
     def __init__(self):
         pass
+
+
 
     def get_database_features(self, database, pipeline, instance_name):
         """Calculate the features of a dataset. These will be used to
@@ -185,14 +199,15 @@ class ExtractLabels():
 
         return count_dict
 
-    def calc_labels(self, records, instance_name, var_scale=0.2, error_scale=0.8):
+
+
+    def calc_labels(self, records, correct_k, var_scale=0.2, error_scale=0.8):
         """Given an instance_name (database name in this case) and set of records
         output the correct labels for that database.
         inputs
         -------
-        records : a list of records from the Record class
-        instance_name : The column/key of the database sequence you wish to
-        return labels for. In my case, it will be a path similar to D:\[...]\JobDB.mdf
+        records : (list | iterable) of records from the Record class. All records
+            should be from the same customer/database
         var_scale : (float) contribution of prediction variance to total loss
         of a clustering hyperparameter set. The idea is less variance in predictions
         is better
@@ -227,162 +242,142 @@ class ExtractLabels():
         db_tag = r'D:\Z - Saved SQL Databases\44OP-093324_Baylor_Bric_Bldg\JobDB.mdf'
         labels, hyper_dict = extract.calc_labels(records, db_tag)
         """
-        non_opt_cols = ['DBPath', 'correct_k','n_points', 'n_len1',
-                        'n_len2', 'n_len3', 'n_len4',
-                        'n_len5', 'n_len6', 'n_len7']
-        non_opt_cols2 = ['instance','correct_k','records']
-        sequence_tag = 'DBPath'
-        hyper_dict = {}
 
-        # Loss object holds information for each clustering indicy
-        # clusters is the number of predicted clusters. It is a list to hold the predicted value for each iteration
-        # l2error is the l2 error of all predictions
-        # variance is variance between the predicted number fo clusters
-        # loss is a custom weighted loss used to find the best prediction index
+        # Customer records should all be the same
+        ids = []
+        for record in records:
+            ids.append(record.indicies_dictionary['customer_id'])
+        assert len(set(ids)).__eq__(1), "All customer IDs must be the same"
 
-        losses = []
 
-        # Create a unique set of hyper_dict
-        # The hyper_dict stores all unique combinations of hyperparameters
-        # Used on a certain dataset
-        for idx, record in enumerate(records): #Dictionary of unique dictionaries
-            try:
-                hyper_dict[self.dict2str(record.hyper_dict)]['records'].append(record)
-            except KeyError:
-                hyper_dict[self.dict2str(record.hyper_dict)] = {'records':[record]}
+        indicies = ['KL','CH','Hartigan','CCC','Marriot','TrCovW',
+                'TraceW','Friedman','Rubin','Cindex','DB','Silhouette',
+                'Duda','PseudoT2','Beale','Ratkowsky','Ball','PtBiserial',
+                'Frey','McClain','Dunn','Hubert','SDindex','Dindex','SDbw',
+                'gap_tib','gap_star','gap_max','Scott']
 
-        # Keep track of each opt_k column in the error_dataframe
-        # Create a loss object which keeps track of each instances error on each
-        # opt_k. opt_k is a optimum metric returned from any of the cluustering
-        # Algorithms
-        for hyper_set, subdict in hyper_dict.items():
-            #Keep track of the instance of the user
-            subdict['instance'] = instance_name
+        """keep track of all hyperparameter combinations. Each hyperparameter_set
+        is a set of by_size, clusterer, distance, reduce, n_components, indicy
+        hyperparameter_sets ~ [ frozenset({'8', False, 'MDS', 'euclidean', 'gap_max', 'ward.D'}),
+                               frozenset({'8', False, 'MDS', 'Scott', 'euclidean', 'ward.D'}),
+                               etc...]"""
+        hyperparameter_sets = []
+        for idx, record in enumerate(records):
 
-            for record in subdict['records']:
-                dataframe = record.dataframe
+            # Combine the indicy and hyperparameter dictionary in records
+            for indicy in indicies:
+                hyperparameter_set = frozenset((*record.hyper_dict.values(), indicy))
+                hyperparameter_sets.append(hyperparameter_set)
+
+            # Dont let hyperparameter_sets get too big
+            if idx % 10 == 0:
+                hyperparameter_sets = list(set(hyperparameter_sets))
+
+        # Get the final collection of hyperparameter sets
+        hyperparameter_sets = list(set(hyperparameter_sets))
+
+        """Aggregate predicted number of clusters for each hyperparameter_set
+        predicted_clusters ~ {frozenset({'8',False,'MDS','Dindex','euclidean','ward.D'}):[0 0,0,0],
+                              frozenset({'8',False,'MDS','SDbw','euclidean','ward.D'}):[93,71,46,12]}"""
+        predicted_clusters = {}
+        for idx, record in enumerate(records):
+            predicted_indicies = record.indicies_dictionary
+
+            # Collect predicted number of clusters for each indicy and
+            # aggregate to hyperparameter dictionary
+            for indicy in indicies:
+                predicted_k = predicted_indicies[indicy] # Integer or None
+                if predicted_k is None:
+                    # Dont count indicies that are None..
+                    continue
+
+                hyperparameter_set = frozenset((*record.hyper_dict.values(), indicy))
+                # Aggregate predictions under hyperparameter dictionaries
                 try:
-                    # Extract the correct number of clusters
-                    idx = dataframe[dataframe[sequence_tag] == instance_name].index
-                    subdict['correct_k'] = dataframe.loc[idx[0], 'correct_k']
+                    predicted_clusters[hyperparameter_set].append(predicted_k)
+                except KeyError:
+                    # The dictionary key is not created yet..
+                    predicted_clusters[hyperparameter_set] = [predicted_k]
 
-                except IndexError:
-                        continue
+        """Calculate loss metrics for each hyperparameter set"""
+        x = namedtuple('related_items', ['hyperparameter_set','predictions','correct_k','loss'])
+        best_losses = []
+        for hyperparameter_set, predictions in predicted_clusters.items():
+            # Calculate loss associated with
+            loss = self.calculate_loss(correct_k,
+                                       predictions,
+                                       error_weight=0.8,
+                                       variance_weight=0.2)
+            tup = x(hyperparameter_set, predictions, correct_k, loss)
+            best_losses.append(tup)
 
+        best_losses = sorted(best_losses, key=lambda tup: tup.loss)
 
-                # Add the number of clusters to the loss object
-                for opt_k in set(dataframe.columns).difference(set(non_opt_cols)):
-                    # Easier to access values corresponding to a database instance
-                    col_name = str(opt_k)
-
-                    # Predicted number of clusters
-                    clusters = dataframe.loc[idx[0], opt_k]
-
-                    # A failed/incomplete run should not be considered (aka 0)
-                    if clusters == 0:
-                        continue
-
-                    try:
-                        _loss = loss(clusters, None, None, None)
-                        hyper_dict[hyper_set][col_name].clusters.append(_loss.clusters)
-                    except KeyError:
-                        hyper_dict[hyper_set][col_name] = loss([_loss.clusters], None, None, None)
-
-            # Calculate relevant metrics for each database on each hyperparameter set
-            # Replace optimal_k calculations with errors (l2)
-            for opt_k in set(subdict.keys()).difference(set(non_opt_cols2)):
-
-                # Calculate the l2 norm (sum of squared error)
-                abs_error = abs(np.array(subdict[opt_k].clusters) - subdict['correct_k'])
-                l2norm = sum(abs_error**2)
-
-                # If there is only one prediction, then the variance = l2 norm
-                # so we dont over-penalize Predictions with multiple predictions
-                if len(subdict[opt_k].clusters) == 1:
-                    # Variance of predictions
-                    variance = l2norm
-
-                else:
-                    variance = np.var(np.array(subdict[opt_k].clusters))
-
-                # Custom loss to find the best clustering index
-                # basically, custom loss is a combination of the l2 norm error
-                # and variance of predictions
-                calc_loss = (l2norm * error_scale + variance *
-                             len(subdict[opt_k].clusters) * var_scale)
-                subdict[opt_k] = loss(subdict[opt_k].clusters,
-                                      l2norm,
-                                      variance*len(subdict[opt_k].clusters),
-                                      calc_loss)
-                losses.append(calc_loss)
-
-        #Get ready to sort on this named typle, containing keys of nested dictionaries
-        best_errors = []
-        ErrorTuple = namedtuple('errors', ['hyper_key','opt_key','loss'])
-
-        #Create tuples
-        for hyper_set, subdict in hyper_dict.items():
-            for opt_k in set(subdict.keys()).difference(set(non_opt_cols2)):
-                error = ErrorTuple(hyper_set, opt_k, subdict[opt_k].loss)
-                best_errors.append(error)
-        #Sort on tuple objects
-        best_errors = sorted(best_errors, key=lambda k: k.loss)
-
-        #Return the best predicted clustering index based on loss in namedtuple loss.loss
-        #Create a dictionary for returning
-
-        best_labels = {}
-        for i in range(1, len(best_errors)+1):
-            best_labels[i] = {}
-
-        for i in range(0, len(best_errors)):
-            error = best_errors[i]
-
-            # The "best" starts at 1, not 0
-            position = i + 1
-
-            by_size = bool(hyper_dict[error.hyper_key]['records'][0].hyper_dict['by_size'])
-            distance = hyper_dict[error.hyper_key]['records'][0].hyper_dict['distance']
-            clusterer = hyper_dict[error.hyper_key]['records'][0].hyper_dict['clusterer']
-            n_components = hyper_dict[error.hyper_key]['records'][0].hyper_dict['n_components']
-            reduce = hyper_dict[error.hyper_key]['records'][0].hyper_dict['reduce']
-            index = error.opt_key
-            loss = best_errors[i].loss
-
-            # Enforce conversion to strings
-            # The output should be strings for use in tensorflow conversion
-            # Of features to indicator columns or embedding columns
-            best_labels[position]['by_size'] = str(by_size)
-            best_labels[position]['distance'] = str(distance)
-            best_labels[position]['clusterer'] = str(clusterer)
-            best_labels[position]['n_components'] = str(n_components)
-            best_labels[position]['reduce'] = str(reduce)
-            best_labels[position]['index'] = str(index)
-            best_labels[position]['loss'] = str(loss)
-
-        return best_labels, hyper_dict
-
-    def dict2str(self, hyper_dict):
-        x = str()
-        for key, value in hyper_dict.items():
-            x = x + str(key) + ':' + str(value) + '\n'
-        return x
+        return best_losses
 
 
-def choose_best_hyper(labels, hyperparameter, top_pct=0.1, top_n=10, top_thresh=5):
-    """Choose the best hyperparameter given a set of labels from
-    JVWork_Labeling.ExtractLabels
+
+    def calculate_loss(self, correct_k, predicted_ks, error_weight, variance_weight):
+        """Calculate the custom loss metric
+        This loss metric is a combination of error and variance of predictions
+        Error is the difference between the correct number of clusters and the
+        predicted 'optimal' number of clusters. More formally, it is the
+        squarred error of the estimation vector and known vector
+        Variance in predictions happens when the 'optimal' number of clusters
+        predicted for a dataset changes (for example in kmeans clustering)
+        The loss metric is the weighted sum or error and variance
+
+        The loss metric is calculated as follows :
+        1. Calculate the squared error across all predictions. The squared
+        error is calculated as SE(A,θ)=∑ ||yn−fθ(xn)|| ** 2
+        2. Calculate the variance of predictions. The variance is calculated as
+        the average of squared deviations from the mean.
+        S^2 = \frac{\sum (x_i - \bar{x})^2}{n - 1}
+        3. Calculate the loss metric,
+        loss = squarred_error * error_weight + variance * variance_weight
+
+        inputs
+        -------
+        correct_k : (int) correct number of clusters for a dataset
+        predicted_ks : (list | iterable) predicted number of clusters for a
+        dataset. This argument can be iterable if there are multiple predictions
+        available on a dataset
+        error_weight : (float) between 0 and 1
+        variance_weight : (float) between 0 and 1
+        """
+
+        # Normalize weight in case they dont pass values 0-1 that sum to 1
+        weight = sum((error_weight, variance_weight))
+        error_weight = error_weight / weight
+        variance_weight = variance_weight / weight
+
+        # Calculate l2 norm of absolute error between correct number of clusters
+        # And predicted number of clusters
+        predicted_ks = np.array(predicted_ks)
+        squared_error = np.sum(np.square(predicted_ks - correct_k))
+
+        # Calculate variance of predictions
+        variance = np.var(predicted_ks)
+
+        # Custom loss metric calculation
+        custom_loss = (squared_error * error_weight + variance * variance_weight)
+
+        return custom_loss
+
+
+def choose_best_hyperparameter(labels, hyperparameter, top_pct=0.1, top_n=10, top_thresh=5):
+    """Choose the best hyperparameter given a set of labels from ExtractLabels
     inputs
     ------
     labels : a dictionary of labels
-    hyperparamter : name of hyperparamter in labels (must be a key in the labels
-    nested dictionary)
-    top_pct : percentage to choose from best labels
-    top_n : number to choose from best labels
-    top_thresh : error threshold for best labels
+    hyperparamter : (str) name of hyperparamter in labels. It must be a key
+        in the labels nested dictionary
+    top_pct : (float) percentage to choose from best labels
+    top_n : (int) number to choose from best labels
+    top_thresh : (float) error threshold for best labels
     output
     -------
-    hyperparameter : hyperparameter"""
+    hyperparameter : (str) hyperparameter"""
 
     def _counts(data):
         # Generate a table of sorted (value, frequency) pairs.
@@ -461,7 +456,7 @@ def choose_best_hyper(labels, hyperparameter, top_pct=0.1, top_n=10, top_thresh=
     return best_by_size
 
 
-def get_unique_labels(collection=None):
+def get_unique_labels():
     """ Retrieve all labels for later encoding
     Create a unique set of all labels on each hyperparameter
     input
@@ -472,56 +467,53 @@ def get_unique_labels(collection=None):
     unique_labels : a dictionary containing hyperparameter fields
     and their unique labels for each field"""
 
-
-    dat_file = r'.\data\unique_labels.dat'
+    dat_file = r'..\data\unique_labels.dat'
 
     if not os.path.exists(dat_file):
     # If the file does not exist
         hyperparameters = {}
 
-        for document in collection.find():
+        # Set up connection to database
+        Insert = extract.Insert(server_name='.\\DT_SQLEXPR2008',
+                                driver_name='SQL Server Native Client 10.0',
+                                database_name='Clustering')
 
-            best_hyper = document['best_hyper']
-            for key, value in best_hyper.items():
+        # Query database for unique values under hyperparameters table
+        sql_bysize = """SELECT DISTINCT by_size from hyperparameter"""
+        sql_clusterer = """SELECT DISTINCT clusterer from hyperparameter"""
+        sql_distance = """SELECT DISTINCT distance from hyperparameter"""
+        sql_reduce = """SELECT DISTINCT reduce from hyperparameter"""
+        sql_ncomponents = """SELECT DISTINCT n_components from hyperparameter"""
 
-                if isinstance(value, dict):
-                    try:
-                        new_set = set(list(value.values()))
-                        hyperparameters[key].update(new_set)
+        # Query database for unique indicies under clustering table
+        sql_indicies = """SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'clustering'"""
 
-                    except KeyError:
-                        new_set = set(list(value.values()))
-                        hyperparameters[key] = new_set
+        # Query
+        bysize = Insert.core_select_execute(sql_bysize)
+        bysize_vals = [x.by_size for x in bysize]
+        clusterer = Insert.core_select_execute(sql_clusterer)
+        clusterer_vals = [x.clusterer for x in clusterer]
+        distance = Insert.core_select_execute(sql_distance)
+        distance_vals = [x.distance for x in distance]
+        reduce = Insert.core_select_execute(sql_reduce)
+        reduce_vals = [x.reduce for x in reduce]
+        ncomponents = Insert.core_select_execute(sql_ncomponents)
+        ncomponents_vals = [x.n_components for x in ncomponents]
+        indicies = Insert.core_select_execute(sql_indicies)
+        indicies_vals = [ 'KL', 'CH', 'Hartigan', 'CCC', 'Marriot', 'TrCovW',
+                         'TraceW', 'Friedman', 'Rubin', 'Cindex',
+                         'DB', 'Silhouette', 'Duda', 'PseudoT2', 'Beale',
+                         'Ratkowsky', 'Ball', 'PtBiserial', 'Frey', 'McClain',
+                         'Dunn', 'Hubert', 'SDindex', 'Dindex', 'SDbw',
+                         'gap_tib', 'gap_star', 'gap_max', 'Scott']
 
-                elif isinstance(value, list): # Not dictionary
-                    try:
-                        new_set = set(value)
-                        hyperparameters[key].update(new_set)
 
-                    except KeyError:
-                        new_set = set(value)
-                        hyperparameters[key] = new_set
-
-                elif isinstance(value, str):
-                    try:
-                        new_set = set([value])
-                        hyperparameters[key].update(new_set)
-
-                    except KeyError:
-                        new_set = set([value])
-                        hyperparameters[key] = new_set
-
-                else:
-                    try:
-                        new_set = set([value])
-                        hyperparameters[key].update(new_set)
-
-                    except KeyError:
-                        new_set = set([value])
-                        hyperparameters[key] = new_set
-
-        for key, value in hyperparameters.items():
-            hyperparameters[key] = list(value)
+        # Construct a dicitonary of possible hyperparameters
+        hyperparameters['by_size'] = bysize_vals
+        hyperparameters['clusterer'] = clusterer_vals
+        hyperparameters['reduce'] = reduce_vals
+        hyperparameters['index'] = indicies_vals
+        hyperparameters['n_components'] = ncomponents_vals
 
         with open(dat_file, 'wb') as f:
             pickle.dump(hyperparameters, f)
@@ -533,18 +525,58 @@ def get_unique_labels(collection=None):
     return hyperparameters
 
 
+def save_unique_labels(unique_labels):
+    """Save all labels to text files for use in tensorflow
+    inputs
+    -------
+    unique_labels : (dict) with keys [by_size, clusterer, index, n_components,
+                                      reduce]"""
 
+    assert isinstance(unique_values, dict), 'unique_labels must be dictionary'
 
+    file_name_bysize = r'../data/vocab_bysize.txt'
+    file_name_clusterer = r'../data/vocab_clusterer.txt'
+    file_name_index = r'../data/vocab_index.txt'
+    file_name_n_components = r'../data/vocab_n_components.txt'
+    file_name_reduce = r'../data/vocab_reduce.txt'
+    file_name_all = r'../data/vocab_all.txt'
 
+    vocab_all = []
+    for key, value in unique_labels.items():
+        for vocab in value: # value is list
+            string_vocab.append(str(vocab))
 
+    with open(file_name_all, 'w') as f:
+        for vocab in vocab_all:
+            f.write(vocab)
+            f.write('\n')
 
+    with open(file_name_bysize, 'w') as f:
+        for vocab in unique_labels['by_size']:
+            f.write(str(vocab))
+            f.write('\n')
 
+    with open(file_name_clusterer, 'w') as f:
+        for vocab in unique_labels['clusterer']:
+            f.write(str(vocab))
+            f.write('\n')
 
+    with open(file_name_index, 'w') as f:
+        for vocab in unique_labels['index']:
+            f.write(str(vocab))
+            f.write('\n')
 
+    with open(file_name_n_components, 'w') as f:
+        for vocab in unique_labels['n_components']:
+            f.write(str(vocab))
+            f.write('\n')
 
+    with open(file_name_reduce, 'w') as f:
+        for vocab in unique_labels['reduce']:
+            f.write(str(vocab))
+            f.write('\n')
 
-
-
+    return None
 
 
 
