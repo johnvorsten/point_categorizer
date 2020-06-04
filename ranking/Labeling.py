@@ -58,6 +58,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 import numpy as np
 import pandas as pd
+import sqlalchemy
 
 # Local imports
 if __name__ == '__main__':
@@ -69,6 +70,10 @@ if __name__ == '__main__':
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
 from extract import extract
+from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev, Customers,
+                                              ClusteringHyperparameter)
+from clustering.accuracy_visualize import Record, get_records
+
 
 # Local declarations
 loss = namedtuple('loss',['clusters', 'l2error', 'variance', 'loss'])
@@ -300,7 +305,7 @@ class ExtractLabels():
                     predicted_clusters[hyperparameter_set] = [predicted_k]
 
         """Calculate loss metrics for each hyperparameter set"""
-        x = namedtuple('related_items', ['hyperparameter_set','predictions','correct_k','loss'])
+        x = namedtuple('related_items', ['hyperparameter_dict','predictions','correct_k','loss'])
         best_losses = []
         for hyperparameter_set, predictions in predicted_clusters.items():
             # Calculate loss associated with
@@ -308,7 +313,8 @@ class ExtractLabels():
                                        predictions,
                                        error_weight=0.8,
                                        variance_weight=0.2)
-            tup = x(hyperparameter_set, predictions, correct_k, loss)
+            hyperparameter_dict = self._hyperparameter_set_2_dict(hyperparameter_set)
+            tup = x(hyperparameter_dict, predictions, correct_k, loss)
             best_losses.append(tup)
 
         best_losses = sorted(best_losses, key=lambda tup: tup.loss)
@@ -365,95 +371,71 @@ class ExtractLabels():
         return custom_loss
 
 
-def choose_best_hyperparameter(labels, hyperparameter, top_pct=0.1, top_n=10, top_thresh=5):
-    """Choose the best hyperparameter given a set of labels from ExtractLabels
-    inputs
-    ------
-    labels : a dictionary of labels
-    hyperparamter : (str) name of hyperparamter in labels. It must be a key
-        in the labels nested dictionary
-    top_pct : (float) percentage to choose from best labels
-    top_n : (int) number to choose from best labels
-    top_thresh : (float) error threshold for best labels
-    output
-    -------
-    hyperparameter : (str) hyperparameter"""
 
-    def _counts(data):
-        # Generate a table of sorted (value, frequency) pairs.
-        table = Counter(iter(data)).most_common()
-        if not table:
-            return table
-        # Extract the values with the highest frequency.
-        maxfreq = table[0][1]
-        for i in range(1, len(table)):
-            if table[i][1] != maxfreq:
-                table = table[:i]
-                break
-        return table
+    def _hyperparameter_set_2_dict(self, hyperparameter_set):
+        """self.calc_labels gets a unique list of hyerparameter sets by using
+        the values of a dictionary. This function converts a frozenset
+        of hyperparameter values back into a dictionary. It relies on each
+        value in hyperparameter_set to not overlap with other categories.
+        Here are the collections of hyperparameter values ->
+        by_size = [True, False]
+        clusterer = ['average','kmeans','ward.D','Ward.D2']
+        index = ['KL','CH','Hartigan','CCC','Marriot','TrCovW',
+                'TraceW','Friedman','Rubin','Cindex','DB','Silhouette',
+                'Duda','PseudoT2','Beale','Ratkowsky','Ball','PtBiserial',
+                'Frey','McClain','Dunn','Hubert','SDindex','Dindex','SDbw',
+                'gap_tib','gap_star','gap_max','Scott']
+        n_components = ['0','2','8']
+        reduce = ['0','MDS','TSNE']
+        output
+        -------
+        hyperparameter_dict : (dict) of keys representing hyperparameter name
+            and values representing the hyperparameter value
+            {n_components:'8',
+             by_size:False,
+             reduce:'MDS',
+             index:'SDbw',
+             'euclidean', 'ward.D'}
+        """
 
-    def get_top_n(labels, top_n, hyperparameter):
-        # Top n
-        top_n_obs = []
+        by_size = [True, False]
+        clusterer = ['average','kmeans','ward.D','ward.D2']
+        index = ['KL','CH','Hartigan','CCC','Marriot','TrCovW',
+                'TraceW','Friedman','Rubin','Cindex','DB','Silhouette',
+                'Duda','PseudoT2','Beale','Ratkowsky','Ball','PtBiserial',
+                'Frey','McClain','Dunn','Hubert','SDindex','Dindex','SDbw',
+                'gap_tib','gap_star','gap_max','Scott']
+        n_components = ['0','2','8']
+        reduce = ['0','MDS','TSNE']
 
-        if len(labels) / top_n <= 3:
-            # Small Datasets
-            top_n = max(3, int((len(labels)+1)*0.2))
+        hyperparameter_dict = {}
+        hyperparameter_dict['distance'] = 'euclidean'
 
-            for key in range(1, top_n+1):
-                top_n_obs.append(labels[str(key)][hyperparameter])
+        for value in list(hyperparameter_set):
+            # Handle by_size
+            if isinstance(value, bool):
+                hyperparameter_dict['by_size'] = value
+            elif value == 'euclidean':
+                continue
+            # Common case :(
+            elif value == '0':
+                hyperparameter_dict['n_components'] = '0'
+                hyperparameter_dict['reduce'] = '0'
+            # Handle clusterer
+            elif clusterer.__contains__(value):
+                hyperparameter_dict['clusterer'] = value
+            # Handle n_components
+            elif n_components.__contains__(value):
+                hyperparameter_dict['n_components'] = value
+            # Handle reduce
+            elif reduce.__contains__(value):
+                hyperparameter_dict['reduce'] = value
+            # Handle index
+            else:
+                hyperparameter_dict['index'] = value
 
-        else:
-            for key in range(1, top_n+1):
-                top_n_obs.append(labels[str(key)][hyperparameter])
+        return hyperparameter_dict
 
-        return top_n_obs
-
-    def get_top_pct(labels, top_pct, hyperparameter):
-        # 10% Percentile
-        top_pct_obs = []
-
-        top_pct_idx = max(3, int((len(labels)+1)*top_pct))
-        for key in range(1, top_pct_idx+1):
-            top_pct_obs.append(labels[str(key)][hyperparameter])
-
-        return top_pct_obs
-
-    def get_top_thresh(labels, top_thresh, hyperparameter):
-        # Error Threshold
-        top_thresh_obs = []
-
-        for key, value in labels.items():
-            if value['loss'] <= top_thresh:
-                top_thresh_obs.append(value[hyperparameter])
-
-        # Add top 5% in case none fall within threshold
-        if len(top_thresh_obs) == 0:
-            top_thresh_idx = max(3, int((len(labels)+1)*0.05))
-            for key in range(1, top_thresh_idx+1):
-                top_thresh_obs.append(labels[str(key)][hyperparameter])
-
-        return top_thresh_obs
-
-    # Calculate mode of each of percentile, threshold, and top_n
-    top_pct_mode = _counts(
-            get_top_pct(labels, top_pct, hyperparameter))[0][0]
-    top_n_mode = _counts(get_top_n(
-            labels, top_n, hyperparameter))[0][0]
-    top_thresh_mode = _counts(
-            get_top_thresh(labels, top_thresh, hyperparameter))[0][0]
-
-    best_by_size = []
-    best_by_size.append(top_pct_mode)
-    best_by_size.append(top_n_mode)
-    best_by_size.append(top_thresh_mode)
-
-    if len(best_by_size) == 1:
-        best_by_size = _counts(best_by_size)[0][0]
-    else:
-        return top_thresh_mode
-
-    return best_by_size
 
 
 def get_unique_labels():
@@ -514,6 +496,7 @@ def get_unique_labels():
         hyperparameters['reduce'] = reduce_vals
         hyperparameters['index'] = indicies_vals
         hyperparameters['n_components'] = ncomponents_vals
+        hyperparameters['distance'] = distance_vals
 
         with open(dat_file, 'wb') as f:
             pickle.dump(hyperparameters, f)
@@ -532,19 +515,20 @@ def save_unique_labels(unique_labels):
     unique_labels : (dict) with keys [by_size, clusterer, index, n_components,
                                       reduce]"""
 
-    assert isinstance(unique_values, dict), 'unique_labels must be dictionary'
+    assert isinstance(unique_labels, dict), 'unique_labels must be dictionary'
 
     file_name_bysize = r'../data/vocab_bysize.txt'
     file_name_clusterer = r'../data/vocab_clusterer.txt'
     file_name_index = r'../data/vocab_index.txt'
     file_name_n_components = r'../data/vocab_n_components.txt'
     file_name_reduce = r'../data/vocab_reduce.txt'
+    file_name_distance = r'../data/vocab_distance.txt'
     file_name_all = r'../data/vocab_all.txt'
 
     vocab_all = []
     for key, value in unique_labels.items():
         for vocab in value: # value is list
-            string_vocab.append(str(vocab))
+            vocab_all.append(str(vocab))
 
     with open(file_name_all, 'w') as f:
         for vocab in vocab_all:
@@ -576,10 +560,118 @@ def save_unique_labels(unique_labels):
             f.write(str(vocab))
             f.write('\n')
 
+    with open(file_name_reduce, 'w') as f:
+        for vocab in unique_labels['distance']:
+            f.write(str(vocab))
+            f.write('\n')
+
     return None
 
 
+def get_hyperparameters_serving():
+    """The ranking model imputs a tensor of context features and per-item features
+    The per-item features are clusterering hyperparameters turned to indicator
+    columns.
+    In order to do prediction on a new database, I must input the per-item
+    clustering hyperparameters into the model.
+    In training, I have been doing this with actual recorded hyperparameters
+    For prediction I must generate the clustering hyperparameters - the must
+    be known before
+    This module will generate an array of clustering hyperparameters like :
+    [['False', 'kmeans', '8', 'TSNE', 'optk_TSNE_gap*_max'],
+     ['True', 'ward.D', '8', 'MDS', 'SDbw'],
+     [...]]
+    This can be fed to tf.feature_columns or TFRecords in order to generate
+    inputs to a ranking model for prediction
+    """
 
+    # Instantiate a class for reading SQL data
+    Insert = extract.Insert(server_name='.\\DT_SQLEXPR2008',
+                            driver_name='SQL Server Native Client 10.0',
+                            database_name='Clustering')
+
+    """Get most frequent hyperparameter occurences for each customer
+    Customer IDs are used to retrieve clustering results for each customer"""
+    sel = sqlalchemy.select([Customers.id])
+    customer_ids = Insert.core_select_execute(sel)
+
+    # Keep track of the best clustering hyperparameters for all datasets
+    all_labels = []
+
+    for _id in customer_ids:
+        customer_id = _id.id
+
+        """Get primary key of clusterings related to customer
+        Each primary key is used to create Record objects with get_records"""
+        sel = sqlalchemy.select([Clustering.id, Clustering.correct_k])\
+            .where(Clustering.customer_id.__eq__(customer_id))
+        res = Insert.core_select_execute(sel)
+        primary_keys = [x.id for x in res]
+
+        # Create records for feeding while calculating the best labels
+        records = get_records(primary_keys)
+        if records.__len__() <= 1:
+            # Not enough examples to append
+            continue
+        sel = sqlalchemy.select([Clustering.correct_k])\
+            .where(Clustering.customer_id.__eq__(customer_id))\
+            .limit(1)
+        res = Insert.core_select_execute(sel)
+        correct_k = res[0].correct_k
+        """best_labels is a list of namedtuple objects
+        each tuple has a name hyperparameter_dict which contains hyperparameters
+        used to cluster that customers database
+        A unique list of clustering hyperparameters will be used for model serving"""
+        best_labels = ExtractLabels.calc_labels(records, correct_k, error_scale=0.8, var_scale=0.2)
+
+        """Keep the 10 best best_lables for each customer_id
+        The idea is we should predict between some of the best available
+        hyperparameters for ranking model"""
+        if best_labels.__len__() > 10:
+            for i in range(0,10):
+                all_labels.append(best_labels[i])
+        else:
+            n = int(best_labels.__len__() * 0.5)
+            for i in range(n):
+                all_labels.append(best_labels[i])
+
+    """Each hyperparameter_dict in all_labels is not unique
+    To create a unique set of dictionary values use the frozenset object
+    The frozenset is hashable (unlike normal set) which means it can be used
+    in Counter objects"""
+    hyperparams = []
+    for x in all_labels:
+        y = x.hyperparameter_dict # Dictionary
+        hyperparams_set = frozenset(y.values())
+        hyperparams.append(hyperparams_set)
+
+    # Counter objects create a set from hyperparams
+    c = Counter(hyperparams)
+    c.most_common()
+
+    """Convert to dictionary and save in list
+    Convert hyperparameter frozenset back to a nomral dictionary"""
+    hyperparameters_serving = []
+    for x in c.keys():
+        hyperparameter_dict = ExtractLabels._hyperparameter_set_2_dict(x)
+        hyperparameters_serving.append(hyperparameter_dict)
+
+    return hyperparameters_serving
+
+def save_hyperparameters_serving(hyperparameters_serving):
+
+    dat_file = r'../data/serving_hyperparameters.dat'
+    with open(dat_file, 'wb') as f:
+        pickle.dump(hyperparameters_serving, f)
+
+    return dat_file
+
+def open_hyperparameters_serving(dat_file=r'../data/serving_hyperparameters.dat'):
+
+    with open(dat_file, 'rb') as f:
+        hyperparameters_serving = pickle.load(f)
+
+    return hyperparameters_serving
 
 
 

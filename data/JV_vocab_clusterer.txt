@@ -1,4 +1,0 @@
-ward.D
-kmeans
-ward.D2
-average

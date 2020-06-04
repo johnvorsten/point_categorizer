@@ -33,6 +33,8 @@ combinations I calculated the dataset to be
 import pickle
 import os
 import sys
+import pickle
+    from collections import Counter
 
 #Third party imports
 from pymongo import MongoClient
@@ -40,6 +42,9 @@ import sqlalchemy
 import numpy as np
 import pandas as pd
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder
+from bson.binary import Binary
+# import tensorflow as tf
 
 #Local Imports
 # from Labeling import ExtractLabels
@@ -55,11 +60,12 @@ if __name__ == '__main__':
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
 
-from ranking import Labeling, get_unique_labels, save_unique_labels
+from ranking import Labeling
 from transform import transform_pipeline
 from extract import extract
 from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev, Customers,
-                                              ClusteringHyperparameter, Labeling)
+                                              ClusteringHyperparameter)
+from extract.SQLAlchemyDataDefinition import Labeling as SQLTableLabeling
 from clustering.accuracy_visualize import Record, get_records
 
 # Local declarations
@@ -102,7 +108,7 @@ def test_get_database_features():
                                                             instance_name=customer_name)
     return database_features
 
-#%%
+
 
 def test_get_database_labels():
 
@@ -131,111 +137,35 @@ def test_get_database_labels():
 
 def test_get_unique_labels():
 
-    unique_labels = get_unique_labels()
+    unique_labels = Labeling.get_unique_labels()
 
     return unique_labels
 
-#%% Save encoded labels
-pass
 
-from Labeling import get_unique_labels
+def test_get_best_hyperparameter_for_dataset():
 
-from pymongo import MongoClient
-from bson.binary import Binary
-import pickle
-from sklearn.preprocessing import OneHotEncoder
-import numpy as np
-
-unique_labels = get_unique_labels()
-client = MongoClient('localhost', 27017)
-db = client['master_points']
-collection = db['raw_databases']
-
-# TODO index, clusterer
-
-clust_uniq = sorted(unique_labels['clusterer'])
-ind_uniq = sorted(unique_labels['index'])
-
-# Separate clusterer and indicies
-one_hot = OneHotEncoder(categories=[clust_uniq, ind_uniq])
-
-
-for document in collection.find():
-    # Extract saved labels
-    clust_labels = list(document['best_hyper']['clusterer']) # Maintains order
-    idx_labels = list(document['best_hyper']['index'])
-
-    # shape = [n_examples, 2]
-    labels_array = np.array([clust_labels, idx_labels]).transpose()
-
-    encoded = one_hot.fit_transform(labels_array).toarray()
-    categories = one_hot.categories_
-    encoded_pickle = Binary(pickle.dumps(encoded, protocol=2), subtype=128)
-    cat_pickle = Binary(pickle.dumps(categories, protocol=2), subtype=128)
-
-    collection.update_one({'_id':document['_id']},
-                           {'$set':{'encoded_hyper.clust_index.cat':cat_pickle,
-                                    'encoded_hyper.clust_index.val':encoded_pickle}})
-
-#%% Save a vocabulary of all hyperparameter tags
-
-def test_save_unique_labels():
-
-    save_unique_labels()
+    hyperparameter_name = 'by_size'
 
     return None
 
 
-#%% Save a list of clustering hyperparameters for later use in model serving
-"""The ranking model imputs a tensor of context features and per-item features
-The per-item features are clusterering hyperparameters turned to indicator
-columns.
-In order to do prediction on a new database, I must input the per-item
-clustering hyperparameters into the model.
-In training, I have been doing this with actual recorded hyperparameters
-For prediction I must generate the clustering hyperparameters - the must
-be known before
-This module will generate an array of clustering hyperparameters like :
-[['False', 'kmeans', '8', 'TSNE', 'optk_TSNE_gap*_max'],
- ['True', 'ward.D', '8', 'MDS', 'SDbw'],
- [...]]
-This can be fed to tf.feature_columns or TFRecords in order to generate
-inputs to a ranking model for prediction
-"""
+def test_save_unique_labels():
+    """Save a vocabulary of all hyperparameter tags"""
 
-document = collection.find_one()
+    unique_labels = test_get_unique_labels()
+    Labeling.save_unique_labels(unique_labels)
 
-hyper_labels = document['hyper_labels']
-_file_name = r'data/JV_default_serving_peritem_features'
-peritem_features = []
-
-for key, subdict in hyper_labels.items():
-    peritem_dict = {}
-
-    by_size = str(subdict['by_size'])
-    clusterer = str(subdict['clusterer'])
-    index = str(subdict['index'])
-    n_components = str(subdict['n_components'])
-    reduce = str(subdict['reduce'])
-
-    # Add peritem features to dictionary
-    peritem_dict['by_size'] = by_size
-    peritem_dict['n_components'] = n_components
-    peritem_dict['reduce'] = reduce
-    peritem_dict['clusterer'] = clusterer
-    peritem_dict['index'] = index
-
-    peritem_features.append(peritem_dict)
-
-# Write pickled list
-with open(_file_name, 'wb') as f:
-    pickle.dump(peritem_features, f)
-
-# Test pickled list
-with open(_file_name, 'rb') as f:
-    test_list = pickle.load(f)
-
-test_list == peritem_features # True
+    return None
 
 
+def test_get_hyperparameters_serving():
 
+    hyperparameters_serving = get_hyperparameters_serving()
+
+    # Optionally save hyperparameters_serving
+    # save_hyperparameters_serving(hyperparameters_serving)
+
+    # Optinoally read hyperparameters from file
+    # hyperparameters_serving = open_hyperparameters_serving()
+
+    return hyperparameters_serving

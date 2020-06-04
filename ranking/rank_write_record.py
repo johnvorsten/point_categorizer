@@ -69,6 +69,7 @@ def _int64_feature(value):
   return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
 
 
+
 def tf_feature_mapper(value, dtype=None):
     # Float -> tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
     # int -> tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
@@ -108,6 +109,8 @@ def tf_feature_mapper(value, dtype=None):
         return dict_mapper[expected_type]([value])
 
     return
+
+
 
 def relevance_scorer(relevance, n_bins=None, reciprocal=None):
     """Scale labels to a range (min,10] and invert the list to satisfy

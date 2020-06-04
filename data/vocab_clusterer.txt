@@ -1,0 +1,4 @@
+average
+kmeans
+ward.D
+Ward.D2
