@@ -43,12 +43,12 @@ Save databases from server to local machine
 
 def main_copy_to_local():
 
-        search_directory = r"R:\JOBS"
-        save_directory = r"D:\Z - Saved SQL Databases"
+    search_directory = r"R:\JOBS"
+    save_directory = r"D:\Z - Saved SQL Databases"
 
-        Extract.search_and_save(search_directory, save_directory)
+    Extract.search_and_save(search_directory, save_directory)
 
-        return None
+    return None
 
 #%% Main function
 """Extract infromation from distributed databases and save all information

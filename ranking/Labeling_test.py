@@ -47,10 +47,6 @@ from bson.binary import Binary
 # import tensorflow as tf
 
 #Local Imports
-# from Labeling import ExtractLabels
-# from UnsupervisedCluster import JVClusterTools
-# from JVWork_WholeDBPipeline import JVDBPipe
-# from JVWork_AccuracyVisual import import_error_dfs
 if __name__ == '__main__':
     # Remove the drive letter on windows
     _CWD = os.path.splitdrive(os.getcwd())[1]

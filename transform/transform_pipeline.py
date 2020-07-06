@@ -24,65 +24,48 @@ processing data. This module contains :
 
 Example usage :
 
-#Local Imports
-from JVWork_UnClusterAccuracy import AccuracyTest
-from JVWork_UnsupervisedCluster import JVClusterTools
-from JVWork_WholeDBPipeline import JVDBPipe
-
-#Instantiate classes
-myTest = AccuracyTest() #For performing unsupervised clustering
-myClustering = JVClusterTools() #For retrieving data
-myDBPipe = JVDBPipe() #Class in this module
-
-# Optionally, create an iterator over databases on disc
-_master_pts_db = r"D:\Z - Saved SQL Databases\master_pts_db.csv"
-my_iter = myClustering.read_database_set(_master_pts_db)
-
-
-sequence_tag = 'DBPath'
-_, database = next(my_iter)
-error_df = myTest.error_df
-
-# Create a pipeline for cleaning the raw dataset
-clean_pipe = myDBPipe.cleaning_pipeline(remove_dupe=False,
-                                      replace_numbers=False,
-                                      remove_virtual=True)
-
-# Apply cleaning pipeline
-df_clean = clean_pipe.fit_transform(database)
-
-# Create a pipeline for encoding text features
-text_pipe = myDBPipe.text_pipeline(vocab_size='all', attributes='NAME',
-                                   seperator='.')
-
-# Extract text features
-X = text_pipe.fit_transform(df_clean).toarray()
-
-# Tip : examine the word vocabulary
-word_vocab = text_pipe.named_steps['WordDictToSparseTransformer'].vocabulary #Total dictionary of words in dataset
-
-# Dataframe with each column naming the encoded word (feature).
-# Instances are along (axis 0)
-df_text = pd.DataFrame(X, columns=_word_vocab)
-
-
 @author: z003vrzk
 """
 
 # Python imports
 from pathlib import Path
 import re
-from collections import Counter
+from collections import Counter,namedtuple
 import statistics
+from statistics import StatisticsError
+import pickle
+import os, sys
 
 # Third party imports
 import pandas as pd
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.feature_extraction.text import CountVectorizer
 from scipy.sparse import csr_matrix
+from sklearn.feature_extraction.text import CountVectorizer
 import numpy as np
+import sqlalchemy
+from sqlalchemy.sql import text as sqltext
 
+# Local imports
+if __name__ == '__main__':
+    # Remove the drive letter on windows
+    _CWD = os.path.splitdrive(os.getcwd())[1]
+    _PARTS = _CWD.split(os.sep)
+    # Project dir is one level above cwd
+    _PROJECT_DIR = os.path.join(os.sep, *_PARTS[:-1])
+    if _PROJECT_DIR not in sys.path:
+        sys.path.insert(0, _PROJECT_DIR)
+
+from extract.SQLAlchemyDataDefinition import TypesCorrection
+from extract import extract
+from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev,
+                          Customers, ClusteringHyperparameter, Labeling)
+
+Insert = extract.Insert(server_name='.\\DT_SQLEXPR2008',
+                        driver_name='SQL Server Native Client 10.0',
+                        database_name='Clustering')
 
 #%%
 
@@ -99,16 +82,32 @@ class RemoveAttribute(BaseEstimator, TransformerMixin):
         X = X.drop(columns=self.columns)
         return X
 
+
 class DataFrameSelector(BaseEstimator, TransformerMixin):
 
     def __init__(self, attributeNames):
         self.attributeNames = attributeNames
+        return None
 
     def fit(self, X, y=None):
         return self
 
     def transform(self, X, y=None):
         return X[self.attributeNames].values
+
+
+class ArrayResize(BaseEstimator, TransformerMixin):
+
+    def __init__(self, shape):
+        self.shape = shape
+        return None
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        return X.reshape(self.shape)
+
 
 class TextCleaner(BaseEstimator, TransformerMixin):
 
@@ -120,6 +119,7 @@ class TextCleaner(BaseEstimator, TransformerMixin):
         self.NUMBERS_RE = re.compile('[0-9]')
         self.columns = columns
         self.replace_numbers = replace_numbers
+        return None
 
     def fit(self, X, y=None):
         return self
@@ -141,26 +141,29 @@ class TextCleaner(BaseEstimator, TransformerMixin):
             text = self.NUMBERS_RE.sub('', text)
         return text
 
+
 class SetDtypes(BaseEstimator, TransformerMixin):
 
     def __init__(self, type_dict):
+        """
+        inputs
+        ------
+        type_dict : (dict) where keys are column names and values are data types
+        Example
+        type_dict = {'col1':int,'col2':str,'col3':np.int32}"""
         self.type_dict = type_dict
+        return None
 
     def fit(self, X, y=None):
         return self
 
     def transform(self, X, y=None):
 
-        for idx in X['INITVALUE'].index:
-            try:
-                X.at[idx, 'INITVALUE'] = float(X.at[idx, 'INITVALUE'])
-            except:
-                X.loc[idx, 'INITVALUE'] = 0
-
         for col, my_type in self.type_dict.items():
-            X[col].astype(my_type)
+            X[col] = X[col].astype(my_type)
 
         return X
+
 
 class RemoveNan(BaseEstimator, TransformerMixin):
 
@@ -175,20 +178,42 @@ class RemoveNan(BaseEstimator, TransformerMixin):
         for col, method in self.type_dict.items():
 
             if method == 'remove':
-                X.dropna(axis=0, subset=[col], inplace=True)
+                X = X.dropna(axis=0, subset=[col])
             elif method == 'empty':
-                X[col].fillna(value='', axis=0, inplace=True)
+                X[col] = X[col].fillna(value='', axis=0)
             elif method == 'zero':
-                X[col].fillna(value=0, axis=0, inplace=True)
+                X[col] = X[col].fillna(value=0, axis=0)
             elif method == 'mode':
                 col_mode = X[col].mode()[0]
-
-                X[col].fillna(value=col_mode, axis=0, inplace=True)
+                X[col] = X[col].fillna(value=col_mode, axis=0)
             else:
-                X[col].fillna(value=method, axis=0, inplace=True)
+                X[col] = X[col].fillna(value=method, axis=0)
 
         X.reset_index(drop=True, inplace=True)
         return X
+
+
+class ReplaceNone(BaseEstimator, TransformerMixin):
+
+    def __init__(self, columns):
+        """Fill None values with a string 'None'
+        inputs
+        -------
+        columns : (list) of string denoting column names in X"""
+        self.columns = columns
+        return None
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        """Note - pd.DataFrame.fillna() will replace python None objects as
+        well as np.nan values"""
+        for col in self.columns:
+            X[col].fillna(value='None', axis=0, inplace=True)
+
+        return X
+
 
 class UnitCleaner(BaseEstimator, TransformerMixin):
 
@@ -199,20 +224,16 @@ class UnitCleaner(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X, y=None):
+        unit_dict = self.unit_dict
 
-        for old_unit, new_unit in self.unit_dict.items():
-            indicies = X.index[X['DEVUNITS'] == old_unit].tolist()
-            X.loc[indicies, 'DEVUNITS'] = new_unit
+        for old_unit, new_unit in unit_dict.items():
+            # Match the whole string - case insensitive
+            reg_str = r'(?i)^' + re.escape(old_unit) + '$'
+            X['DEVUNITS'] = X['DEVUNITS'].replace(to_replace=reg_str,
+                                                  value=new_unit,
+                                                  regex=True)
 
         return X
-
-#class OrderedCounter(Counter, dict):
-#    'Counter that remembers the order elements are first encountered'
-#    def __repr__(self):
-#        return '%s(%r)' % (self.__class__.__name__, dict(self))
-#
-#    def __reduce__(self):
-#        return self.__class__, (dict(self),)
 
 
 class TextToWordDict(BaseEstimator, TransformerMixin):
@@ -221,15 +242,15 @@ class TextToWordDict(BaseEstimator, TransformerMixin):
         """parameters
         -------
         seperator : (str or list of str) seperator between each text instance.
-        Used in re.split()
+            Used in re.split()
         heirarchial_weight_word_pattern : (bool) setting this to True will
-        weight each word by the order that it appears in the input sequence.
-        For example, the word phrase 'foo.bar.baz.fizz' will be given
-        counts that relate inversely to their position in the sequence. The
-        resulting word count will be a counter object of
-        Counter({'foo': 4, 'bar': 2, 'baz': 1, 'fizz': 1}). If used with
-        the text_pipeline or WordDictToSparseTransformer this will be
-        encoded into the array [4,3,2,1].
+            weight each word by the order that it appears in the input sequence.
+            For example, the word phrase 'foo.bar.baz.fizz' will be given
+            counts that relate inversely to their position in the sequence. The
+            resulting word count will be a counter object of
+            Counter({'foo': 4, 'bar': 2, 'baz': 1, 'fizz': 1}). If used with
+            the text_pipeline or WordDictToSparseTransformer this will be
+            encoded into the array [4,3,2,1].
         """
         self.seperator = seperator
         self.heirarchial_weight_word_pattern = heirarchial_weight_word_pattern
@@ -250,7 +271,11 @@ class TextToWordDict(BaseEstimator, TransformerMixin):
             word_length = len(re.split(regex_pattern, point_name))
             word_lengths.append(word_length)
 
-        word_length_mode = statistics.mode(word_lengths)
+        try:
+            word_length_mode = statistics.mode(word_lengths)
+        except StatisticsError:
+            c = Counter(word_lengths)
+            word_length_mode = c.most_common(1)[0][0]
 
         # Create counter dictionary to save word counts
         for point_name in X:
@@ -280,17 +305,19 @@ class TextToWordDict(BaseEstimator, TransformerMixin):
 
         return np.array(X_ListDictionary)
 
+
 class WordDictToSparseTransformer(BaseEstimator, TransformerMixin):
 
-    def __init__(self, vocabulary_size = 'all'):
+    def __init__(self, vocabulary_size='all'):
         """parameters
         -------
         vocabulary_size : int or 'all'. int will return specified size. 'all'
         will return all unique words available"""
         self.vocabulary_size = vocabulary_size
+        return None
 
     def fit(self, X, y=None):
-        #Do stuff : get words in dictionary and save in master dictionary
+
         self.master_dict = {}
 
         for counterObject in X:
@@ -314,8 +341,8 @@ class WordDictToSparseTransformer(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X, y=None):
-        #Do stuff : iterate through each counter object in the [Counter({})] passed to this transformer
-        #For each item in the list, output a sparse matrix based on # of words that match the master dict
+        # iterate through each counter object in the [Counter({})] passed to this transformer
+        # For each item in the list, output a sparse matrix based on # of words that match the master dict
         row_ind = []
         col_ind = []
         data = []
@@ -332,29 +359,29 @@ class WordDictToSparseTransformer(BaseEstimator, TransformerMixin):
 
         return csr_matrix((data, (row_ind, col_ind)), shape=(len(X), self.vocabulary_size+1))
 
+
 class DuplicateRemover(BaseEstimator, TransformerMixin):
 
     def __init__(self, dupe_cols, remove_dupe=True):
+        """
+        inputs
+        -------
+        dupe_cols : (list) of string where each string is a column name in
+            the dataframe. Where the column has duplicated values in its index
+            those rows / index will be removed
+        remove_dup : (bool) to remove duplicates from the columns in dupe_cols
+
+        outputs
+        -------
+        X : (pd.DataFrame) with duplicate"""
         assert type(dupe_cols) == list, 'dupe_cols must be list'
         self.dupe_cols = dupe_cols
         self.remove_dupe = remove_dupe
+        return None
 
     def fit(self, X, y=None):
-        #Find all duplicates in column described
-        self.master_dict = {}
+        # Nothing
 
-        #Create Dictionary
-        for col in self.dupe_cols:
-            for word in X[col]:
-                if self.master_dict.__contains__(word):
-                    self.master_dict[word] += 1
-                else:
-                    self.master_dict[word] = 1
-
-        self.repeats = []
-        for key, count in self.master_dict.items():
-            if count >= 2:
-                self.repeats.append(key)
         return self
 
     def transform(self, X, y=None): #Delete repeats
@@ -362,13 +389,50 @@ class DuplicateRemover(BaseEstimator, TransformerMixin):
         if self.remove_dupe:
 
             for col in self.dupe_cols:
-                for repeat in self.repeats:
-                    #TODO Should i prioritize indicies that dont have NETDEV to be deleted?
-                    indicies = np.where(X[col] == repeat)[0]
-                    X.drop(index=indicies[1:], axis=0, inplace=True)
+                duplicate_indicies = self.get_duplicate_indicies(X, col)
+                if len(duplicate_indicies) == 0:
+                    # There are no duplicates found
+                    continue
+                X.drop(index=duplicate_indicies, axis=0, inplace=True)
+                # Reset index so we can remove rows from multiple iterations
+                # Of columns
+                X.reset_index(drop=True, inplace=True)
 
-            X.reset_index(drop=True, inplace=True)
         return X
+
+    def get_duplicate_indicies(self, X, column):
+        """Given a dataframe and column name find the duplicate values
+        in the column
+        inputs
+        -------
+        column : (str) name of column
+        X : (pd.DataFrame) dataframe to find duplicates in
+        output
+        -------
+        duplicates : (list) of duplicate values in a column"""
+
+        duplicates = []
+        counts = {}
+
+        for index, value in X[column].iteritems():
+            try:
+                counts[value] += 1
+            except:
+                counts[value] = 1
+
+        for value, count in counts.items():
+            if count >= 2:
+                indicies = np.where(X[column] == value)[0]
+                duplicates.append(indicies)
+
+        # Flatten the duplicate indicies
+        if len(duplicates) >= 1:
+            duplicate_indicies = np.hstack(duplicates)
+        else:
+            duplicate_indicies = duplicates
+
+        return duplicate_indicies
+
 
 class VirtualRemover(BaseEstimator, TransformerMixin):
 
@@ -382,12 +446,17 @@ class VirtualRemover(BaseEstimator, TransformerMixin):
     def transform(self, X, y=None): #Delete repeats
 
         if self.remove_virtual:
+            # Check for both bool and str data types depeneding
+            # On how data enters the stream
+            bool_indicies = np.where(X['VIRTUAL'] == True)[0]
+            str_indicies = np.where(X['VIRTUAL'] == 'True')[0]
+            indicies = np.concatenate((bool_indicies, str_indicies), axis=0)
 
-            indicies = np.where(X['VIRTUAL'] == True)[0]
             X.drop(index=indicies, axis=0, inplace=True)
-
             X.reset_index(drop=True, inplace=True)
+
         return X
+
 
 #%%
 
@@ -410,11 +479,13 @@ class JVDBPipe():
 
         self._maybe_drop_attr = ['SLOPE', 'INTERCEPT']
 
-        self._text_attrs = ['NAME','DESCRIPTOR','TYPE','FUNCTION','SYSTEM','SENSORTYPE','DEVUNITS']
+        self._text_attrs = ['NAME','DESCRIPTOR','TYPE','FUNCTION','SYSTEM',
+                            'SENSORTYPE','DEVUNITS']
 
-        self._type_dict = {'NAME':str, 'NETDEVID':str, 'DESCRIPTOR':str, 'INITVALUE':float,'ALARMTYPE':str,
-                      'FUNCTION':str, 'VIRTUAL':bool,'SYSTEM':str,'CS':str,'SENSORTYPE':str,
-                      'DEVUNITS':str}
+        self._type_dict = {'NAME':str, 'NETDEVID':str, 'DESCRIPTOR':str,
+                           'INITVALUE':float,'ALARMTYPE':str,'FUNCTION':str,
+                           'VIRTUAL':bool,'SYSTEM':str,'CS':str,
+                           'SENSORTYPE':str, 'DEVUNITS':str}
 
         """How to deal with nan's -
         remove : remove the whole row
@@ -699,91 +770,28 @@ class Transform():
         inputs
         -------
         None
-
-        Initialization attributes descriptions
-
-        These attributes are not deemed useful for clustering and will be
-        dropped
-        self._drop_attributes = ['CTSYSNAME', 'TMEMBER', 'ALARMHIGH', 'ALARMLOW',
-                           'COMBOID', 'PROOFPRSNT', 'PROOFDELAY', 'NORMCLOSE', 'INVERTED',
-                            'LAN', 'DROP', 'POINT', 'ADDRESSEXT', 'DEVNUMBER', 'CTSENSTYPE',
-                             'CONTRLTYPE', 'UNITSTYPE', 'SIGUNITS', 'NUMBERWIRE', 'POWER',
-                             'WIRESIZE', 'WIRELENGTH', 'S1000TYPE']
-
-        This is archived information. These attributes might not be useful
-        self._maybe_drop_attr = ['SLOPE', 'INTERCEPT']
-
-        Text attributes are used to indidcate features that are pure-text
-        self._text_attrs = ['NAME','DESCRIPTOR','TYPE','FUNCTION','SYSTEM','SENSORTYPE','DEVUNITS']
-
-        type_dict maps feature names to their desired data type
-        self._type_dict = {'NAME':str, 'NETDEVID':str, 'DESCRIPTOR':str, 'INITVALUE':float,'ALARMTYPE':str,
-                      'FUNCTION':str, 'VIRTUAL':bool,'SYSTEM':str,'CS':str,'SENSORTYPE':str,
-                      'DEVUNITS':str}
-
-        How to deal with nan's -
-        remove : remove the whole row
-        empty : replace with empty string
-        zero : replace with 0
-        mode : replace with mode
-        any other value : replace with that value
-        self._nan_replace_dict = {'NETDEVID':'empty', 'NAME':'remove',
-                                  'DESCRIPTOR':'empty','TYPE':'mode',
-                                  'INITVALUE':'zero', 'ALARMTYPE':'mode',
-                                  'FUNCTION':'Value','VIRTUAL':'False',
-                                  'SYSTEM':'empty','CS':'empty',
-                                  'SENSORTYPE':'digital','DEVICEHI':'zero',
-                                  'DEVICELO':'zero', 'DEVUNITS':'empty',
-                                  'SIGNALHI':'zero','SIGNALLO':'zero',
-                                  'SLOPE':'zero','INTERCEPT':'zero'}
-
-        Attributes that will be used to cluster OR that should pass through
-        the cleaning pipeline
-        self._text_clean_attrs = ['NAME','DESCRIPTOR','SYSTEM']
-
-        unit types have to do with the 'correct' type of units to use in raw
-        data. UNITS is a data feature that needed cleaning up a lot
-        _unit_df = pd.read_csv(r"D:\Z - Saved SQL Databases\clean_types_manual.csv", index_col=0)
-        self._unit_dict = {}
-        for _, _units in (_unit_df.iterrows()):
-            _old_unit = _units['old']
-            _new_unit = _units['new']
-            if _new_unit == '0':
-                _new_unit = ''
-            self._unit_dict[_old_unit] = _new_unit
-
-        Remove duplicate columns
-        self._dupe_cols = ['NAME']
-
-        These attributes should be on-hot encoded
-        self._cat_attributes = ['TYPE','ALARMTYPE','FUNCTION',
-                                'VIRTUAL','CS','SENSORTYPE','DEVUNITS']
-
-        These are numerical attributes
-        self._num_attributes = ['INITVALUE','DEVICEHI','DEVICELO',
-                                'SIGNALHI','SIGNALLO','SLOPE','INTERCEPT']
-
-        These are text attributes
-        self._text_attributes = ['NAME', 'DESCRIPTOR', 'SYSTEM']
         """
 
-        self._drop_attributes = ['CTSYSNAME', 'TMEMBER', 'ALARMHIGH', 'ALARMLOW',
-                           'COMBOID', 'PROOFPRSNT', 'PROOFDELAY', 'NORMCLOSE', 'INVERTED',
-                            'LAN', 'DROP', 'POINT', 'ADDRESSEXT', 'DEVNUMBER', 'CTSENSTYPE',
-                             'CONTRLTYPE', 'UNITSTYPE', 'SIGUNITS', 'NUMBERWIRE', 'POWER',
-                             'WIRESIZE', 'WIRELENGTH', 'S1000TYPE']
+        self.drop_attributes = ['CTSYSNAME', 'TMEMBER', 'ALARMHIGH', 'ALARMLOW',
+                'COMBOID', 'PROOFPRSNT', 'PROOFDELAY', 'NORMCLOSE', 'INVERTED',
+                'LAN', 'DROP', 'POINT', 'ADDRESSEXT', 'DEVNUMBER', 'CTSENSTYPE',
+                'CONTRLTYPE', 'UNITSTYPE', 'SIGUNITS', 'NUMBERWIRE', 'POWER',
+                'WIRESIZE', 'WIRELENGTH', 'S1000TYPE','INITVALUE']
 
         self._maybe_drop_attr = ['SLOPE', 'INTERCEPT']
 
-        self._text_attrs = ['NAME','DESCRIPTOR','TYPE','FUNCTION','SYSTEM','SENSORTYPE','DEVUNITS']
+        self._text_attrs = ['NAME','DESCRIPTOR','TYPE','FUNCTION',
+                            'SYSTEM','SENSORTYPE','DEVUNITS']
 
-        self._type_dict = {'NAME':str, 'NETDEVID':str, 'DESCRIPTOR':str, 'INITVALUE':float,'ALARMTYPE':str,
-                      'FUNCTION':str, 'VIRTUAL':bool,'SYSTEM':str,'CS':str,'SENSORTYPE':str,
-                      'DEVUNITS':str}
+        self.type_dict = {'NAME':str, 'NETDEVID':str,
+                          'DESCRIPTOR':str, 'ALARMTYPE':str,
+                          'FUNCTION':str, 'VIRTUAL':str,
+                          'SYSTEM':str, 'CS':str,
+                          'SENSORTYPE':str, 'DEVUNITS':str}
 
-        self._nan_replace_dict = {'NETDEVID':'empty', 'NAME':'remove',
+        self.nan_replace_dict = {'NETDEVID':'empty', 'NAME':'remove',
                                   'DESCRIPTOR':'empty','TYPE':'mode',
-                                  'INITVALUE':'zero','ALARMTYPE':'mode',
+                                  'ALARMTYPE':'mode',
                                   'FUNCTION':'Value','VIRTUAL':'False',
                                   'SYSTEM':'empty','CS':'empty',
                                   'SENSORTYPE':'digital','DEVICEHI':'zero',
@@ -793,87 +801,188 @@ class Transform():
 
         self._text_clean_attrs = ['NAME','DESCRIPTOR','SYSTEM']
 
-        _unit_df = pd.read_csv(r"D:\Z - Saved SQL Databases\clean_types_manual.csv", index_col=0)
-        self._unit_dict = {}
-        for _, _units in (_unit_df.iterrows()):
-            _old_unit = _units['old']
-            _new_unit = _units['new']
-            if _new_unit == '0':
-                _new_unit = ''
-            self._unit_dict[_old_unit] = _new_unit
-        self._dupe_cols = ['NAME']
+        # Modify units
+        sel = sqlalchemy.select([TypesCorrection])
+        units_df = Insert.pandas_select_execute(sel)
+        self.unit_dict = {}
+        for idx, unit in (units_df.iterrows()):
+            depreciated_value = unit['depreciated_type']
+            new_value = unit['new_type']
+            if new_value == '0':
+                new_value = ''
+            self.unit_dict[depreciated_value] = new_value
 
-        self._cat_attributes = ['TYPE', 'ALARMTYPE', 'FUNCTION', 'VIRTUAL', 'CS',
+        # Remove duplicates from the NAME column
+        self.dupe_cols = ['NAME']
+
+        # Categorical attributes in dataset that should be one-hot encoded
+        self.cat_attributes = ['TYPE', 'ALARMTYPE', 'FUNCTION', 'VIRTUAL', 'CS',
                            'SENSORTYPE', 'DEVUNITS']
-        self._num_attributes = ['INITVALUE', 'DEVICEHI', 'DEVICELO', 'SIGNALHI', 'SIGNALLO',
-                           'SLOPE', 'INTERCEPT']
+        self.num_attributes = ['DEVICEHI', 'DEVICELO', 'SIGNALHI', 'SIGNALLO',
+                               'SLOPE', 'INTERCEPT']
         self._text_attributes = ['NAME', 'DESCRIPTOR', 'SYSTEM']
 
         return None
 
 
-    def full_pipeline(self,
+    def full_pipeline_label(self,
                        remove_dupe=False,
                        replace_numbers=True,
                        remove_virtual=False,
+                       categorical_attributes=None,
+                       numeric_attributes=None,
                        seperator='.',
                        vocabulary_size='all'):
         """Return a full pipeline feature union
         inputs
         -------
         remove_dupe : (bool) whether or not to remove duplicates from the
-        'NAME' column
+            'NAME' column
         replace_numbers : (bool) replace numbers in text features with
-        empty strings (True)
-        remove_virtual : (bool) remove "virtual" points
-        seperator : (str) seperator for text features in the'Name' column. Used in
-        TextToWordDict transformer. Can be single character or iterable of characters
+            empty strings (True)
+        remove_virtual : (bool) whether or not to remove virtuals in VirtualRemover.
+            Virtual points are variables in PPCL programming or used for
+            variables in the BAS database. They contrast logical points which
+            relate to a physical field sensor, device, or reading
+        categorical_attributes : (list) of str. Each string is a column name of
+            a pandas dataframe. If None, then the classes standard categorical
+            attributes will be used instead (see self.cat_attributes)
+        numeric_attributes : (list) of str. Each string is a column name of
+            a pandas dataframe. If None, then the classes standard numeric
+            attributes will be used instead (see self.num_attributes)
+        seperator : (str) seperator for text features in the'Name' column.
+            Used in TextToWordDict transformer.
+            Can be single character or iterable of characters
         vocabulary_size : (int) number of featuers to encode in name,
         descriptor, and sysetm features text
 
         Example usage
-        # Import your data in a dataframe
-        input_dataframe = dataframe
-
-        # Transform data
-        clean_dataframe = full_pipeline.fit_transform(input_dataframe)
-
-        # Categorical columns
-        cat_cols = cat_pipeline.named_steps.catEncoder.categories_
-        categorical_columns = np.concatenate(_cat_cols).ravel().tolist()
-
-        # TODO
-        df2_cat_num_cols = [num_attributes, cat_columns]
-        df2_cat_num = pd.DataFrame(df2_cat_num_scr.toarray(),
-                                   columns=[item for sublist in _df2_cat_num_cols for item in sublist])
+        #TODO
 
         """
+        if categorical_attributes is None:
+            categorical_attributes = self.cat_attributes
 
-        cleaning_pipeline = self.cleaning_pipeline(remove_dupe=remove_dupe,
-                                                   replace_numbers=replace_numbers,
-                                                   remove_virtual=remove_virtual)
+        if numeric_attributes is None:
+            numeric_attributes = self.num_attributes
 
-        cat_pipeline = Pipeline([
-                ('selector', DataFrameSelector(self._cat_attributes)),
-                ('catEncoder', OneHotEncoder())
-                ])
+        # Cleaning pipeline
+        clean_pipe = self.cleaning_pipeline(drop_attributes=None,
+                                                 nan_replace_dict=None,
+                                                 dtype_dict=None,
+                                                 unit_dict=None,
+                                                 remove_dupe=True,
+                                                 replace_numbers=True,
+                                                 remove_virtual=True)
 
-        num_pipeline = Pipeline([
-                ('selector', DataFrameSelector(self._num_attributes)),
-                ('std_scaler',StandardScaler())
-                ])
+        # Text feature encoders
+        name_file = r'../data/vocab_name.txt'
+        name_vocabulary = VocabularyText.read_vocabulary_disc(name_file)
+        name_text_pipe = self.text_pipeline_label(attributes=['NAME'],
+                                                  vocabulary=name_vocabulary)
+        descriptor_file = r'../data/vocab_descriptor.txt'
+        descriptor_vocabulary = VocabularyText.read_vocabulary_disc(descriptor_file)
+        descriptor_text_pipe = self.text_pipeline_label(attributes=['DESCRIPTOR'],
+                                                             vocabulary=descriptor_vocabulary)
 
-        full_pipeline = FeatureUnion(transformer_list=[
-                ('cleaning_pipe', cleaning_pipeline),
-                ('numPipeline', num_pipeline),
-                ('catPipeline', cat_pipeline)
-                ])
 
+        # Categorical Features
+        categorical_pipe = self.categorical_pipeline(categorical_attributes=None,
+                              handle_unknown='ignore',
+                              categories_file=r'../data/categorical_categories.dat')
+
+        # Numeric features
+        numeric_pipe = self.numeric_pipeline(numeric_attributes=None)
+
+        # Union
+        combined_features = FeatureUnion(transformer_list=[
+            ('CategoricalPipe', categorical_pipe),
+            ('NameTextPipe',name_text_pipe),
+            ('DescriptorTextPipe',descriptor_text_pipe),
+            ('NumericPipe',numeric_pipe),
+            ])
+        full_pipeline = Pipeline([
+            ('CleaningPipe', clean_pipe),
+            ('CombinedCategorical',combined_features),
+            ])
 
         return full_pipeline
 
 
-    def text_pipeline(self,
+    def numeric_pipeline(self, numeric_attributes=None):
+        """Return a numeric pipeline
+        The numeric pipeline will scale numeric attributes in your dataset
+        using sklearn.preprocessing.StandardScaler
+        inputs
+        ------
+        numeric_attributes : (list) of str. Each string is a column name of
+            a pandas dataframe. If None, then the classes standard numeric
+            attributes will be used instead (see self.num_attributes)
+        outputs
+        -------
+        num_pipeline : (sklearn.pipeline.Pipeline) to transform data
+            Call cat_pipeline.fit_transform(dataframe) to transform your data
+        """
+        if numeric_attributes is None:
+            numeric_attributes = self.num_attributes
+
+        num_pipeline = Pipeline([
+                ('selector', DataFrameSelector(numeric_attributes)),
+                ('std_scaler',StandardScaler())
+                ])
+
+        return num_pipeline
+
+
+    def categorical_pipeline(self, categorical_attributes=None,
+                             handle_unknown='ignore',
+                             categories_file=r'../data/categorical_categories.dat'):
+        """Return a categorical pipeline
+        The categorical pipeline will one-hot encode categorical attributes
+        in your dataset
+        inputs
+        ------
+        categorical_attributes : (list) of str. Each string is a column name of
+            a pandas dataframe. If None, then the classes standard categorical
+            attributes will be used instead (see self.cat_attributes)
+        handle_unknown = (str) how to handle categorical values in sklearn
+            one of ['error' | 'ignore']
+        outputs
+        -------
+        cat_pipeline : (sklearn.pipeline.Pipeline) to transform data
+            Call cat_pipeline.fit_transform(dataframe) to transform your data
+        """
+
+        if categorical_attributes is None:
+            categorical_attributes = self.cat_attributes
+            categories = self._read_categories(categorical_attributes,
+                                               categories_file)
+        else:
+            categories='auto'
+
+        cat_pipeline = Pipeline([
+                ('ReplaceNone', ReplaceNone(categorical_attributes)),
+                ('DataFrameSelector', DataFrameSelector(categorical_attributes)),
+                ('OneHotEncoder', OneHotEncoder(categories=categories,
+                                                handle_unknown=handle_unknown)),
+                ])
+
+        return cat_pipeline
+
+    def _read_categories(self, categorical_attributes, categories_file):
+        """Read saved categories from disc - see EncodingCategories"""
+
+        categories_dict = EncodingCategories.read_categories_from_disc(categories_file)
+        categories_array = []
+
+        for col_name in categorical_attributes:
+            categories = categories_dict[col_name]
+            categories_array.append(categories)
+
+        return np.array(categories_array)
+
+
+    def text_pipeline_cluster(self,
                       vocab_size,
                       attributes,
                       heirarchial_weight_word_pattern,
@@ -929,6 +1038,7 @@ class Transform():
         # Create pipeline specifically for clustering text features
         text_pipe = myDBPipe.text_pipeline(vocab_size='all',
                                            attributes='NAME',
+                                           heirarchial_weight_word_pattern=True,
                                            seperator='.')
         X = text_pipe.fit_transform(df_clean).toarray()
         _word_vocab = text_pipe.named_steps['WordDictToSparseTransformer'].vocabulary
@@ -936,8 +1046,8 @@ class Transform():
         """
 
         name_pipeline = Pipeline([
-                ('dataframe_selector', DataFrameSelector(attributes)),
-                ('text_to_dict', TextToWordDict(seperator=seperator,
+                ('DataFrameSelector', DataFrameSelector(attributes)),
+                ('TextToWordDict', TextToWordDict(seperator=seperator,
                     heirarchial_weight_word_pattern=heirarchial_weight_word_pattern)),
                 ('WordDictToSparseTransformer', WordDictToSparseTransformer(
                         vocabulary_size=vocab_size))
@@ -946,28 +1056,83 @@ class Transform():
         return name_pipeline
 
 
+    def text_pipeline_label(self, attributes,
+                            token_pattern=r"(?u)\b\w\w+\b",
+                            vocabulary=None):
+        """Return a text vectorizer for multi instance labeling
+        inputs
+        -------
+        attribute : (str) name of feature column to bianize
+        token_pattern : (str) regex pattern used to tokenize text
+        vocabulary : (list) of vocabulary in feature
+        outputs
+        -------
+        text_pipe : (sklearn.Pipeline)
+
+        Example
+        """
+        msg='attributes must be type list, not {}'.format(type(attributes))
+        assert isinstance(attributes, list), msg
+        msg='Only one attribute per text pipeline'
+        assert len(attributes) == 1, msg
+
+        # vocabulary = None means get vocabulary from passed data
+        Count = CountVectorizer(input='content',
+                                stop_words=None,
+                                vocabulary=vocabulary,
+                                token_pattern=token_pattern)
+
+        text_pipeline = Pipeline([
+            ('DataFrameSelector',DataFrameSelector(attributes)),
+            ('ArrayResize', ArrayResize(shape=-1)),
+            ('CountVectorizer', Count),
+            ])
+
+        return text_pipeline
+
+
     def cleaning_pipeline(self,
-                          remove_dupe,
-                          replace_numbers,
-                          remove_virtual):
+                          drop_attributes=None,
+                          nan_replace_dict=None,
+                          dtype_dict=None,
+                          unit_dict=None,
+                          remove_dupe=True,
+                          replace_numbers=True,
+                          remove_virtual=True):
         """Cleaning pipeline
-        Remove attributes (self._drop_attributes)
-        Remove nan (self._nan_replace_dict)
+        Remove attributes (self.drop_attributes)
+        Remove nan (self.nan_replace_dict)
         Change data types (self._type_dict)
         Clean Text (self._text_clean_attrs, replace_numbers)
-        Unit Cleaner (self._unit_dict)
-        Remove Duplicates (self._dupe_cols, remove_dupe)
+        Unit Cleaner (self.unit_dict)
+        Remove Duplicates (self.dupe_cols, remove_dupe)
         Virtual Remove (remove_virtual)
         NOTE : To use this pipeline you should pass a pandas dataframe to its
         fit_transform() method
         inputs
         -------
+        drop_attributes : (list) of str. Each str is a column name to drop
+            in your dataset. If None then the class default of self.drop_attributes
+            is used
+        replace_nan : (dict) of key:value where key is the column name in your
+            dataset that contains nan values, and value is the value to replace
+            the nan with. If None then the lass default of self.nan_replace_dict
+            is used. see self.nan_replace_dict
+        mod_dtypes : (dict) of key:value where key is the column name in your
+            dataset that contains mixed data types, and value is the dtype to
+            cast all values in the dataset as
+            If None then the lass default of self._type_dict is used
+        mod_units : (dict) of key:value where key is the a value to replace
+            in the 'DEVUNITS' column, and value is the value to replace key
+            with. Only useful for my specific dataset :). See self.unit_dict
         remove_dupe : (bool) whether or not to remove duplicates from the
-            'NAME' column.
-            Duplicates happen with L2SL values.
+            'NAME' column. Duplicates happen with L2SL values.
         replace_numbers : (bool) whether or not to replace numbers in TextCleaner,
             see self._text_clean_attrs
-        remove_virtual : (bool) whether or not to remove virtuals in VirtualRemover
+        remove_virtual : (bool) whether or not to remove virtuals in VirtualRemover.
+            Virtual points are variables in PPCL programming or used for
+            variables in the BAS database. They contrast logical points which
+            relate to a physical field sensor, device, or reading
         ouput
         -------
         A sklearn pipeline object containing modifier classes.
@@ -981,14 +1146,302 @@ class Transform():
                                               remove_virtual=True)
         dataframe = cleaning_pipeline.fit_transform(X)"""
 
+
+        if drop_attributes is None:
+            drop_attributes = self.drop_attributes
+        if nan_replace_dict is None:
+            nan_replace_dict = self.nan_replace_dict
+        if dtype_dict is None:
+            dtype_dict = self.type_dict
+        if unit_dict is None:
+            unit_dict = self.unit_dict
+
         cleaning_pipeline = Pipeline([
-                ('dropper', RemoveAttribute(self._drop_attributes)),
-                ('nan_remover', RemoveNan(self._nan_replace_dict)),
-                ('set_dtypes', SetDtypes(self._type_dict)),
-                ('text_clean', TextCleaner(self._text_clean_attrs, replace_numbers=replace_numbers)),
-                ('unit_clean', UnitCleaner(self._unit_dict)),
-                ('dupe_remove', DuplicateRemover(self._dupe_cols, remove_dupe=remove_dupe)),
-                ('virtual_remover', VirtualRemover(remove_virtual=remove_virtual))
+                ('RemoveAttribute', RemoveAttribute(drop_attributes)),
+                ('RemoveNan', RemoveNan(nan_replace_dict)),
+                ('SetDtypes', SetDtypes(dtype_dict)),
+                ('TextCleaner', TextCleaner(self._text_clean_attrs, replace_numbers=replace_numbers)),
+                ('UnitCleaner', UnitCleaner(unit_dict)),
+                ('DuplicateRemover', DuplicateRemover(self.dupe_cols, remove_dupe=remove_dupe)),
+                ('VirtualRemover', VirtualRemover(remove_virtual=remove_virtual))
                 ])
 
         return cleaning_pipeline
+
+
+class EncodingCategories:
+
+    def __init__(self):
+
+        return None
+
+    @staticmethod
+    def read_categories_from_disc(file_path):
+        """Read a set of saved categories from disc"""
+
+        with open(file_path, 'rb') as f:
+            categories_dict = pickle.load(f)
+
+        return categories_dict
+
+    @staticmethod
+    def save_categories_to_disc(categories_dict, save_path):
+        """Pickle a dictionary representing all possible categories related
+        to each column of a dataframe
+        inputs
+        -------
+        categories_dict : (dict) with key representing column name and
+        value is an array representing unique valeus under column_name
+        Example
+        categories_dict = {'TYPE' : <class 'numpy.ndarray'>
+                           'ALARMTYPE' : <class 'numpy.ndarray'>
+                           'FUNCTION'' : <class 'numpy.ndarray'>
+                           'VIRTUAL'' : <class 'numpy.ndarray'>
+                           'CS'' : <class 'numpy.ndarray'>
+                           'SENSORTYPE'' : <class 'numpy.ndarray'>
+                           'DEVUNITS' : <class 'numpy.ndarray'>}"""
+
+        with open(save_path, 'wb') as f:
+            pickle.dump(categories_dict, f)
+
+        return None
+
+    @staticmethod
+    def calc_categories_dict(dataframe, columns):
+        """Get the categories of value from the columns of a dataframe
+        inputs
+        -------
+        dataframe : (pd.DataFrame) data to extract categories from
+        columns : (list) of strings representing column names of the passed
+            dataframe. Example ['TYPE', 'ALARMTYPE', 'FUNCTION', 'VIRTUAL',
+                                'CS', 'SENSORTYPE', 'DEVUNITS'] """
+        categories_dict = {}
+
+        for col in columns:
+            # Get a unique set of values from the dataframe slice
+            categories = set(dataframe[col].values)
+            cat_array = np.array(list(categories))
+            categories_dict[col] = cat_array
+
+        # Handle 'DEVUNITS' separately
+        categories_dict['DEVUNITS'] = np.array(list(Transform().unit_dict.values()))
+
+        return categories_dict
+
+
+class VocabularyText:
+
+    def __init__(self):
+        return None
+
+    @staticmethod
+    def points_group_generator():
+        """Iterate over points by common customer ID
+        inputs
+        -------
+        outputs
+        -------
+        df_clean : (pd.DataFrame) of cleaned customer database points grouped
+        by the common customer"""
+        # Transform pipeline
+        Transform_ = Transform()
+        # Create 'clean' data processing pipeline
+        clean_pipe = Transform_.cleaning_pipeline(drop_attributes=None,
+                                                 nan_replace_dict=None,
+                                                 dtype_dict=None,
+                                                 unit_dict=None,
+                                                 remove_dupe=True,
+                                                 replace_numbers=True,
+                                                 remove_virtual=True)
+
+        sql = """SELECT id
+        FROM {}""".format(Customers.__tablename__)
+        sel = sqltext(sql)
+        customer_ids = Insert.core_select_execute(sel)
+
+        for row in customer_ids:
+            customer_id = row.id
+
+            sel = sqlalchemy.select([Points]).where(Points.customer_id.__eq__(customer_id))
+            dfraw = Insert.pandas_select_execute(sel)
+            if dfraw.shape[0] <= 1:
+                print('Customer ID {} has no associated points'.format(customer_id))
+                print('Customer will be skipped')
+                continue
+
+            try:
+                df_clean = clean_pipe.fit_transform(dfraw)
+            except Exception as e:
+                print('Transformation pipeline error at {}'.format(customer_id))
+                print(e)
+                continue
+
+            yield df_clean
+
+        return None
+
+    @staticmethod
+    def get_building_suffix(words):
+        """Decide if a token is the building suffix of some dataset
+        The building suffix is generally defined by this statistical property :
+        1) it occurs in most of the word names
+        2) it is the first token of the name
+
+        A token will be categorized as a building suffix if
+        a) 90% of points include it
+        b) 90% of names incldue the suffix as their first token
+
+        Example
+        words = [acc.hm.chw.asvs, acc.hm.chw.muflow, acc.hm.chw.swt,
+        acc.hm.chw.bpflow, acc.hm.chw.bpv, acc.hm.chw.flow]
+        parts = [['acc', 'hm', 'chw', 'asvs'],
+                 ['acc', 'hm', 'chw', 'muflow'],
+                 ['acc', 'hm', 'chw', 'swt'],
+                 ['acc', 'hm', 'chw', 'bpflow'],
+                 ['acc', 'hm', 'chw', 'bpv'],
+                 ['acc', 'hm', 'chw', 'flow']]"""
+
+        msg = "parts must be type list not {}".format(type(words))
+        assert isinstance(words, list), msg
+
+        # For counting (duh)
+        counter = Counter()
+
+        # Keep track of all name suffixes
+        suffixes = set([x[0] for x in words])
+
+        # Number of names
+        n_names = len(words)
+
+        # Pre-compute counts of tokens
+        for name in words:
+            counter.update(name)
+
+        for suffix in suffixes:
+            n_occurences = counter[suffix]
+
+            if (n_occurences / n_names) >= 0.9:
+                return suffix
+
+        return False
+
+
+    def get_fobidden_vocabulary(self):
+        """Iterate throguh all database points stored in SQL and retrieve
+        building sufflix acronyms
+        The building suffix acronyms will be excludied from the point naming
+        text 'bag-of-words' feature encoding
+        inputs
+        -------
+        None
+        outputs
+        -------
+        forbidden_vocabulary : (list) of strings that are assumed to be building
+        suffixes. Exclude these from feature name encodings"""
+        # Prepare to tokenize words
+        token_pattern = r'\.'
+        tokenizer = re.compile(token_pattern)
+
+        # Keep track of building suffixes
+        forbidden_vocabulary = []
+
+        # Get generator of points databases
+        df_generator = self.points_group_generator()
+
+        # iterate through word names and find building suffix (like acc, tfc, rgc)
+        for df_clean in df_generator:
+
+            # Keep track of words
+            words = []
+
+            # Split each name into tokens
+            for idx, word in df_clean['NAME'].iteritems():
+                parts = tokenizer.split(word)
+                words.append(parts)
+
+            suffix = self.get_building_suffix(words)
+            if suffix: # Suffix is False if the words do not contain a building suffix
+            # As determined in get_building_suffix()
+                forbidden_vocabulary.append(suffix)
+
+        return forbidden_vocabulary
+
+
+    def get_text_vocabulary(self, X, col_name, remove_suffix=True, max_features=None):
+        """Get the entire vocabulary of the feature col_name from X
+        Use this method specifically to get the point name vocabulary
+        from the 'NAME' attribute of my dataset. If remove_suffix is True
+        then a list of forbidden building suffix acronyms will be found,
+        and the final vocabulary will be the set difference of the total
+        vocabulary and the building suffix acronyms
+        inputs
+        -------
+        X : (pd.DataFrame)
+        col_name : (str) should be 'NAME', or others if I want
+        remove_suffix : (bool) True to calculate and exclude building suffix acronyms
+        max_features : (int) If not None, build a vocabulary that only consider
+            the top max_features ordered by term frequency across the corpus.
+            This parameter is ignored if vocabulary is not None.
+        outputs
+        -------
+        vocabulary : (list) of str representing total vocabulary of col_name
+        feature from X
+
+        Example Usage"""
+
+        # Calculate total vocabulary
+        # Default - 2 or more alphanumeric characters
+        token_pattern = r"(?u)\b\w\w+\b"
+        Count = CountVectorizer(input='content',
+                                stop_words=None,
+                                vocabulary=None,
+                                token_pattern=token_pattern,
+                                max_features=max_features)
+        Count.fit(X[col_name])
+        # Total vocabulary
+        feature_names = Count.get_feature_names()
+
+        # Remove building suffix if remove_suffix is True and col_name is NAME
+        if remove_suffix and col_name=='NAME':
+            forbidden_vocabulary = set(self.get_fobidden_vocabulary())
+            vocabulary = list(set(feature_names).difference(forbidden_vocabulary))
+        else:
+            vocabulary = feature_names
+
+        return vocabulary
+
+    @staticmethod
+    def save_vocabulary(vocabulary, file_name=r'../data/vocab_name.txt'):
+        """Convenience to save a vocabulary to file_name
+        inputs
+        -------
+        vocabulary : (list) of vocabulary strings
+        file_name : (str) to save vocabulary to"""
+
+        if os.path.isfile(file_name):
+            x = input('File {} Already exists. Overwrite? [y/n]'.format(file_name))
+            if x in ['y','yes','True','YES','Y','TRUE']:
+                pass
+            else:
+                return None
+
+        with open(file_name, 'wt') as f:
+            for vocab in vocabulary:
+                f.write(vocab + '\n')
+
+        return None
+
+    @staticmethod
+    def read_vocabulary_disc(file_name):
+        """Read vocabulary from a file and aggregate to a list
+        inputs
+        ------
+        none
+        outputs
+        -------
+        vocabulary : (list) of str"""
+
+        with open(file_name, 'rt') as f:
+            vocabulary = f.read().splitlines()
+
+        return vocabulary

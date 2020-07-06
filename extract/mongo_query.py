@@ -50,8 +50,7 @@ _PACKAGE_PATH = os.path.join('C:\\', *_BASE_DIR)
 if _PACKAGE_PATH not in sys.path:
     sys.path.insert(0, _PACKAGE_PATH)
 
-from point_database_categorizer.clustering.UnsupervisedCluster import UnsupervisedClusterPoints
-
+from clustering.unsupervised_cluster import UnsupervisedClusterPoints
 
 
 #%%
