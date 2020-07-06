@@ -81,6 +81,9 @@ loss = namedtuple('loss',['clusters', 'l2error', 'variance', 'loss'])
 
 #%%
 
+class PipelineError(Exception):
+    pass
+
 class ExtractLabels():
 
     def __init__(self):
@@ -115,7 +118,7 @@ class ExtractLabels():
     		f. Total number of unique words
             g. n_instances / Total number of unique words
 
-        #Example Usage
+        # Example Usage
         from JVWork_UnClusterAccuracy import AccuracyTest
         myTest = AccuracyTest()
         text_pipe = myDBPipe.text_pipeline(vocab_size='all', attributes='NAME',
@@ -138,20 +141,25 @@ class ExtractLabels():
         else:
             pass
 
-        data = pipeline.fit_transform(database)
+        try:
+            data = pipeline.fit_transform(database)
+        except:
+            msg = "An error occured in the passed pipeline {}".format(pipeline.named_steps)
+            raise(PipelineError(msg))
+
         if isinstance(data, csr_matrix):
             data = data.toarray()
 
-        #Number of points
+        # Number of points
         n_points = data.shape[0]
 
-        #Number of features
+        # Number of features
         n_features = data.shape[1]
 
-        #Word lengths
+        # Word lengths
         count_dict_pct = self.get_word_dictionary(data, percent=True)
 
-        #Variance of lengths
+        # Variance of lengths
         lengths = []
         count_dict_whole = self.get_word_dictionary(data, percent=False)
         for key, value in count_dict_whole.items():
@@ -169,6 +177,7 @@ class ExtractLabels():
         features_df = pd.DataFrame(features_dict, index=[instance_name])
 
         return features_df
+
 
     def get_word_dictionary(self, word_array, percent=True):
 
@@ -189,8 +198,6 @@ class ExtractLabels():
         else:
             pass #Dont change it, return number of each length
 
-
-#        max_key = max(count_dict.keys())
         max_key = 7 #Static for later supervised training
         old_keys = list(count_dict.keys())
         new_keys = ['n_len' + str(old_key) for old_key in old_keys]

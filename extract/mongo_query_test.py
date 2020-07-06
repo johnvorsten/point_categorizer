@@ -4,13 +4,22 @@ Created on Sun Jan  5 11:08:51 2020
 
 @author: z003vrzk
 """
+# Python imports
+import sys
+import os
 
 # Third party imports
 from pymongo import MongoClient
 
 # Local imports
-from mongo_query import MongoQuery
+_CWD = os.getcwd()
+_PARTS = _CWD.split(os.sep)
+_BASE_DIR = [os.path.join(part) for part in _PARTS[:-4]]
+_PACKAGE_PATH = os.path.join('C:\\', *_BASE_DIR)
+if _PACKAGE_PATH not in sys.path:
+    sys.path.insert(0, _PACKAGE_PATH)
 
+from extract import mongo_query
 
 #%% testing
 
@@ -67,3 +76,5 @@ if __name__ == '__main__':
     clustered_points = db['clustered_points']
 
     document = clustered_points.find_one()
+
+

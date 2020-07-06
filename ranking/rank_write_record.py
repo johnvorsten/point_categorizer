@@ -48,11 +48,29 @@ serialize_examples() below
 
 @author: z003vrzk
 """
+# Python imports
+import os
+import sys
+from random import shuffle
 
 # Thrid party imports
 import tensorflow as tf
 import pickle
 import numpy as np
+import sqlalchemy
+
+#Local Imports
+if __name__ == '__main__':
+    # Remove the drive letter on windows
+    _CWD = os.path.splitdrive(os.getcwd())[1]
+    _PARTS = _CWD.split(os.sep)
+    # Project dir is one level above cwd
+    _PROJECT_DIR = os.path.join(os.sep, *_PARTS[:-1])
+    if _PROJECT_DIR not in sys.path:
+        sys.path.insert(0, _PROJECT_DIR)
+
+from extract import extract
+from extract.SQLAlchemyDataDefinition import (Customers)
 
 #%% functions & methods
 
@@ -221,6 +239,58 @@ def serialize_context(document):
     return context_proto_str
 
 
+def serialize_context_from_dictionary(context_features):
+    """Create a serialized tf.train.Example proto from a dictionary of context
+        features
+    input
+    -------
+    context_features : (dict) Must contain the keys
+        ['n_instance', 'n_features', 'len_var', 'uniq_ratio',
+         'n_len1', 'n_len2', 'n_len3', 'n_len4', 'n_len5',
+         'n_len6', 'n_len7']
+    output
+    ------
+    context_proto_str : (bytes) serialized context features in tf.train.Example
+        proto
+
+    the context_feature spec is of the form
+    {'n_instance': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,)),
+     'n_features': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,)),
+     'len_var': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,)),
+     'uniq_ratio': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,)),
+     'n_len1': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,)),
+     'n_len2': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,)),
+     'n_len3': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,)),
+     'n_len4': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,)),
+     'n_len5': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,)),
+     'n_len6': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,)),
+     'n_len7': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,))
+     }"""
+
+    # Create dictionary of context features
+    context_dict = {}
+    enforce_order = ['n_instance', 'n_features', 'len_var', 'uniq_ratio',
+                     'n_len1', 'n_len2', 'n_len3', 'n_len4', 'n_len5',
+                     'n_len6', 'n_len7']
+
+    # Ensure integrity of context_features
+    for key in context_features.keys():
+        assert key in enforce_order, "Invalid key {} included in context_features".format(key)
+
+    # tf.train.Feature for each value passed in context_features
+    for key in enforce_order:
+        # Serialize context features
+        val = context_features[key] # Enforce float
+        context_dict[key] = tf_feature_mapper(float(val), dtype=float)
+
+    # Create serialized context tf.train.Example
+    context_proto = tf.train.Example(
+            features=tf.train.Features(feature=context_dict))
+    context_proto_str = context_proto.SerializeToString() # Serialized
+
+    return context_proto_str
+
+
 def serialize_examples_v1(document,
                           example_features,
                           reciprocal=False,
@@ -316,8 +386,6 @@ def serialize_examples_v2(document,
       reciprocal : (bool) the reciprocal of scores will be used. If True,
           n_bins must be False
       n_bins : (int) number of bins to place relevance in.
-      example_text : (bool) Process clust_index as text (TRUE) or load
-      from encoded (True)
       shuffle_peritem : (bool) set to True if you want to shuffle peritem examples
           this will make peritem features in a non-default order
       output
@@ -410,7 +478,153 @@ def serialize_examples_v2(document,
     return peritem_list
 
 
-def get_test_train_id(collection, train_pct=0.8):
+
+def serialize_examples_from_dictionary(example_features,
+                                       label_key,
+                                       peritem_keys,
+                                       reciprocal=False,
+                                       n_bins=5,
+                                       shuffle_peritem=True):
+    """Create a list of serialized tf.train.Example proto from a document
+      stored in mongo-db
+      input
+      -------
+      example_features : (list) of dictionaries. Each dictionary contains keys
+          of peritem features and relevance labels of each item.
+          Dict values are converted to encoded and
+          saved as serialized features. ALl per-item features are saved as
+          text and encoded or transformed later.
+          Example :
+           [{'distance': 'euclidean',
+          'by_size': False,
+          'n_components': '0',
+          'reduce': '0',
+          'clusterer': 'kmeans',
+          'index': 'gap_tib',
+          'relevance': 8761.6},
+         {'distance': 'euclidean',
+          'by_size': False,
+          'n_components': '8',
+          'clusterer': 'average',
+          'reduce': 'MDS',
+          'index': 'Frey',
+          'relevance': 8761.6}, ..., ]
+
+     label_key : (str) key of relevance label. Should be something like
+         'relevance' (see above)
+
+     peritem_keys : (iter | list) of string keys of peritem features. Each
+         key should be a key in example_features.
+         Example peritem_keys = ['by_size','n_components',
+                                 'clusterer','reduce','index']
+
+     reciprocal : (bool) the reciprocal of scores will be used. If True,
+          n_bins must be False
+     n_bins : (int) number of bins to place relevance in.
+     shuffle_peritem : (bool) set to True if you want to shuffle peritem examples
+          this will make peritem features in a non-default order
+      output
+      -------
+      peritem_list : (list) a list of serialized per-item (exmpale) featuers
+          in the form of tf.train.Example protos
+
+      The per_item feature spec is of the form
+      {'peritem_features': FixedLenFeature(shape=(37,),
+            dtype=tf.float32,
+            default_value=np.array.zeros((1,37))),
+       'relevance': FixedLenFeature(shape=(1,),
+           dtype=tf.float32,
+           default_value=(-1,))
+       }
+
+    """
+    msg = "Example_features must be iterable, not type {}"
+    assert hasattr(example_features, '__iter__'), msg.format(type(example_features))
+
+    msg = ('n_bins and reciprocal arguments must not both be defined. ' +
+          ' One must be False if the other is defined')
+    assert bool(n_bins) ^ bool(reciprocal), msg
+
+    # Make sure all example_feature dictionaries contain label_key and peritem_keys
+    # Also make test if they are all contain the same keys
+    keys = []
+    for _example_dict in example_features:
+        keys.append(frozenset(_example_dict.keys()))
+    msg = "All dictionary keys in example_features must be the same. Found {}"
+    assert set(keys).__len__() == 1, msg.format(set(keys))
+
+    # Assert that peritem keys is a subset of all dictionary keys
+    msg = "peritem_keys {} is not in keys in example_features keys {}"
+    assert set(peritem_keys).issubset(set(keys[0])), msg.format(set(peritem_keys), set(keys[0]))
+
+    # Assert that label_key is a subset of all dictionary keys
+    msg = "peritem_keys {} is not in keys in example_features keys {}"
+    assert set({label_key}).issubset(set(keys[0])), msg.format(set(label_key), set(keys[0]))
+
+    # label_key and peritem_keys must be equal to keys in example_features
+    msg = "peritem_keys and label_key union do not equal the set of passed feature keys"
+    feature_set = set(peritem_keys)
+    feature_set.add(label_key)
+    assert (feature_set == set(keys[0])), msg
+
+    peritem_features = [] # For iterating through and saving
+    for peritem_feature_dict in example_features:
+        single_item_feature_dict = {} # Append to list
+
+        for feature_name in peritem_keys:
+            # Append all features to peritem features
+            feature_value = str(peritem_feature_dict[feature_name])
+            single_item_feature_dict[feature_name] = feature_value.encode()
+
+        peritem_features.append(single_item_feature_dict)
+
+    # Extract labels and relevance for iteration
+    relevances = []
+    for peritem_feature_dict in example_features:
+        relevance = peritem_feature_dict[label_key]
+        relevances.append(relevance)
+
+    # Scale or transform relevance
+    relevances = relevance_scorer(relevances,
+                                  reciprocal=reciprocal,
+                                  n_bins=n_bins)
+
+    if shuffle_peritem:
+        # Shuffle per-item examples
+        index = np.random.permutation(len(peritem_features))
+        peritem_features_shuffled = [peritem_features[x] for x in index]
+        relevances_shuffled = [relevances[x] for x in index]
+
+        relevances = relevances_shuffled
+        peritem_features = peritem_features_shuffled
+
+    # Create a list of serialized per-item features
+    peritem_list = []
+
+    for single_item_feature_dict, relevance_label in zip(peritem_features,
+                                                         relevances):
+        peritem_dict = {}
+
+        # Add peritem features to dictionary
+        peritem_dict[label_key] = tf_feature_mapper(relevance_label)
+        for key in peritem_keys:
+            # TODO Add tf.train.Features as values instead of bytes feature
+            peritem_dict[key] = tf_feature_mapper([single_item_feature_dict[key]])
+
+        # peritem_dict.update(**single_item_feature_dict)
+
+        # Create EIE and append to serialized peritem_list
+        peritem_proto = tf.train.Example(
+                features=tf.train.Features(feature=peritem_dict))
+        peritem_proto_str = peritem_proto.SerializeToString() # Serialized
+
+        # List of serialized tf.train.Example
+        peritem_list.append(peritem_proto_str)
+
+    return peritem_list
+
+
+def get_train_test_id_mongo(collection, train_pct=0.8):
     """Returns Mongo-db _id's for training and testing instances. document _ids
     are shuffled using sklearn's model_selection.train_test_split
     inputs
@@ -434,14 +648,38 @@ def get_test_train_id(collection, train_pct=0.8):
 
     return train_ids, test_ids
 
+def get_train_test_id_sql(train_pct=0.8):
+    """Returns primary keys of all unique customers
+    The complete set of customer_ids are split into training and testing
+    sets
+    inputs
+    -------
+    train_pct : (float) percent of docuemnt _ids to be considered for training
+        outputs_
+    -------
+    (train_ids, test_ids) : (list) of training and testing _ids """
 
+    # Set up connection to SQL
+    Insert = extract.Insert(server_name='.\\DT_SQLEXPR2008',
+                            driver_name='SQL Server Native Client 10.0',
+                            database_name='Clustering')
 
+    # Query SQL for all customer primary keys
+    sel = sqlalchemy.select([Customers.id])
+    customer_ids = Insert.core_select_execute(sel)
+    customer_ids = [x.id for x in customer_ids]
 
+    # Permute all primary keys into training and testing sets
+    index = np.arange(len(customer_ids))
+    np.random.shuffle(index)
+    n_train = int(len(customer_ids) * train_pct)
+    train_index = index[n_train:]
+    text_index = index[:n_train]
 
+    train_ids = [customer_ids[idx] for idx in train_index]
+    test_ids = [customer_ids[idx] for idx in text_index]
 
-
-
-
+    return train_ids, test_ids
 
 
 

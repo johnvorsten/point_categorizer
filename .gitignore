@@ -27,6 +27,11 @@ test.py
 user_input.csv
 *.ini
 *.csv
+*MIL_cat_dataset.dat
+*MIL_dataset.dat
+*categorical_categories.dat
+*vocab_descriptor.txt
+*vocab_name.txt
 
 # Word files
 *.docx
