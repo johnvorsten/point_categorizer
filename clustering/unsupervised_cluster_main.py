@@ -10,8 +10,6 @@ import os
 import sys
 
 # Third party imports
-from pymongo import MongoClient
-import pymongo
 from kmodes.kmodes import KModes
 from sklearn.cluster import AgglomerativeClustering
 import pandas as pd
@@ -222,7 +220,7 @@ def main():
         res = Insert.core_insert_instance(Clustering, values)
         print("Inserted {}".format(res.inserted_primary_key))
 
-    pass
+    return None
 
 
 
