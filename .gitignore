@@ -14,6 +14,7 @@ ranking/final_model/**
 
 # Log directories
 */logs/*
+**.log
 
 # SQL Scripts
 *.sql
@@ -32,6 +33,7 @@ user_input.csv
 *categorical_categories.dat
 *vocab_descriptor.txt
 *vocab_name.txt
+*vocab_ANTIQUE2.txt
 
 # Word files
 *.docx
