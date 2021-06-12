@@ -9,6 +9,7 @@ import sys
 import os
 import configparser
 
+
 # Third party imports
 
 
@@ -38,6 +39,7 @@ LoadMIL = mil_load.LoadMIL(server_name,
                            database_name)
 
 
+
 #%%
 
 if __name__ == '__main__':
@@ -58,4 +60,5 @@ if __name__ == '__main__':
     
     # Retrieve
     dataset_categorical = LoadMIL.load_mil_dataset(categorical_feature_file)
+
 

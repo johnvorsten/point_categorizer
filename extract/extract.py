@@ -134,10 +134,14 @@ class Extract():
         return None
 
 
+<<<<<<< HEAD
     def search_databases(self, 
                          search_directory, 
                          idx=1, 
                          print_flag=False):
+=======
+    def search_databases(self, search_directory, idx=1, print_flag=False):
+>>>>>>> cb4b1f01b7e16d3046036f24cec8de0bba93eed5
         """Base function for module. Recursively looks through base_directory
         and copies any instances of SQL databases named JobDB.mdf and JobLog.ldf
         to a default directory on the D drive
@@ -268,9 +272,13 @@ class Extract():
         return False
 
 
+<<<<<<< HEAD
     def check_folder_exists(self, 
                             folder_name, 
                             save_directory):
+=======
+    def check_folder_exists(self, folder_name, save_directory):
+>>>>>>> cb4b1f01b7e16d3046036f24cec8de0bba93eed5
         """Checks if folder_name already exists in save_directory
         Returns True if folder exists
         False if does not exist"""
@@ -287,9 +295,13 @@ class Extract():
             return False
 
 
+<<<<<<< HEAD
     def _get_generic_folder(self, save_directory, 
                             affix='No_Name_', 
                             idx=0):
+=======
+    def _get_generic_folder(self, save_directory, affix='No_Name_', idx=0):
+>>>>>>> cb4b1f01b7e16d3046036f24cec8de0bba93eed5
         """Return a generic folder name if none already exists"""
 
         folder_name = affix + str(idx)
@@ -343,10 +355,17 @@ class Extract():
             raise OSError("Folder already exists at {}"\
                           .format(os.path.join(save_directory, job_name)))
 
+<<<<<<< HEAD
     def iterate_dataframes(self, server_name,
                        driver_name,
                        database_name,
                        search_directory=DEFAULT_SQL_MDF_SEARCH_DIRECTORY):
+=======
+    def iterate_dataframes(self, server_name='.\DT_SQLEXPR2008',
+                       driver_name='SQL Server Native Client 10.0',
+                       database_name='PipelineDB',
+                       search_directory=r"D:\Z - Saved SQL Databases"):
+>>>>>>> cb4b1f01b7e16d3046036f24cec8de0bba93eed5
         """Get objects from saved SQL databases
         Saved SQL databases have the tables {POINTBAS, POINTSEN, POINTFUN,
          NETDEV}
@@ -467,9 +486,15 @@ class Extract():
 class Insert(SQLHandling):
 
     def __init__(self,
+<<<<<<< HEAD
                  server_name,
                  driver_name,
                  database_name):
+=======
+                 server_name='.\DT_SQLEXPR2008',
+                 driver_name='SQL Server Native Client 10.0',
+                 database_name='Clustering'):
+>>>>>>> cb4b1f01b7e16d3046036f24cec8de0bba93eed5
         super().__init__(server_name=server_name, driver_name=driver_name)
 
         # SQLHelper = SQLHandling(server_name=server_name, driver_name=driver_name)

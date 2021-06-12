@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 import configparser
 
+
 # Third party imports
 from pyodbc import IntegrityError
 import sqlalchemy

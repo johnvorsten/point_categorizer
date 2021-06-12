@@ -64,7 +64,6 @@ from extract import extract
 from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev,
                           Customers, ClusteringHyperparameter, Labeling)
 
-
 # Globals
 config = configparser.ConfigParser()
 config.read(r'../extract/sql_config.ini')
@@ -72,6 +71,7 @@ server_name = config['sql_server']['DEFAULT_SQL_SERVER_NAME']
 driver_name = config['sql_server']['DEFAULT_SQL_DRIVER_NAME']
 database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
 Insert = extract.Insert(server_name, driver_name, database_name)
+
 
 #%%
 

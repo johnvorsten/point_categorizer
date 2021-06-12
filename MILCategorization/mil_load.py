@@ -36,8 +36,6 @@ from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev,
 
 # Globals
 
-
-
 #%%
 
 
@@ -331,7 +329,6 @@ class LoadMIL:
             pickle.dump(MILData, f)
 
         return None
-
 
 
 class SingleInstanceGather:

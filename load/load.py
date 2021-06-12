@@ -38,7 +38,11 @@ class Load():
     @staticmethod
     def get_database_set(names, features):
         """Generates an iterator which yields dataframes that all have a common
+<<<<<<< HEAD
         attribute. Each names and features must have the same length,
+=======
+        attribute in common. Each names and features must have the same length,
+>>>>>>> cb4b1f01b7e16d3046036f24cec8de0bba93eed5
         where every feature/row in features must correspond to a name in names
         parameters
         -------
