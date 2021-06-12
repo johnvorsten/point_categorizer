@@ -30,7 +30,7 @@ if __name__ == '__main__':
 
 #%%
 
-class Load(): # Formally JVReadingTools
+class Load():
 
     def __init__(self):
         pass
@@ -38,7 +38,7 @@ class Load(): # Formally JVReadingTools
     @staticmethod
     def get_database_set(names, features):
         """Generates an iterator which yields dataframes that all have a common
-        attribute in common. Each names and features must have the same length,
+        attribute. Each names and features must have the same length,
         where every feature/row in features must correspond to a name in names
         parameters
         -------

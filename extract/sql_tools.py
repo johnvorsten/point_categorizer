@@ -45,6 +45,9 @@ logging.basicConfig(filename=os.path.join(_log_dir, 'sql_logs.log'),
                     level=logging.DEBUG,
                     format='%(asctime)s %(message)s')
 
+# Global
+DEFAULT_SQL_SERVER_DRIVER = 'SQL+Server+Native+Client+10.0'
+
 
 #%%
 
@@ -142,8 +145,9 @@ class SQLHandling:
 
         return connection_string
 
-    def get_sqlalchemy_connection_str(self, database_name,
-                                      driver_name='SQL+Server+Native+Client+10.0'):
+    def get_sqlalchemy_connection_str(self, 
+                                      database_name,
+                                      driver_name=DEFAULT_SQL_SERVER_DRIVER):
         """engine for sqlalchemy"""
 
         server_name = self.server_name

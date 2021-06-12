@@ -34,16 +34,19 @@ from transform import transform_pipeline
 from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev,
                           Customers, ClusteringHyperparameter, Labeling)
 
-Insert = extract.Insert(server_name='.\\DT_SQLEXPR2008',
-                        driver_name='SQL Server Native Client 10.0',
-                        database_name='Clustering')
+# Globals
+
+
 
 #%%
 
 
 class LoadMIL:
 
-    def __init__(self):
+    def __init__(self, server_name, driver_name, database_name):
+        self.Insert = extract.Insert(server_name=server_name,
+                                     driver_name=driver_name,
+                                     database_name=database_name)
         return None
 
 
@@ -58,7 +61,7 @@ class LoadMIL:
         WHERE IsNumeric(group_id) = 1
         ORDER BY group_id ASC""".format(Points.__tablename__)
         sel = sqltext(sql)
-        group_ids = Insert.core_select_execute(sel)
+        group_ids = self.Insert.core_select_execute(sel)
 
         # Retrieve bag label for each group_id
         sql_bag = """SELECT id, bag_label
@@ -77,13 +80,13 @@ class LoadMIL:
             group_id = row.group_id
 
             sel = sqltext(sql_bag.format(Labeling.__tablename__, group_id))
-            with Insert.engine.connect() as connection:
+            with self.Insert.engine.connect() as connection:
                 res = connection.execute(sel)
                 label = res.fetchone().bag_label
 
             # Load the dataset
             sel = sqlalchemy.select([Points]).where(Points.group_id.__eq__(group_id))
-            dfraw = Insert.pandas_select_execute(sel)
+            dfraw = self.Insert.pandas_select_execute(sel)
 
             # Validate raw dataset
             if not self.validate_bag(dfraw):
@@ -328,6 +331,7 @@ class LoadMIL:
             pickle.dump(MILData, f)
 
         return None
+
 
 
 class SingleInstanceGather:

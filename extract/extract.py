@@ -6,7 +6,7 @@ Created on Tue Apr 16 14:19:51 2019
 """
 
 # Python imports
-import os
+import os, sys
 import subprocess
 from pathlib import Path, WindowsPath
 import shutil
@@ -29,8 +29,11 @@ if __name__ == '__main__':
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
 
-from extract.DT_sql_tools_v6 import SQLHandling
-from extract.DT_sql_tools_v6 import NameUsedError
+from extract.sql_tools import SQLHandling
+from extract.sql_tools import NameUsedError
+
+# Global
+DEFAULT_SQL_MDF_SEARCH_DIRECTORY = r"D:\Z - Saved SQL Databases"
 
 
 #%%
@@ -100,7 +103,9 @@ class Extract():
         return None
 
 
-    def search_and_save(self, search_directory, save_directory):
+    def search_and_save(self, 
+                        search_directory, 
+                        save_directory):
         """Iterate through a directory searching for database files and
         save them to save_directory
         inputs
@@ -129,7 +134,10 @@ class Extract():
         return None
 
 
-    def search_databases(self, search_directory, idx=1, print_flag=False):
+    def search_databases(self, 
+                         search_directory, 
+                         idx=1, 
+                         print_flag=False):
         """Base function for module. Recursively looks through base_directory
         and copies any instances of SQL databases named JobDB.mdf and JobLog.ldf
         to a default directory on the D drive
@@ -260,7 +268,9 @@ class Extract():
         return False
 
 
-    def check_folder_exists(self, folder_name, save_directory):
+    def check_folder_exists(self, 
+                            folder_name, 
+                            save_directory):
         """Checks if folder_name already exists in save_directory
         Returns True if folder exists
         False if does not exist"""
@@ -277,7 +287,9 @@ class Extract():
             return False
 
 
-    def _get_generic_folder(self, save_directory, affix='No_Name_', idx=0):
+    def _get_generic_folder(self, save_directory, 
+                            affix='No_Name_', 
+                            idx=0):
         """Return a generic folder name if none already exists"""
 
         folder_name = affix + str(idx)
@@ -331,10 +343,10 @@ class Extract():
             raise OSError("Folder already exists at {}"\
                           .format(os.path.join(save_directory, job_name)))
 
-    def iterate_dataframes(self, server_name='.\DT_SQLEXPR2008',
-                       driver_name='SQL Server Native Client 10.0',
-                       database_name='PipelineDB',
-                       search_directory=r"D:\Z - Saved SQL Databases"):
+    def iterate_dataframes(self, server_name,
+                       driver_name,
+                       database_name,
+                       search_directory=DEFAULT_SQL_MDF_SEARCH_DIRECTORY):
         """Get objects from saved SQL databases
         Saved SQL databases have the tables {POINTBAS, POINTSEN, POINTFUN,
          NETDEV}
@@ -455,9 +467,9 @@ class Extract():
 class Insert(SQLHandling):
 
     def __init__(self,
-                 server_name='.\DT_SQLEXPR2008',
-                 driver_name='SQL Server Native Client 10.0',
-                 database_name='Clustering'):
+                 server_name,
+                 driver_name,
+                 database_name):
         super().__init__(server_name=server_name, driver_name=driver_name)
 
         # SQLHelper = SQLHandling(server_name=server_name, driver_name=driver_name)

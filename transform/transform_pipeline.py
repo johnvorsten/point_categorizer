@@ -35,6 +35,7 @@ import statistics
 from statistics import StatisticsError
 import pickle
 import os, sys
+import configparser
 
 # Third party imports
 import pandas as pd
@@ -63,9 +64,14 @@ from extract import extract
 from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev,
                           Customers, ClusteringHyperparameter, Labeling)
 
-Insert = extract.Insert(server_name='.\\DT_SQLEXPR2008',
-                        driver_name='SQL Server Native Client 10.0',
-                        database_name='Clustering')
+
+# Globals
+config = configparser.ConfigParser()
+config.read(r'../extract/sql_config.ini')
+server_name = config['sql_server']['DEFAULT_SQL_SERVER_NAME']
+driver_name = config['sql_server']['DEFAULT_SQL_DRIVER_NAME']
+database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
+Insert = extract.Insert(server_name, driver_name, database_name)
 
 #%%
 

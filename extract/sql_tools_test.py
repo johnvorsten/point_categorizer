@@ -5,14 +5,58 @@ Created on Mon Jan 13 09:14:49 2020
 @author: z003vrzk
 """
 
-from .DT_sql_tools_v6 import SQLHandling
+# Python imports
+import unittest
+import configparser
+
+# Local imports
+from sql_tools import SQLHandling
+
+# Globals
+config = configparser.ConfigParser()
+config.read(r'sql_config.ini')
+server_name = config['sql_server']['DEFAULT_SQL_SERVER_NAME']
+driver_name = config['sql_server']['DEFAULT_SQL_DRIVER_NAME']
+database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
+numeric_feature_file = config['sql_server']['DEFAULT_NUMERIC_FILE_NAME']
+categorical_feature_file = config['sql_server']['DEFAULT_CATEGORICAL_FILE_NAME']
+
+
+
+#%%
+
+class SQLHandlingTest(unittest.TestCase):
+    
+    def setUp(self):
+        return None
+    
+    def test_(self):
+        return None
+    
+    def test_init(self):
+        return None
+    def test_(self):
+        return None
+    def test_(self):
+        return None
+    def test_(self):
+        return None
+    def test_(self):
+        return None
+    def test_(self):
+        return None
+    def test_(self):
+        return None
+    def test_(self):
+        return None
+    def test_(self):
+        return None
+    def test_(self):
+        return None
+
+    
 
 if __name__ == "__main__":
-
-    server_name = '.\DT_SQLEXPR2008'
-    driver_name = 'SQL Server Native Client 10.0'
-    path_mdf = r"C:\Users\z003vrzk\.spyder-py3\Scripts\Work\PanelBuilder\SQLTest\JobDB.mdf"
-    database_name = 'PBJobDB'
 
     mysql = SQLHandling(server_name=server_name, driver_name=driver_name)
 

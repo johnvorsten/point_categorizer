@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Jun 18 21:17:17 2020
+Created on Thu Jun 10 20:07:07 2021
 
-@author: z003vrzk
+@author: vorst
 """
+
 # Python imports
-import sys
-import os
 import configparser
+import os, sys
 
 # Third party imports
-
 
 # Local imports
 if __name__ == '__main__':
@@ -21,10 +20,10 @@ if __name__ == '__main__':
     _PROJECT_DIR = os.path.join(os.sep, *_PARTS[:-1])
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
-
-from MILCategorization import mil_load
-
-# Globals
+import mil_load
+        
+        
+# Global declarations
 config = configparser.ConfigParser()
 config.read(r'../extract/sql_config.ini')
 server_name = config['sql_server']['DEFAULT_SQL_SERVER_NAME']
@@ -37,25 +36,11 @@ LoadMIL = mil_load.LoadMIL(server_name,
                            driver_name,
                            database_name)
 
-
 #%%
 
-if __name__ == '__main__':
-    # Pipeline w/ numeric features
-    bags, labels = LoadMIL.gather_mil_dataset(pipeline='whole')
+# Load
+bags, labels = LoadMIL.gather_mil_dataset(pipeline='whole')
 
-    # Save
-    LoadMIL.save_mil_dataset(bags, labels, numeric_feature_file)
+# Transform
 
-    # Retrieve
-    dataset_numeric = LoadMIL.load_mil_dataset(numeric_feature_file)
-
-    # Pipeline w/o numeric features
-    bags, labels = LoadMIL.gather_mil_dataset(pipeline='categorical')
-
-    # Save
-    LoadMIL.save_mil_dataset(bags, labels, categorical_feature_file)
-    
-    # Retrieve
-    dataset_categorical = LoadMIL.load_mil_dataset(categorical_feature_file)
-
+# 

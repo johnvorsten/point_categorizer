@@ -9,6 +9,7 @@ Created on Mon May  4 21:24:45 2020
 import os
 import sys
 from pathlib import Path
+import configparser
 
 # Third party imports
 from pyodbc import IntegrityError
@@ -31,10 +32,16 @@ from extract.SQLAlchemyDataDefinition import (Customers, Points, Netdev,
                                               Labeling)
 
 # Local declarations
+config = configparser.ConfigParser()
+config.read(r'../extract/sql_config.ini')
+server_name = config['sql_server']['DEFAULT_SQL_SERVER_NAME']
+driver_name = config['sql_server']['DEFAULT_SQL_DRIVER_NAME']
+database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
+
 Extract = extract.Extract()
-Insert = extract.Insert(server_name='.\DT_SQLEXPR2008',
-                        driver_name='SQL Server Native Client 10.0',
-                        database_name='Clustering')
+Insert = extract.Insert(server_name,
+                        driver_name,
+                        database_name)
 
 #%%
 """

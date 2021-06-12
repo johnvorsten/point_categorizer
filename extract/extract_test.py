@@ -5,19 +5,86 @@ Created on Wed Jun 12 12:00:16 2019
 @author: z003vrzk
 """
 # Python imports
-import os
+import os, sys
 from pathlib import Path
 from collections import namedtuple
+import unittest
+import configparser
 
 # Third party imports
+import pandas as pd
+import numpy as np
+from sqlalchemy.sql import text as sqltext
 
 # Local imports
-from . import extract
+if __name__ == '__main__':
+    # Remove the drive letter on windows
+    _CWD = os.path.splitdrive(os.getcwd())[1]
+    _PARTS = _CWD.split(os.sep)
+    # Project dir is one level above cwd
+    _PROJECT_DIR = os.path.join(os.sep, *_PARTS[:-1])
+    if _PROJECT_DIR not in sys.path:
+        sys.path.insert(0, _PROJECT_DIR)
+from extract import extract
 
 # Local declarations
 Extract = extract.Extract()
 
+config = configparser.ConfigParser()
+config.read(r'../extract/sql_config.ini')
+server_name = config['sql_server']['DEFAULT_SQL_SERVER_NAME']
+driver_name = config['sql_server']['DEFAULT_SQL_DRIVER_NAME']
+database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
+numeric_feature_file = config['sql_server']['DEFAULT_NUMERIC_FILE_NAME']
+categorical_feature_file = config['sql_server']['DEFAULT_CATEGORICAL_FILE_NAME']
+
 #%%
+
+class InsertTest(unittest.TestCase):
+    
+    def setUp(self):
+        # The Insert class is used for inserting data into a SQL table,
+        # And also retrieving data from the collection of tables
+        self.Insert = extract.Insert(server_name=server_name,
+                                     driver_name=driver_name,
+                                     database_name=database_name)
+        
+        return
+    
+    def test_clean_dataframe(self,):
+        """Delete duplicated columns and replace np.nan values with None
+        None is mapped to Null in SQL"""
+        df = pd.DataFrame({'ColA':[1,2,3,np.nan], 
+                           'ColA':[np.nan, 1,2, np.nan],
+                           'ColB':[1,2,3,np.nan]})
+        df = extract.Insert.clean_dataframe(df)
+        
+        self.assertNotIn(True, df.columns.duplicated())
+        self.assertNotIn(np.nan, df.values)
+        return None
+    
+    def test_core_select_execute(self):
+        """This assumes there is a database reachable with data stored.."""
+        
+        sql = """SELECT name, *
+        FROM {}""".format('sys.master')
+        
+        sel = sqltext(sql)
+        self.Insert.core_select_execute(sel)
+        
+        return
+    
+    def test_pandas_select_execute(self):
+        return
+    
+    def test_(self):
+        return
+    def test_(self):
+        return
+    def test_(self):
+        return
+    def test_(self):
+        return
 
 
 if __name__ == '__main__':
