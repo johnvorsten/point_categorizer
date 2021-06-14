@@ -29,11 +29,7 @@ if __name__ == '__main__':
     _PROJECT_DIR = os.path.join(os.sep, *_PARTS[:-1])
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
-<<<<<<< HEAD
-from extract.sql_tools import SQLHandling
-=======
-from extract.DT_sql_tools_v6 import SQLHandling
->>>>>>> cb4b1f01b7e16d3046036f24cec8de0bba93eed5
+from extract.sql_tools import SQLBase
 
 # Table schema
 Base = declarative_base()

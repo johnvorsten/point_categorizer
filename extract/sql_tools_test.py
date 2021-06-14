@@ -10,6 +10,7 @@ import unittest
 
 # local imports
 from sql_tools import SQLBase
+import sqlalchemy
 
 # Globals
 server_name = '.\\SQLEXPRESS'
@@ -19,16 +20,15 @@ database_name = 'Clustering'
 path_mdf = r"C:\Users\z003vrzk\.spyder-py3\Scripts\Work\PanelBuilder\panel_builder\SQLTest\JHW\JobDB.mdf"
 path_ldf = r"C:\Users\z003vrzk\.spyder-py3\Scripts\Work\PanelBuilder\panel_builder\SQLTest\JHW\JobDB_Log.ldf"
 
+sqlbase = SQLBase(server_name=server_name, driver_name=driver_name)
+
 #%%
 
 class SQLTest(unittest.TestCase):
 
     def test_get_pyodbc_database_connection_str(self):
 
-        sqlbase = SQLBase(server_name=server_name, driver_name=driver_name)
-
         # Connects only to database called database_name
-        # Use connection string to execute SQL if needed
         conn_str = sqlbase.get_pyodbc_database_connection_str(database_name)
         test_str = 'DRIVER={SQL Server Native Client 11.0}; SERVER=.\\DT_SQLEXPRESS; DATABASE=PBJobDB_test; Trusted_Connection=yes;'
 
@@ -41,7 +41,6 @@ class SQLTest(unittest.TestCase):
         sqlbase = SQLBase(server_name=server_name, driver_name=driver_name)
 
         # Connects only to database called database_name
-        # Use connection string to execute SQL if needed
         conn_str = sqlbase.get_pyodbc_master_connection_str()
         test_str = 'DRIVER={SQL Server Native Client 11.0}; SERVER=.\\DT_SQLEXPRESS; DATABASE=master; Trusted_Connection=yes;'
 
@@ -54,27 +53,33 @@ class SQLTest(unittest.TestCase):
         sqlbase = SQLBase(server_name=server_name, driver_name=driver_name)
 
         # Connects only to database called database_name
-        # Use connection string to execute SQL if needed
         conn_str = sqlbase._set_pyodbc_master_connection_str()
         conn_str_test = sqlbase.get_pyodbc_master_connection_str()
         conn_str_test2 = 'DRIVER={SQL Server Native Client 11.0}; SERVER=.\\DT_SQLEXPRESS; DATABASE=master; Trusted_Connection=yes;'
 
         self.assertEqual(conn_str, conn_str_test, conn_str_test2)
+        
         return None
 
 
     def test_get_sqlalchemy_connection_str(self):
 
-        sqlbase = SQLBase(server_name=server_name, driver_name=driver_name)
-
         sqlalchemy_str = sqlbase.get_sqlalchemy_connection_str(database_name)
-        sqlalchemy_str_test = 'mssql+pyodbc://.\\DT_SQLEXPRESS/PBJobDB_test?driver={SQL Server Native Client 11.0}&trusted_connection=yes'
+        sqlalchemy_str_test = 'mssql+pyodbc://.\\{}/{}?driver={SQL Server Native Client 11.0}&trusted_connection=yes'.format(server_name, database_name)
 
         self.assertEqual(sqlalchemy_str, sqlalchemy_str_test)
+        
         return None
     
     
-    def test_pandas_execute_sql(self):
+    def test_sqlalchemy_connect(self):
+        
+        connection_str = sqlbase.get_sqlalchemy_connection_str(database_name, 
+                                                               trusted_connection=True)
+
+        # For interaction with SQLAlchemy ORM
+        engine = sqlalchemy.create_engine(connection_str)
+        
         return None
     
     

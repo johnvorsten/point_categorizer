@@ -77,8 +77,12 @@ class InsertTest(unittest.TestCase):
     def test_pandas_select_execute(self):
         return
     
-    def test_(self):
+    def test_sqlalchemy_connection(self):
+        connection_str = get_sqlalchemy_connection_str(database_name, 
+                                                                 driver_name=driver_name)
+        sqlalchemy.create_engine(self.connection_str)
         return
+    
     def test_(self):
         return
     def test_(self):

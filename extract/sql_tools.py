@@ -80,8 +80,8 @@ def pyodbc_connection_str(driver_name,
     return master_connection_str
 
 
-def sqlalchemy_connection_str(driver_name, 
-                              server_name,
+def sqlalchemy_connection_str(server_name,
+                              driver_name,
                               database_name,
                               pwd=None,
                               uid=None,
@@ -195,7 +195,9 @@ class SQLBase:
         return connection_string
         
 
-    def get_sqlalchemy_connection_str(self, database_name):
+    def get_sqlalchemy_connection_str(self, 
+                                      database_name, 
+                                      trusted_connection=True):
         """Engine connection string for SQL Alchemy"""
 
         server_name = self.server_name
@@ -206,9 +208,10 @@ class SQLBase:
 
         'mssql://.\\DT_SQLEXPR2008/PBJobDB?trusted_connection=yes&driver=SQL+Server+Native+Client+10.0'
         """
-
-        engine_str = r'mssql+pyodbc://{0}/{1}?driver={2}&trusted_connection=yes'\
-                        .format(server_name, database_name, driver_name)
+        if trusted_connection:
+            engine_str = r'mssql+pyodbc://{0}/{1}?driver={2}&trusted_connection=yes'\
+                            .format(server_name, database_name, driver_name)
+        else: raise NotImplementedError()
 
         return engine_str
 

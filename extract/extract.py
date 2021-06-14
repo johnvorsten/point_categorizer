@@ -29,8 +29,9 @@ if __name__ == '__main__':
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
 
-from extract.sql_tools import SQLHandling
+from extract.sql_tools import SQLBase
 from extract.sql_tools import NameUsedError
+from extract.sql_tools import sqlalchemy_connection_str
 
 # Global
 DEFAULT_SQL_MDF_SEARCH_DIRECTORY = r"D:\Z - Saved SQL Databases"
@@ -374,7 +375,7 @@ class Extract():
         path_iterator = self.search_databases(search_directory)
 
         # SQL helper for attaching and detaching found database files to server
-        SQLHelper = SQLHandling(server_name=server_name, driver_name=driver_name)
+        SQLHelper = SQLBase(server_name=server_name, driver_name=driver_name)
 
         for mdf_path, ldf_path in path_iterator:
             db_name_working = database_name
@@ -465,17 +466,20 @@ class Extract():
 
 #%%
 
-class Insert(SQLHandling):
+class Insert:
 
     def __init__(self,
                  server_name,
                  driver_name,
                  database_name):
-        super().__init__(server_name=server_name, driver_name=driver_name)
 
-        # SQLHelper = SQLHandling(server_name=server_name, driver_name=driver_name)
-        # self.connection_str = SQLHelper.get_sqlalchemy_connection_str(database_name, driver_name=driver_name)
-        self.connection_str = self.get_sqlalchemy_connection_str(database_name, driver_name=driver_name)
+        self.connection_str = sqlalchemy_connection_str(server_name,
+                                                        driver_name, 
+                                                        database_name,
+                                                        pwd=None,
+                                                        uid=None,
+                                                        trusted_connection=True)
+        
 
         # For interaction with SQLAlchemy ORM
         self.engine = sqlalchemy.create_engine(self.connection_str)
