@@ -10,10 +10,12 @@ import unittest
 
 # local imports
 from sql_tools import SQLBase
+from sql_tools import sqlalchemy_connection_str, pyodbc_connection_str
 import sqlalchemy
+import pyodbc
 
 # Globals
-server_name = '.\\SQLEXPRESS'
+server_name = '.\SQLEXPRESS'
 driver_name = 'SQL Server Native Client 11.0'
 database_name = 'Clustering'
 
@@ -74,15 +76,45 @@ class SQLTest(unittest.TestCase):
     
     def test_sqlalchemy_connect(self):
         
-        connection_str = sqlbase.get_sqlalchemy_connection_str(database_name, 
-                                                               trusted_connection=True)
+        connection_str = sqlalchemy_connection_str(server_name,
+                                                   driver_name,
+                                                   database_name, 
+                                                   pwd=None,
+                                                   uid=None,
+                                                   trusted_connection=True)
 
         # For interaction with SQLAlchemy ORM
         engine = sqlalchemy.create_engine(connection_str)
         
+        # Inspect connected datbase
+        inspector = sqlalchemy.inspect(engine)
+        
+        with engine.connect() as connection:
+            result = connection.execute(select).fetchall()
+            
         return None
     
     
+    def test_pyodbc_connect(self):
+        connection_str = pyodbc_connection_str(server_name,
+                                               driver_name,
+                                               database_name, 
+                                               pwd=None,
+                                               uid=None,
+                                               trusted_connection=True)
+        # Connect
+        connection = pyodbc.connect(connection_str)
+        
+        # Execute SQL
+        sql = """SELECT * from [master].[sys].[databases]"""
+        with connection.cursor() as cursor:
+            cursor.execute(sql)
+            rows = cursor.fetchall()
+        
+        
+        return None
+        
+        
     def test_execute_sql(self):
         return None
 

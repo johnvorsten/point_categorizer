@@ -47,8 +47,8 @@ class DepreciationError(Exception):
 class NameUsedError(Exception):
     pass
 
-def pyodbc_connection_str(driver_name, 
-                          server_name,
+def pyodbc_connection_str(server_name,
+                          driver_name, 
                           database_name,
                           pwd=None,
                           uid=None,

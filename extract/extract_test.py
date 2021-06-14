@@ -38,6 +38,11 @@ database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
 numeric_feature_file = config['sql_server']['DEFAULT_NUMERIC_FILE_NAME']
 categorical_feature_file = config['sql_server']['DEFAULT_CATEGORICAL_FILE_NAME']
 
+global Insert;
+Insert = extract.Insert(server_name=server_name,
+                        driver_name=driver_name,
+                        database_name=database_name)
+        
 #%%
 
 class InsertTest(unittest.TestCase):
@@ -45,10 +50,7 @@ class InsertTest(unittest.TestCase):
     def setUp(self):
         # The Insert class is used for inserting data into a SQL table,
         # And also retrieving data from the collection of tables
-        self.Insert = extract.Insert(server_name=server_name,
-                                     driver_name=driver_name,
-                                     database_name=database_name)
-        
+
         return
     
     def test_clean_dataframe(self,):
@@ -70,17 +72,11 @@ class InsertTest(unittest.TestCase):
         FROM {}""".format('sys.master')
         
         sel = sqltext(sql)
-        self.Insert.core_select_execute(sel)
+        Insert.core_select_execute(sel)
         
         return
     
     def test_pandas_select_execute(self):
-        return
-    
-    def test_sqlalchemy_connection(self):
-        connection_str = get_sqlalchemy_connection_str(database_name, 
-                                                                 driver_name=driver_name)
-        sqlalchemy.create_engine(self.connection_str)
         return
     
     def test_(self):
