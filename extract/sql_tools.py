@@ -11,12 +11,13 @@ This module has a few important assumptions :
 
 # Python imports
 from datetime import datetime
+from typing import overload
+import sys, os
+import subprocess
+from pathlib import Path
 
 # Third party imports
 import pyodbc
-import subprocess
-from pathlib import Path
-import os
 import pandas as pd
 
 # Local imports
@@ -46,7 +47,69 @@ class DepreciationError(Exception):
 class NameUsedError(Exception):
     pass
 
+def pyodbc_connection_str(driver_name, 
+                          server_name,
+                          database_name,
+                          pwd=None,
+                          uid=None,
+                          trusted_connection=True):
+    """
+    A connection string has the following format:
+    "DSN=data-source-name[;SERVER=value] [;PWD=value] [;UID=value] [;<Attribute>=<value>]"
+    inputs
+    -------
+    server_name : (str) name of sql server
+    driver_name : (str) type of driver
+    pwd : (str) password
+    uid: (str) user identification
+    trusted_connection: (bool)"""
+    
+    if trusted_connection:
+        pyodbc_base_conn_str = 'DRIVER={}; SERVER={}; DATABASE={}; Trusted_Connection=yes;'
+        master_connection_str = pyodbc_base_conn_str.format(driver_name, 
+                                                            server_name,
+                                                            database_name)
+    elif pwd and uid:
+        pyodbc_base_conn_str = 'DRIVER={}; SERVER={}; DATABASE={}; UID={}; PWD={};'
+        master_connection_str = pyodbc_base_conn_str.format(driver_name, 
+                                                            server_name, 
+                                                            database_name, 
+                                                            uid, 
+                                                            pwd)
+    
+    return master_connection_str
+
+
+def sqlalchemy_connection_str(driver_name, 
+                              server_name,
+                              database_name,
+                              pwd=None,
+                              uid=None,
+                              trusted_connection=True):
+    """Engine connection string for SQL Alchemy"""
+
+    """ Example
+    conn_str = 'mssql://.\\DT_SQLEXPR2008/PBJobDB?trusted_connection=yes&driver=SQL+Server+Native+Client+10.0'
+
+    'mssql://.\\DT_SQLEXPR2008/PBJobDB?trusted_connection=yes&driver=SQL+Server+Native+Client+10.0'
+    """
+
+    if trusted_connection:
+        base_engine_str = r'mssql+pyodbc://{0}/{1}?driver={2}&trusted_connection=yes'
+        engine_str = base_engine_str.format(server_name, database_name, driver_name)
+    elif pwd and uid:
+        base_engine_str = r'mssql+pyodbc://{uid}:{pwd}@{server_name}/{database_name}?driver={driver_name}'
+        engine_str = base_engine_str.format(uid=uid, 
+                                            pwd=pwd, 
+                                            server_name=server_name, 
+                                            database_name=database_name, 
+                                            driver_name=driver_name)
+
+    return engine_str
+
+
 class SQLBase:
+    pyodbc_base_conn_str = 'DRIVER={}; SERVER={}; DATABASE=master; Trusted_Connection=yes;'
 
 
     def __init__(self, server_name, driver_name):
@@ -57,12 +120,7 @@ class SQLBase:
         -------
         server_name : (str) name of sql server
         driver_name : (str) type of driver"""
-
-        if server_name is None:
-            msg='server_name cannot be {}, try ".\DT_SQLEXPR2008" or ".\DT_SQLEXPRESS"'
-            raise(ValueError(msg.format(server_name)))
-        else:
-            self.server_name = server_name
+        # TODO add support for username and password
 
         if driver_name is None:
             driver_1 = "{SQL Server Native Client 10.0}"
@@ -71,6 +129,7 @@ class SQLBase:
             raise(ValueError(msg.format(driver_name, driver_1, driver_2)))
         else:
             self.driver_name = '{{{driver_name}}}'.format(driver_name=driver_name)
+            self.server_name = server_name
 
         self._init_master_connection()
 
@@ -88,6 +147,7 @@ class SQLBase:
         except Exception as e:
             logging.debug(e)
             raise(e)
+            
         return None
 
 
@@ -113,8 +173,7 @@ class SQLBase:
 
     def _set_pyodbc_master_connection_str(self):
         """Set the master database connection string"""
-        pyodbc_base='DRIVER={}; SERVER={}; DATABASE=master; Trusted_Connection=yes;'
-        self.master_connection_str = pyodbc_base.format(self.driver_name, self.server_name)
+        self.master_connection_str = self.pyodbc_base_conn_str.format(self.driver_name, self.server_name)
         return self.master_connection_str
 
 
@@ -134,7 +193,7 @@ class SQLBase:
                                         database_name)
 
         return connection_string
-
+        
 
     def get_sqlalchemy_connection_str(self, database_name):
         """Engine connection string for SQL Alchemy"""
@@ -337,6 +396,7 @@ class SQLBase:
 
         return path1 == path2
 
+
     def pandas_execute_sql(self, sql_query):
         """Read a table to dataframe using pyodbc and pandas. The server and driver
         used to instantiate the class is used (self.server_name, self.driver_name)
@@ -361,6 +421,7 @@ class SQLBase:
 
         return df
 
+
     def execute_sql(self, sql_query):
         """Execute a SQL statement and return rows
         inputs
@@ -384,6 +445,7 @@ class SQLBase:
 
         return rows
 
+
     def execute_sql_master(self, sql_query):
         """Execute a SQL statement against system databases only
         (uses the master database)
@@ -405,7 +467,8 @@ class SQLBase:
 
         return rows
 
-    def get_UNC(self):
+    @staticmethod
+    def get_UNC():
         """Return a users mapped network drives. UNC path will be used for
         connecting to networked database"""
         output = subprocess.run(['net', 'use'], stdout = subprocess.PIPE).stdout #Bytes
@@ -416,25 +479,17 @@ class SQLBase:
             if output.__contains__(letter + ':'):
                 drives.append(letter)
 
-        output = subprocess.run(['net', 'use'], stdout = subprocess.PIPE).stdout #Bytes
-        output = output.decode() #string
-
-        alphabet = [chr(i) for i in range(65,91)]
-        drives = []
-        for letter in alphabet:
-            if output.__contains__(letter + ':'):
-                drives.append(letter)
-
         # Get UNC server names
-        output = output.splitlines()
-        serverUNC = []
-        for lines in output:
-            if lines.__contains__('\\'):
-                serverUNC.append(lines[lines.index('\\'):len(lines)-1])
-        myOutput = {}
+        server_names = []
+        for line in output.splitlines():
+            if line.__contains__('\\'):
+                server_names.append(line[line.index('\\'):len(line)-1])
+        
+        server_mapping = {}
         for index, letter in enumerate(drives):
-            myOutput[letter] = serverUNC[index]
-        return myOutput
+            server_mapping[letter] = server_names[index]
+        
+        return server_mapping
 
 
     def traceon1807(self, Flag):

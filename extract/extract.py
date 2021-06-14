@@ -134,14 +134,10 @@ class Extract():
         return None
 
 
-<<<<<<< HEAD
     def search_databases(self, 
                          search_directory, 
                          idx=1, 
                          print_flag=False):
-=======
-    def search_databases(self, search_directory, idx=1, print_flag=False):
->>>>>>> cb4b1f01b7e16d3046036f24cec8de0bba93eed5
         """Base function for module. Recursively looks through base_directory
         and copies any instances of SQL databases named JobDB.mdf and JobLog.ldf
         to a default directory on the D drive

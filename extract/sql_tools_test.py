@@ -11,17 +11,19 @@ import unittest
 # local imports
 from sql_tools import SQLBase
 
+# Globals
+server_name = '.\\SQLEXPRESS'
+driver_name = 'SQL Server Native Client 11.0'
+database_name = 'Clustering'
+
+path_mdf = r"C:\Users\z003vrzk\.spyder-py3\Scripts\Work\PanelBuilder\panel_builder\SQLTest\JHW\JobDB.mdf"
+path_ldf = r"C:\Users\z003vrzk\.spyder-py3\Scripts\Work\PanelBuilder\panel_builder\SQLTest\JHW\JobDB_Log.ldf"
+
 #%%
 
 class SQLTest(unittest.TestCase):
 
     def test_get_pyodbc_database_connection_str(self):
-
-        server_name = '.\DT_SQLEXPRESS'
-        driver_name = 'SQL Server Native Client 11.0'
-        path_mdf = r"C:\Users\z003vrzk\.spyder-py3\Scripts\Work\PanelBuilder\panel_builder\SQLTest\JHW\JobDB.mdf"
-        path_ldf = r"C:\Users\z003vrzk\.spyder-py3\Scripts\Work\PanelBuilder\panel_builder\SQLTest\JHW\JobDB_Log.ldf"
-        database_name = 'PBJobDB_test'
 
         sqlbase = SQLBase(server_name=server_name, driver_name=driver_name)
 
@@ -36,12 +38,6 @@ class SQLTest(unittest.TestCase):
 
     def test_get_pyodbc_master_connection_str(self):
 
-        server_name = '.\DT_SQLEXPRESS'
-        driver_name = 'SQL Server Native Client 11.0'
-        path_mdf = r"C:\Users\z003vrzk\.spyder-py3\Scripts\Work\PanelBuilder\panel_builder\SQLTest\JHW\JobDB.mdf"
-        path_ldf = r"C:\Users\z003vrzk\.spyder-py3\Scripts\Work\PanelBuilder\panel_builder\SQLTest\JHW\JobDB_Log.ldf"
-        database_name = 'PBJobDB_test'
-
         sqlbase = SQLBase(server_name=server_name, driver_name=driver_name)
 
         # Connects only to database called database_name
@@ -55,12 +51,6 @@ class SQLTest(unittest.TestCase):
 
     def test_set_pyodbc_master_connection_str(self):
 
-        server_name = '.\DT_SQLEXPRESS'
-        driver_name = 'SQL Server Native Client 11.0'
-        path_mdf = r"C:\Users\z003vrzk\.spyder-py3\Scripts\Work\PanelBuilder\panel_builder\SQLTest\JHW\JobDB.mdf"
-        path_ldf = r"C:\Users\z003vrzk\.spyder-py3\Scripts\Work\PanelBuilder\panel_builder\SQLTest\JHW\JobDB_Log.ldf"
-        database_name = 'PBJobDB_test'
-
         sqlbase = SQLBase(server_name=server_name, driver_name=driver_name)
 
         # Connects only to database called database_name
@@ -72,13 +62,8 @@ class SQLTest(unittest.TestCase):
         self.assertEqual(conn_str, conn_str_test, conn_str_test2)
         return None
 
-    def test_get_sqlalchemy_connection_str(self):
 
-        server_name = '.\DT_SQLEXPRESS'
-        driver_name = 'SQL Server Native Client 11.0'
-        path_mdf = r"C:\Users\z003vrzk\.spyder-py3\Scripts\Work\PanelBuilder\panel_builder\SQLTest\JHW\JobDB.mdf"
-        path_ldf = r"C:\Users\z003vrzk\.spyder-py3\Scripts\Work\PanelBuilder\panel_builder\SQLTest\JHW\JobDB_Log.ldf"
-        database_name = 'PBJobDB_test'
+    def test_get_sqlalchemy_connection_str(self):
 
         sqlbase = SQLBase(server_name=server_name, driver_name=driver_name)
 
@@ -87,15 +72,17 @@ class SQLTest(unittest.TestCase):
 
         self.assertEqual(sqlalchemy_str, sqlalchemy_str_test)
         return None
+    
+    
+    def test_pandas_execute_sql(self):
+        return None
+    
+    
+    def test_execute_sql(self):
+        return None
 
 
     def test_attach_database(self):
-
-        server_name = '.\DT_SQLEXPRESS'
-        driver_name = 'SQL Server Native Client 11.0'
-        path_mdf = r"C:\Users\z003vrzk\.spyder-py3\Scripts\Work\PanelBuilder\panel_builder\SQLTest\JHW\JobDB.mdf"
-        path_ldf = r"C:\Users\z003vrzk\.spyder-py3\Scripts\Work\PanelBuilder\panel_builder\SQLTest\JHW\JobDB_Log.ldf"
-        database_name = 'PBJobDB_test'
 
         # Connection
         sqlbase = SQLBase(server_name=server_name, driver_name=driver_name)
@@ -136,12 +123,6 @@ class SQLTest(unittest.TestCase):
 
     def test_detach_database(self):
 
-        server_name = '.\DT_SQLEXPRESS'
-        driver_name = 'SQL Server Native Client 11.0'
-        path_mdf = r"C:\Users\z003vrzk\.spyder-py3\Scripts\Work\PanelBuilder\panel_builder\SQLTest\JHW\JobDB.mdf"
-        path_ldf = r"C:\Users\z003vrzk\.spyder-py3\Scripts\Work\PanelBuilder\panel_builder\SQLTest\JHW\JobDB_Log.ldf"
-        database_name = 'PBJobDB_test'
-
         sqlbase = SQLBase(server_name=server_name, driver_name=driver_name)
 
         # Check to see if a database already exists
@@ -164,12 +145,6 @@ class SQLTest(unittest.TestCase):
 
 
     def test_check_existing_database(self):
-
-        server_name = '.\DT_SQLEXPRESS'
-        driver_name = 'SQL Server Native Client 11.0'
-        path_mdf = r"C:\Users\z003vrzk\.spyder-py3\Scripts\Work\PanelBuilder\panel_builder\SQLTest\JHW\JobDB.mdf"
-        path_ldf = r"C:\Users\z003vrzk\.spyder-py3\Scripts\Work\PanelBuilder\panel_builder\SQLTest\JHW\JobDB_Log.ldf"
-        database_name = 'PBJobDB_test'
 
         sqlbase = SQLBase(server_name=server_name, driver_name=driver_name)
 
@@ -201,12 +176,6 @@ class SQLTest(unittest.TestCase):
 
 
     def test_read_table(self):
-
-        server_name = '.\DT_SQLEXPRESS'
-        driver_name = 'SQL Server Native Client 11.0'
-        path_mdf = r"C:\Users\z003vrzk\.spyder-py3\Scripts\Work\PanelBuilder\panel_builder\SQLTest\JHW\JobDB.mdf"
-        path_ldf = r"C:\Users\z003vrzk\.spyder-py3\Scripts\Work\PanelBuilder\panel_builder\SQLTest\JHW\JobDB_Log.ldf"
-        database_name = 'PBJobDB_test'
 
         sqlbase = SQLBase(server_name=server_name, driver_name=driver_name)
         # Instantiate a database connection to a specific table
