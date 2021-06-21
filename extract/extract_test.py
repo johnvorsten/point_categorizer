@@ -69,31 +69,43 @@ class InsertTest(unittest.TestCase):
         """This assumes there is a database reachable with data stored.."""
         
         sql = """SELECT name, *
-        FROM {}""".format('sys.master')
+        FROM [master].[sys].[databases]"""
         
         sel = sqltext(sql)
-        Insert.core_select_execute(sel)
+        res = Insert.core_select_execute(sel)
+        
+        return None
+    
+    def test_pandas_select_execute(self):
+        
+        sql = """SELECT name, *
+        FROM [master].[sys].[databases]"""
+        
+        sel = sqltext(sql)
+        res = Insert.pandas_select_execute(sel)
         
         return
     
-    def test_pandas_select_execute(self):
+    def test_(self):
         return
     
+    
+class FunctionsTest(unittest.TestCase):
+    
+    def test_UNCMapper(self):
+        
+        unc = extract.UNCMapping.get_network_connections()
+        unc = extract.UNCMapping.get_UNC()
+        
+        return None
+    
     def test_(self):
-        return
-    def test_(self):
-        return
-    def test_(self):
-        return
+        return None
 
 
-if __name__ == '__main__':
-    # UNC Paths mapped
-    UNCMapper = extract.UNCMapping()
-    drives = UNCMapper.get_UNC()
-    for letter, unc in drives.items():
-        print(letter, ": ", unc)
 
+def test_other_stuff():
+    
     # Searching for databases
     search_directory = r'D:\SQLTest'
     for mdf_path, ldf_path in Extract.search_databases(search_directory,
@@ -154,6 +166,5 @@ if __name__ == '__main__':
     driver_name = 'SQL Server Native Client 10.0'
     database_name = 'Clustering'
     result = create_tables(server_name, driver_name, database_name)
-
-
-
+    
+    return None

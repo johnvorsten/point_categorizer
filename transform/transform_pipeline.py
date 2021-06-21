@@ -59,10 +59,10 @@ if __name__ == '__main__':
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
 
-from extract.SQLAlchemyDataDefinition import TypesCorrection
 from extract import extract
 from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev,
-                          Customers, ClusteringHyperparameter, Labeling)
+                                              Customers, ClusteringHyperparameter, 
+                                              Labeling, TypesCorrection)
 
 # Globals
 config = configparser.ConfigParser()

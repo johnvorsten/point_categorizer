@@ -44,7 +44,8 @@ class UNCMapping():
     def __init__(self):
         pass
 
-    def get_network_connections(self):
+    @staticmethod
+    def get_network_connections():
         """Run a shell command to get the users network mapped paths (windows)"""
 
         if not os.name == 'nt':
@@ -80,12 +81,13 @@ class UNCMapping():
 
         return drive_dict
 
-    def get_UNC(self):
+    @classmethod
+    def get_UNC(cls):
         """Return a users mapped network drives. UNC path will be used for
         connecting to networked database"""
 
-        net_use_output = self.get_network_connections()
-        drive_dict = self._parse_network_connections(net_use_output)
+        net_use_output = cls.get_network_connections()
+        drive_dict = cls._parse_network_connections(net_use_output)
 
         return drive_dict
 

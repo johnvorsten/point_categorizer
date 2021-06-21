@@ -67,8 +67,6 @@ def main():
     """"""
 
     # Iterate & Extract points information of a database
-    server_name='.\DT_SQLEXPR2008'
-    driver_name='SQL Server Native Client 10.0'
     working_database_name='PipelineDB' # For extracting information
     search_directory=r"D:\Z - Saved SQL Databases"
     df_iterator = Extract.iterate_dataframes(server_name=server_name,
