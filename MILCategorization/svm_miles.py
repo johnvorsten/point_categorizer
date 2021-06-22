@@ -70,6 +70,14 @@ C_features, C_labels = mil_load.SingleInstanceGather.bags_2_si(X_train_sp,
     in a bag"""
 X_train = [x.toarray() for x in X_train_sp]
 X_test = [x.toarray() for x in X_test_sp]
+# Number of training instances
+# Number of testing instances
+N_TRAIN_INSTANCES = 0
+N_TEST_INSTANCES = 0
+for x in X_train_sp:
+    N_TRAIN_INSTANCES += x.shape[0]
+for x in X_test_sp:
+    N_TEST_INSTANCES += x.shape[0]
 
 # Encode data into similarity matrix
 embedded_bags = embed_all_bags(concept_class=C_features, 
@@ -77,7 +85,12 @@ embedded_bags = embed_all_bags(concept_class=C_features,
                                sigma=3,
                                distance='euclidean')
 
-# Apply Nystroem transformer for large datasets?
+# Shuffle and reduce the dataset for testing...
+_reduced_index = np.random.permutation(embedded_bags.shape[1])
+reduced_embedded_bags = embedded_bags[:,_reduced_index[:2000]]
+y_test_reduced = y_test[_reduced_index[:2000]]
+
+# Apply Nystroem transformer for large datasets? # TODO
 # Use a linear SVM for large datasets? (10,000 sampels is what they recommend)
 
 #%% Create and train SVM
@@ -87,47 +100,46 @@ LOSS = 'squared_hinge' # Loss function
 C = 1.0 # SVM regularization, inversely proportional
 
 # Define SVM
-svmc_l1 = skl.svm.LinearSVC(loss=LOSS, penalty=PENALTY, C=C, dual=False, max_iter=5000)
+svmc_l1 = skl.svm.LinearSVC(loss=LOSS, penalty=PENALTY, C=C, 
+                            dual=False, max_iter=5000)
 
 # SVC Using LibSVM uses the squared l2 loss
 svmc = skl.svm.SVC(kernel='rbf', gamma=GAMMA_SVC, C=C)
 
 # Define grid search parameters
-params_l1svc = {'C':[0.5,1,2],
+params_l1svc = {'C':[0.5,3,5],
                 }
-params_svc = {'C':[0.5,1,2],
+params_svc = {'C':[2,3,5],
               'kernel':['rbf', 'poly']}
 
 # Define scorers
 scoring = {'accuracy':skl.metrics.make_scorer(skl.metrics.accuracy_score),
            'precision':skl.metrics.make_scorer(skl.metrics.precision_score, average='weighted'),
-           'recall':skl.metrics.make_scorer(skl.metrics.recall_score, average='weighted')
-           'Confusion':skl.metrics.make_scorer(skl.metrics.confusion_matrix,)}
+           'recall':skl.metrics.make_scorer(skl.metrics.recall_score, average='weighted'),
+           }
 
 
 # Grid search
 svmc_l1_gs = skl.model_selection.GridSearchCV(estimator=svmc_l1,
                                  param_grid=params_l1svc,
                                  scoring=scoring,
-                                 refit=False,
                                  n_jobs=6,
-                                 cv=None, # Default 5-fold validation
+                                 cv=3, # Default 5-fold validation
                                  refit='accuracy',
                                  )
 
 
 svmc_gs = skl.model_selection.GridSearchCV(estimator=svmc,
                                  param_grid=params_svc,
-                                 scoring=['accuracy','precision','recall'],
+                                 scoring=scoring,
                                  n_jobs=6,
-                                 refit=False,
-                                 cv=None, # Default 5-fold validation
+                                 cv=3, # Default 5-fold validation
                                  refit='accuracy',
                                  )
 # Estimators expect (instance,features). embedded bags are encoded where 
 # features are along axis=1
-svmc_l1_gs.fit(np.transpose(embedded_bags), y_test)
-svmc_gs.fit(np.transpose(embedded_bags), y_test)
+svmc_l1_gs.fit(np.transpose(reduced_embedded_bags), y_test_reduced)
+svmc_gs.fit(np.transpose(reduced_embedded_bags), y_test_reduced)
 
 # Print results
 print("L1 SVM Results: ", svmc_l1_gs.cv_results_, "\n\n")
