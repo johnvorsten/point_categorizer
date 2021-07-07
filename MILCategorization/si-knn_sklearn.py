@@ -9,6 +9,7 @@ Created on Sun Jun 21 09:02:37 2020
 import sys
 import os
 from collections import Counter
+import configparser
 
 # Third party imports
 import numpy as np
@@ -33,8 +34,21 @@ from extract import extract
 from transform import transform_pipeline
 from MILCategorization import mil_load
 
+
+# Global declarations
 SingleInstanceGather = mil_load.SingleInstanceGather()
-LoadMIL = mil_load.LoadMIL()
+
+config = configparser.ConfigParser()
+config.read(r'../extract/sql_config.ini')
+server_name = config['sql_server']['DEFAULT_SQL_SERVER_NAME']
+driver_name = config['sql_server']['DEFAULT_SQL_DRIVER_NAME']
+database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
+numeric_feature_file = config['sql_server']['DEFAULT_NUMERIC_FILE_NAME']
+categorical_feature_file = config['sql_server']['DEFAULT_CATEGORICAL_FILE_NAME']
+
+LoadMIL = mil_load.LoadMIL(server_name,
+                           driver_name,
+                           database_name)
 
 #%%
 
@@ -98,26 +112,42 @@ compNB = ComplementNB(alpha=1.0, fit_prior=True, class_prior=None, norm=False)
 
 
 
-#%% Cross validation
-
-
+#%% Cross validation, Single instance categorization
 
 # Precision scoring
 precision = make_scorer(precision_score, average='weighted')
 recall = make_scorer(recall_score, average='weighted')
 
-scorer = {'accuracy':'accuracy',
-          'balanced_accuracy':'balanced_accuracy',
-          'recall_weighted':recall,
-          'precision_weighted':precision}
-res_knn = cross_validate(knn, Xtrain, Ytrain, cv=3, scoring=scorer)
-res_mnb = cross_validate(multiNB, Xtrain_cat, Ytrain_cat, cv=3, scoring=scorer)
-res_cnb = cross_validate(compNB, Xtrain_cat, Ytrain_cat, cv=3, scoring=scorer)
+# Define scorers
+scoring = {'accuracy': make_scorer(accuracy_score),
+           'precision': make_scorer(precision_score, average='weighted'),
+           'recall': make_scorer(recall_score, average='weighted'),
+           'balanced_accuracy':'balanced_accuracy',
+           }
+
+res_knn = cross_validate(estimator=knn, 
+                         X=Xtrain, 
+                         y=Ytrain, 
+                         cv=3, 
+                         scoring=scoring,
+                         )
+res_mnb = cross_validate(estimator=multiNB, 
+                         X=Xtrain_cat, 
+                         y=Ytrain_cat, 
+                         cv=3, 
+                         scoring=scoring,
+                         )
+res_cnb = cross_validate(estimator=compNB, 
+                         X=Xtrain_cat, 
+                         y=Ytrain_cat, 
+                         cv=3, 
+                         scoring=scoring,
+                         )
 
 
 #%% Predict on bags using most common label assigned to instances
 
-"""
+
 # Initial Values
 CV = 3
 TEST_SIZE = 0.2
@@ -175,7 +205,7 @@ bag = cat_train_bags[0]
 y_hat = multiNB.predict(bag)
 label = reduce_bag_label(y_hat, method='mode')
 bag_labels.append(label)
-"""
+
 
 
 

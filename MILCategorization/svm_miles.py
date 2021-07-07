@@ -87,8 +87,8 @@ embedded_bags = embed_all_bags(concept_class=C_features,
 
 # Shuffle and reduce the dataset for testing...
 _reduced_index = np.random.permutation(embedded_bags.shape[1])
-reduced_embedded_bags = embedded_bags[:,_reduced_index[:2000]]
-y_test_reduced = y_test[_reduced_index[:2000]]
+reduced_embedded_bags = embedded_bags[:,_reduced_index[:5000]]
+y_test_reduced = y_test[_reduced_index[:5000]]
 
 # Apply Nystroem transformer for large datasets? # TODO
 # Use a linear SVM for large datasets? (10,000 sampels is what they recommend)
@@ -101,15 +101,15 @@ C = 1.0 # SVM regularization, inversely proportional
 
 # Define SVM
 svmc_l1 = skl.svm.LinearSVC(loss=LOSS, penalty=PENALTY, C=C, 
-                            dual=False, max_iter=5000)
+                            dual=False, max_iter=2500)
 
 # SVC Using LibSVM uses the squared l2 loss
 svmc = skl.svm.SVC(kernel='rbf', gamma=GAMMA_SVC, C=C)
 
 # Define grid search parameters
-params_l1svc = {'C':[0.5,3,5],
+params_l1svc = {'C':[0.5,2,5],
                 }
-params_svc = {'C':[2,3,5],
+params_svc = {'C':[2,5,10],
               'kernel':['rbf', 'poly']}
 
 # Define scorers
