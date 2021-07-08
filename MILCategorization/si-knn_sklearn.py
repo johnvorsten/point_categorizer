@@ -20,6 +20,7 @@ from sklearn.metrics import (make_scorer, SCORERS, precision_score,
                              recall_score, accuracy_score, balanced_accuracy_score)
 from sklearn.naive_bayes import MultinomialNB, ComplementNB
 
+
 # Local imports
 if __name__ == '__main__':
     # Remove the drive letter on windows
@@ -32,12 +33,10 @@ if __name__ == '__main__':
 
 from extract import extract
 from transform import transform_pipeline
-from MILCategorization import mil_load
-
+from mil_load import bags_2_si, bags_2_si_generator, LoadMIL
+from bag_cross_validate import cross_validate_bag, BagScorer
 
 # Global declarations
-SingleInstanceGather = mil_load.SingleInstanceGather()
-
 config = configparser.ConfigParser()
 config.read(r'../extract/sql_config.ini')
 server_name = config['sql_server']['DEFAULT_SQL_SERVER_NAME']
@@ -46,21 +45,21 @@ database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
 numeric_feature_file = config['sql_server']['DEFAULT_NUMERIC_FILE_NAME']
 categorical_feature_file = config['sql_server']['DEFAULT_CATEGORICAL_FILE_NAME']
 
-LoadMIL = mil_load.LoadMIL(server_name,
-                           driver_name,
-                           database_name)
+loadMIL = LoadMIL(server_name,
+                  driver_name,
+                  database_name)
 
 #%%
 
 # Load dataset
 _file = r'../data/MIL_dataset.dat'
-_dataset = LoadMIL.load_mil_dataset(_file)
+_dataset = loadMIL.load_mil_dataset(_file)
 _bags = _dataset['dataset']
 _bag_labels = _dataset['bag_labels']
 
 # Load cat dataset
 _cat_file = r'../data/MIL_cat_dataset.dat'
-_cat_dataset = LoadMIL.load_mil_dataset(_cat_file)
+_cat_dataset = loadMIL.load_mil_dataset(_cat_file)
 _cat_bags = _cat_dataset['dataset']
 _cat_bag_labels = _cat_dataset['bag_labels']
 
@@ -77,20 +76,20 @@ cat_test_bags, cat_test_bag_labels = _cat_bags[test_index], _cat_bag_labels[test
 
 # Unpack bags into single instances for training and testing
 # Bags to single instances
-Xtrain, Ytrain = SingleInstanceGather.bags_2_si(train_bags,
-                                                train_bag_labels,
-                                                sparse=True)
-Xtest, Ytest = SingleInstanceGather.bags_2_si(test_bags,
-                                              test_bag_labels,
-                                              sparse=True)
+si_X_train, si_y_train = bags_2_si(train_bags,
+                           train_bag_labels,
+                           sparse=True)
+si_X_test, si_y_test = bags_2_si(test_bags,
+                         test_bag_labels,
+                         sparse=True)
 
 # Unpack categorical
-Xtrain_cat, Ytrain_cat = SingleInstanceGather.bags_2_si(cat_train_bags,
-                                                        cat_train_bag_labels,
-                                                        sparse=True)
-Xtest_cat, Ytest_cat = SingleInstanceGather.bags_2_si(cat_test_bags,
-                                                      cat_test_bag_labels,
-                                                      sparse=True)
+si_X_train_cat, si_y_train_cat = bags_2_si(cat_train_bags,
+                                   cat_train_bag_labels,
+                                   sparse=True)
+si_X_test_cat, si_y_train_cat = bags_2_si(cat_test_bags,
+                                 cat_test_bag_labels,
+                                 sparse=True)
 
 #%% Estimators
 
@@ -114,10 +113,6 @@ compNB = ComplementNB(alpha=1.0, fit_prior=True, class_prior=None, norm=False)
 
 #%% Cross validation, Single instance categorization
 
-# Precision scoring
-precision = make_scorer(precision_score, average='weighted')
-recall = make_scorer(recall_score, average='weighted')
-
 # Define scorers
 scoring = {'accuracy': make_scorer(accuracy_score),
            'precision': make_scorer(precision_score, average='weighted'),
@@ -125,28 +120,28 @@ scoring = {'accuracy': make_scorer(accuracy_score),
            'balanced_accuracy':'balanced_accuracy',
            }
 
-res_knn = cross_validate(estimator=knn, 
-                         X=Xtrain, 
-                         y=Ytrain, 
-                         cv=3, 
-                         scoring=scoring,
-                         )
-res_mnb = cross_validate(estimator=multiNB, 
-                         X=Xtrain_cat, 
-                         y=Ytrain_cat, 
-                         cv=3, 
-                         scoring=scoring,
-                         )
-res_cnb = cross_validate(estimator=compNB, 
-                         X=Xtrain_cat, 
-                         y=Ytrain_cat, 
-                         cv=3, 
-                         scoring=scoring,
-                         )
+# # Estimation on single instance bags
+# res_knn = cross_validate(estimator=knn, 
+#                          X=si_X_train, 
+#                          y=si_y_train, 
+#                          cv=3, 
+#                          scoring=scoring,
+#                          )
+# res_mnb = cross_validate(estimator=multiNB, 
+#                          X=si_X_train_cat, 
+#                          y=si_y_train_cat, 
+#                          cv=3, 
+#                          scoring=scoring,
+#                          )
+# res_cnb = cross_validate(estimator=compNB, 
+#                          X=si_X_train_cat, 
+#                          y=si_y_train_cat, 
+#                          cv=3, 
+#                          scoring=scoring,
+#                          )
 
 
 #%% Predict on bags using most common label assigned to instances
-
 
 # Initial Values
 CV = 3
@@ -155,14 +150,15 @@ TRAIN_SIZE = 0.8
 results = {}
 
 # Define a scorer and Metrics
-precision = make_scorer(precision_score, average='weighted')
-recall = make_scorer(recall_score, average='weighted')
-accuracy = make_scorer(accuracy_score, average='weighted')
-accuracy_balanced = make_scorer(balanced_accuracy_score, average='weighted')
-scorer = {'precision_weighted':precision,
-          'recall_weighted':recall,
-          'accuracy':accuracy,
-          'accuracy_balanced':accuracy_balanced}
+scorer = {'precision_weighted':make_scorer(precision_score, average='weighted'),
+          'recall_weighted':make_scorer(recall_score, average='weighted'),
+          'accuracy':make_scorer(accuracy_score),
+          'accuracy_balanced':make_scorer(balanced_accuracy_score),
+          }
+accuracy = []
+accuracy_balanced = []
+precision = []
+recall = []
 
 # Define an estimator
 ESTIMATOR = ComplementNB(alpha=1.0, fit_prior=True, class_prior=None, norm=False)
@@ -173,42 +169,83 @@ BAG_LABELS = cat_train_bag_labels
 
 # Split bags into training and validation sets
 rs = ShuffleSplit(n_splits=CV, test_size=TEST_SIZE, train_size=TRAIN_SIZE)
-for train_index, test_index in rs.split(BAGS, BAG_LABELS))
+for train_index, test_index in rs.split(BAGS, BAG_LABELS):
 
     # Split bags
-    Xtrain, Ytrain = BAGS[train_index], BAG_LABELS[train_index]
-    Xtest, Ytest = BAGS[test_index], BAG_LABELS[test_index]
+    _x_train_bags, _y_train_bags = BAGS[train_index], BAG_LABELS[train_index]
+    _x_test_bags, _y_test_bags = BAGS[test_index], BAG_LABELS[test_index]
 
     # Convert training set to single instance to fit the estimator
-    Xtrain_si, Ytrain_si = SingleInstanceGather.bags_2_si(cat_train_bags,
-                                                          cat_train_bag_labels,
-                                                          sparse=True)
-
+    _x_train_si, _y_train_si = bags_2_si(_x_train_bags,
+                                         _y_train_bags,
+                                         sparse=True)
+    
     # Fit an estimator on SI data
-    ESTIMATOR.fit(Xtrain_si, Ytrain_si)
-
+    ESTIMATOR.fit(_x_train_si, _y_train_si)
+    
     # Predict instances in a bag
-    bag_predictions = []
-    for BAG, BAG_LABEL in zip(Xtest, Ytest):
-        y_hat = ESTIMATOR.predict(BAG)
-        reduced_label = reduce_bag_label(y_hat, method='mode')
-        bag_predictions.append(reduced_label)
-
+    bag_predictions = BagScorer.predict_bags(ESTIMATOR, _x_test_bags, method='mode')
+        
     # Estimate metrics on bags
-    # TODO
+    accuracy.append(scorer['accuracy']\
+                    ._score_func(_y_test_bags.reshape(-1,1), 
+                                 bag_predictions, 
+                                 **(scorer['accuracy']._kwargs)))
+    accuracy_balanced.append(scorer['accuracy_balanced']\
+                             ._score_func(_y_test_bags, 
+                                          bag_predictions,
+                                          **(scorer['accuracy_balanced']._kwargs)))
+    precision.append(scorer['precision_weighted']
+                     ._score_func(_y_test_bags, 
+                                  bag_predictions,
+                                  **(scorer['precision_weighted']._kwargs)))
+    recall.append(scorer['recall_weighted']\
+                  ._score_func(_y_test_bags, 
+                               bag_predictions,
+                               **(scorer['recall_weighted']._kwargs)))
 
 
 
-# Predict on bags
-bag_labels = []
-bag = cat_train_bags[0]
-y_hat = multiNB.predict(bag)
-label = reduce_bag_label(y_hat, method='mode')
-bag_labels.append(label)
+#%% Predict on bags using cross validation
+
+# Create estimators
+knn = KNeighborsClassifier(n_neighbors=10, weights='uniform',
+                           algorithm='ball_tree', n_jobs=4)
+
+# Multinomial Native Bayes
+multiNB = MultinomialNB(alpha=1.0, fit_prior=True, class_prior=None)
+
+# CommplementNB - Like multinomial but for imbalanced datasets
+compNB = ComplementNB(alpha=1.0, fit_prior=True, class_prior=None, norm=False)
 
 
+# Define evaluation metrics
+accuracy_scorer = make_scorer(accuracy_score)
+bagAccScorer = BagScorer(accuracy_scorer, sparse=False) # Accuracy score, no factory function
+precision_scorer = make_scorer(precision_score, average='binary')
+bagPreScorer = BagScorer(precision_scorer, sparse=False)
+recall_scorer = make_scorer(recall_score, average='weighted')
+bagRecScorer = BagScorer(recall_scorer, sparse=False)
 
+scoring = {'bag_accuracy':bagAccScorer,
+           'bag_precision':bagPreScorer,
+           'bag_recall':bagRecScorer,
+           }
 
+# Cross validate bags
+knn_res = cross_validate_bag(estimator=knn, 
+                            X=train_bags, 
+                            y=train_bag_labels, 
+                            groups=None, 
+                            scoring=scoring, # Custom scorer... 
+                            cv=3,
+                            n_jobs=3, 
+                            verbose=0, 
+                            fit_params=None,
+                            pre_dispatch='2*n_jobs', 
+                            return_train_score=False,
+                            return_estimator=False, 
+                            error_score=np.nan)
 
 
 

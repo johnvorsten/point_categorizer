@@ -331,85 +331,78 @@ class LoadMIL:
         return None
 
 
-class SingleInstanceGather:
 
+def bags_2_si_generator(bags, bag_labels, sparse=False):
+    """Convert a n x (m x p) array of bag instances into a k x p array of
+    instances. n is the number of bags, and m is the number of instances within
+    each bag. m can vary per bag. k is the total number of instances within
+    all bags. k = sum (m for bag in n). p is the feature space of each instance
+    inputs
+    -------
+    bags : (iterable) containing bags of shape (m x p) sparse arrays
+    bag_labels : (iterable) containing labels assocaited with each bag. Labels
+        are expanded and each instance within a bag inherits the label of the
+        bag
+    sparse : (bool) if True, the output instances are left as a sparse array.
+        Some sklearn estimators can handle sparse feature inputs
+    output
+    -------
+    instances, labels : (generator) """
 
-    def __init__(self):
-        return None
+    for bag, label in zip(bags, bag_labels):
+        # Unpack bag into instances
 
-
-    @staticmethod
-    def bags_2_si_generator(bags, bag_labels, sparse=False):
-        """Convert a n x (m x p) array of bag instances into a k x p array of
-        instances. n is the number of bags, and m is the number of instances within
-        each bag. m can vary per bag. k is the total number of instances within
-        all bags. k = sum (m for bag in n). p is the feature space of each instance
-        inputs
-        -------
-        bags : (iterable) containing bags of shape (m x p) sparse arrays
-        bag_labels : (iterable) containing labels assocaited with each bag. Labels
-            are expanded and each instance within a bag inherits the label of the
-            bag
-        sparse : (bool) if True, the output instances are left as a sparse array.
-            Some sklearn estimators can handle sparse feature inputs
-        output
-        -------
-        instances, labels : (generator) """
-
-        for bag, label in zip(bags, bag_labels):
-            # Unpack bag into instances
-
-            if sparse:
-                instances = bag # Sparse array
-            else:
-                instances = bag.toarray() # Dense array
-
-            labels = np.array([label].__mul__(instances.shape[0]))
-
-            yield instances, labels
-
-
-    @classmethod
-    def bags_2_si(cls, bags, bag_labels, sparse=False):
-        """Convert a n x (m x p) array of bag instances into a k x p array of
-        instances. n is the number of bags, and m is the number of instances within
-        each bag. m can vary per bag. k is the total number of instances within
-        all bags. k = sum (m for bag in n). p is the feature space of each instance
-        inputs
-        -------
-        bags : (iterable) containing bags of shape (m x p) sparse arrays
-        bag_labels : (iterable) containing labels assocaited with each bag. Labels
-            are expanded and each instance within a bag inherits the label of the
-            bag
-        sparse : (bool) if True, the output instances are left as a sparse array.
-            Some sklearn estimators can handle sparse feature inputs
-        output
-        -------
-        instances, labels : (np.array) or (scipy.sparse.csr.csr_matrix)
-        depending on 'sparse'"""
-
-        # Initialize generator over bags
-        bag_iterator = cls.bags_2_si_generator(bags,
-                                               bag_labels,
-                                               sparse=sparse)
-
-        # Initialize datasets
-        instances, labels = [], []
-
-        # Gather datasets
-        for part_instances, part_labels in bag_iterator:
-
-            instances.append(part_instances)
-            labels.append(part_labels)
-
-        # Flatten into otuput shape - [k x p] instances and [k] labels
         if sparse:
-            # Row-stack sparse arrays into a sinlge  k x p sparse array
-            instances = vstack(instances)
-            labels = np.concatenate(labels)
+            instances = bag # Sparse array
         else:
-            # Row-concatenate dense arrays into a single k x p array
-            instances = np.concatenate(instances)
-            labels = np.concatenate(labels)
+            instances = bag.toarray() # Dense array
 
-        return instances, labels
+        labels = np.array([label].__mul__(instances.shape[0]))
+
+        yield instances, labels
+
+
+
+def bags_2_si(bags, bag_labels, sparse=False):
+    """Convert a n x (m x p) array of bag instances into a k x p array of
+    instances. n is the number of bags, and m is the number of instances within
+    each bag. m can vary per bag. k is the total number of instances within
+    all bags. k = sum (m for bag in n). p is the feature space of each instance
+    inputs
+    -------
+    bags : (iterable) containing bags of shape (m x p) sparse arrays
+    bag_labels : (iterable) containing labels assocaited with each bag. Labels
+        are expanded and each instance within a bag inherits the label of the
+        bag
+    sparse : (bool) if True, the output instances are left as a sparse array.
+        Some sklearn estimators can handle sparse feature inputs
+    output
+    -------
+    instances, labels : (np.array) or (scipy.sparse.csr.csr_matrix)
+    depending on 'sparse'"""
+
+    # Initialize generator over bags
+    bag_iterator = bags_2_si_generator(bags,
+                                       bag_labels,
+                                       sparse=sparse)
+
+    # Initialize datasets
+    instances, labels = [], []
+
+    # Gather datasets
+    for part_instances, part_labels in bag_iterator:
+
+        instances.append(part_instances)
+        labels.append(part_labels)
+
+    # Flatten into otuput shape - [k x p] instances and [k] labels
+    if sparse:
+        # Row-stack sparse arrays into a sinlge  k x p sparse array
+        instances = vstack(instances)
+        labels = np.concatenate(labels)
+    else:
+        # Row-concatenate dense arrays into a single k x p array
+        instances = np.concatenate(instances)
+        labels = np.concatenate(labels)
+
+    return instances, labels
