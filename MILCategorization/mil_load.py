@@ -35,6 +35,9 @@ from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev,
                           Customers, ClusteringHyperparameter, Labeling)
 
 # Globals
+CATEGORICAL_FEATURE_FILE = '../data/MIL_cat_dataset.dat'
+NUMERIC_FEATURE_FILE = '../data/MIL_dataset.dat'
+
 
 #%%
 
@@ -294,41 +297,41 @@ class LoadMIL:
         return x, y
 
 
-    @staticmethod
-    def load_mil_dataset(file_name=r'../data/MIL_dataset.dat'):
-        """
-        inputs
-        ------
-        file_name : (str) name of data file to load pickled object from
-        outputs
-        -------
-        dataset : (dict) with keys ['dataset','bag_labels']
-        Object type depends on how the objet was saved - see save_mil_dataset"""
 
-        with open(file_name, 'rb') as f:
-            dataset = pickle.load(f)
+def load_mil_dataset(file_name):
+    """
+    inputs
+    ------
+    file_name : (str) name of data file to load pickled object from
+    outputs
+    -------
+    dataset : (dict) with keys ['dataset','bag_labels']
+    Object type depends on how the objet was saved - see save_mil_dataset"""
 
-        return dataset
+    with open(file_name, 'rb') as f:
+        dataset = pickle.load(f)
+
+    return dataset
 
 
-    @staticmethod
-    def save_mil_dataset(bags, bag_labels, file_name=r'../data/MIL_dataset.dat'):
-        """Picke and save an object
-        input
-        -------
-        bags : (np.array) rank 3 of bags. Each bag is a rank 2 matrix of instances
-        bag_labels : (np.array) string labels corresponding to each bag.
-            Should have same shape as first dimension of bags"""
 
-        msg='Bags and labels must have the same first dimension'
-        assert bag_labels.shape[0] == bags.shape[0], msg
+def save_mil_dataset(bags, bag_labels, file_name):
+    """Picke and save an object
+    input
+    -------
+    bags : (np.array) rank 3 of bags. Each bag is a rank 2 matrix of instances
+    bag_labels : (np.array) string labels corresponding to each bag.
+        Should have same shape as first dimension of bags"""
 
-        MILData = {'dataset':bags,'bag_labels':bag_labels}
+    msg='Bags and labels must have the same first dimension'
+    assert bag_labels.shape[0] == bags.shape[0], msg
 
-        with open(file_name, 'wb') as f:
-            pickle.dump(MILData, f)
+    MILData = {'dataset':bags,'bag_labels':bag_labels}
 
-        return None
+    with open(file_name, 'wb') as f:
+        pickle.dump(MILData, f)
+
+    return None
 
 
 
