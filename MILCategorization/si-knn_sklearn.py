@@ -2,6 +2,11 @@
 """
 Created on Sun Jun 21 09:02:37 2020
 
+#TODO - Attempt more models
+#TODO - Attempt ensemble methods
+#TODO - Attempt hyperparameter optimization
+#TODO - Feature selection
+
 @author: z003vrzk
 """
 
@@ -15,7 +20,7 @@ from typing import Union
 import numpy as np
 from sklearn.model_selection import ShuffleSplit
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import cross_validate
+from sklearn.model_selection import cross_validate, StratifiedShuffleSplit
 from sklearn.metrics import (make_scorer, precision_score,
                              recall_score, accuracy_score, 
                              balanced_accuracy_score)
@@ -63,31 +68,30 @@ _cat_bags = _cat_dataset['dataset']
 _cat_bag_labels = _cat_dataset['bag_labels']
 
 # Split numeric dataset
-rs = ShuffleSplit(n_splits=1, test_size=0.2, train_size=0.8)
+rs = StratifiedShuffleSplit(n_splits=1, test_size=0.2, train_size=0.8)
 train_index, test_index = next(rs.split(_bags, _bag_labels))
-train_bags, train_bag_labels = _bags[train_index], _bag_labels[train_index]
-test_bags, test_bag_labels = _bags[test_index], _bag_labels[test_index]
+train_bags, train_labels = _bags[train_index], _bag_labels[train_index]
+test_bags, test_labels = _bags[test_index], _bag_labels[test_index]
 
 # Split categorical dataset
-train_index, test_index = next(rs.split(_cat_bags, _cat_bag_labels))
 train_bags_cat, train_labels_cat = _cat_bags[train_index], _cat_bag_labels[train_index]
-test_bags_cat, test_bag_labels_cat = _cat_bags[test_index], _cat_bag_labels[test_index]
+test_bags_cat, test_labels_cat = _cat_bags[test_index], _cat_bag_labels[test_index]
 
 # Unpack bags into single instances for training and testing
 # Bags to single instances
 si_X_train, si_y_train = bags_2_si(train_bags,
-                                   train_bag_labels,
+                                   train_labels,
                                    sparse_input=True)
 si_X_test, si_y_test = bags_2_si(test_bags,
-                                 test_bag_labels,
+                                 test_labels,
                                  sparse_input=True)
 
 # Unpack categorical
 si_X_train_cat, si_y_train_cat = bags_2_si(train_bags_cat,
                                            train_labels_cat,
-                                       sparse_input=True)
-si_X_test_cat, si_y_test_cat = bags_2_si(train_bags_cat,
-                                         train_labels_cat,
+                                           sparse_input=True)
+si_X_test_cat, si_y_test_cat = bags_2_si(test_bags_cat,
+                                         test_labels_cat,
                                          sparse_input=True)
 
 def _densify_bags(X : Union[np.ndarray, csr_matrix]) -> np.ndarray:
@@ -275,6 +279,18 @@ multiNB = MultinomialNB(alpha=1.0, fit_prior=True, class_prior=None)
 # CommplementNB - Like multinomial but for imbalanced datasets
 compNB = ComplementNB(alpha=1.0, fit_prior=True, class_prior=None, norm=False)
 
+# Filter out bags with only a single instance
+_filter = _filter_bags_by_size(train_bags_cat, 
+                               min_instances=5,
+                               max_instances=1000)
+
+# Convert bags to dense for KNN estimator
+_train_bags_dense = _densify_bags(train_bags[_filter])
+_train_labels = train_labels[_filter]
+# Keep bags sparse for Component Native Bayes and Multinomial
+_train_bags_cat = train_bags_cat[_filter]
+_train_labels_cat = train_labels_cat[_filter]
+
 # Define evaluation metrics
 accuracy_scorer = make_scorer(accuracy_score)
 bagAccScorer = BagScorer(accuracy_scorer, sparse_input=False) # Accuracy score, no factory function
@@ -288,16 +304,10 @@ scoring_dense = {'bag_accuracy':bagAccScorer,
            'bag_recall':bagRecScorer,
            }
 
-# Convert bags to dense for KNN estimator
-train_bags_dense = _densify_bags(train_bags)
-train_bags_cat_filter = _filter_bags_by_size(train_bags_cat, 
-                                             min_instances=5,
-                                             max_instances=1000)
-
 # Cross validate bags
 res_knn_infer = cross_validate_bag(estimator=knn, 
-                            X=train_bags_dense[:100], # TODO Test whole training set
-                            y=train_bag_labels[:100], 
+                            X=_train_bags_dense, 
+                            y=_train_labels, 
                             groups=None, 
                             scoring=scoring_dense, # Custom scorer... 
                             cv=2,
@@ -306,7 +316,7 @@ res_knn_infer = cross_validate_bag(estimator=knn,
                             fit_params=None,
                             pre_dispatch='2*n_jobs', 
                             return_train_score=False,
-                            return_estimator=False, 
+                            return_estimator=True, 
                             error_score=np.nan)
 
 # Multinomial native bayes supports sparse features...
@@ -322,8 +332,8 @@ scoring_sparse = {'bag_accuracy':bagAccScorer,
            }
 
 res_multinomial_infer = cross_validate_bag(estimator=multiNB, 
-                            X=train_bags_cat[:100],  # TODO Test whole training set
-                            y=train_labels_cat[:100], 
+                            X=_train_bags_cat,
+                            y=_train_labels_cat, 
                             groups=None, 
                             scoring=scoring_sparse, # Custom scorer... 
                             cv=2,
@@ -332,12 +342,12 @@ res_multinomial_infer = cross_validate_bag(estimator=multiNB,
                             fit_params=None,
                             pre_dispatch='2*n_jobs', 
                             return_train_score=False,
-                            return_estimator=False, 
+                            return_estimator=True, 
                             error_score=np.nan)
 
-res_comNB_infer = cross_validate_bag(estimator=multiNB, 
-                            X=train_bags_cat[:100], # TODO Test whole training set
-                            y=train_labels_cat[:100], 
+res_comNB_infer = cross_validate_bag(estimator=compNB, 
+                            X=_train_bags_cat,
+                            y=_train_labels_cat, 
                             groups=None, 
                             scoring=scoring_sparse, # Custom scorer... 
                             cv=2,
@@ -346,5 +356,43 @@ res_comNB_infer = cross_validate_bag(estimator=multiNB,
                             fit_params=None,
                             pre_dispatch='2*n_jobs', 
                             return_train_score=False,
-                            return_estimator=False, 
+                            return_estimator=True, 
                             error_score=np.nan)
+
+
+#%% Perform predictions on test set | final evaluation of model performance
+
+# Define the training and testing data set
+# Use stratified folding to preserve class imbalance
+# Filter out bags with only a single instance
+_filter_train = _filter_bags_by_size(train_bags_cat, 
+                                     min_instances=5,
+                                     max_instances=2000)
+_filter_test = _filter_bags_by_size(train_bags,
+                                    min_instances=5,
+                                    max_instances=2000)
+# Convert bags to dense for KNN estimator
+_train_bags_dense = _densify_bags(train_bags[_filter_train])
+_train_labels = train_labels[_filter_train]
+_test_bags_dense = _densify_bags(test_bags[_filter_test])
+_test_labels = test_labels[_filter_test]
+# Keep bags sparse for Component Native Bayes and Multinomial
+_train_bags_cat = train_bags_cat[_filter_train]
+_train_labels_cat = train_labels_cat[_filter_train]
+_test_bags_cat = test_bags_cat[_filter_test]
+
+# Define estimators
+knn = KNeighborsClassifier(n_neighbors=10, weights='uniform',
+                           algorithm='ball_tree', n_jobs=4)
+
+# Multinomial Native Bayes
+multiNB = MultinomialNB(alpha=1.0, fit_prior=True, class_prior=None)
+
+# CommplementNB - Like multinomial but for imbalanced datasets
+compNB = ComplementNB(alpha=1.0, fit_prior=True, class_prior=None, norm=False)
+
+# Fit the estimator
+knn.fit()
+
+# Predict on the validation set
+# Calculate evaluation metrics
