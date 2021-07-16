@@ -300,9 +300,9 @@ recall_scorer = make_scorer(recall_score, average='weighted')
 bagRecScorer = BagScorer(recall_scorer, sparse_input=False)
 
 scoring_dense = {'bag_accuracy':bagAccScorer,
-           'bag_precision':bagPreScorer,
-           'bag_recall':bagRecScorer,
-           }
+                 'bag_precision':bagPreScorer,
+                 'bag_recall':bagRecScorer,
+                 }
 
 # Cross validate bags
 res_knn_infer = cross_validate_bag(estimator=knn, 
@@ -327,9 +327,9 @@ bagPreScorer = BagScorer(precision_scorer, sparse_input=True)
 recall_scorer = make_scorer(recall_score, average='weighted')
 bagRecScorer = BagScorer(recall_scorer, sparse_input=True)
 scoring_sparse = {'bag_accuracy':bagAccScorer,
-           'bag_precision':bagPreScorer,
-           'bag_recall':bagRecScorer,
-           }
+                  'bag_precision':bagPreScorer,
+                  'bag_recall':bagRecScorer,
+                  }
 
 res_multinomial_infer = cross_validate_bag(estimator=multiNB, 
                             X=_train_bags_cat,
@@ -365,21 +365,29 @@ res_comNB_infer = cross_validate_bag(estimator=compNB,
 # Define the training and testing data set
 # Use stratified folding to preserve class imbalance
 # Filter out bags with only a single instance
-_filter_train = _filter_bags_by_size(train_bags_cat, 
+_filter_train = _filter_bags_by_size(train_bags, 
                                      min_instances=5,
                                      max_instances=2000)
-_filter_test = _filter_bags_by_size(train_bags,
+_filter_test = _filter_bags_by_size(test_bags,
                                     min_instances=5,
                                     max_instances=2000)
+_filter_train_cat = _filter_bags_by_size(train_bags_cat, 
+                                     min_instances=5,
+                                     max_instances=2000)
+_filter_test_cat = _filter_bags_by_size(test_bags_cat,
+                                    min_instances=5,
+                                    max_instances=2000)
+
 # Convert bags to dense for KNN estimator
 _train_bags_dense = _densify_bags(train_bags[_filter_train])
 _train_labels = train_labels[_filter_train]
 _test_bags_dense = _densify_bags(test_bags[_filter_test])
 _test_labels = test_labels[_filter_test]
 # Keep bags sparse for Component Native Bayes and Multinomial
-_train_bags_cat = train_bags_cat[_filter_train]
-_train_labels_cat = train_labels_cat[_filter_train]
-_test_bags_cat = test_bags_cat[_filter_test]
+_train_bags_cat = train_bags_cat[_filter_train_cat]
+_train_labels_cat = train_labels_cat[_filter_train_cat]
+_test_bags_cat = test_bags_cat[_filter_test_cat]
+_test_labels_cat = test_labels_cat[_filter_test_cat]
 
 # Define estimators
 knn = KNeighborsClassifier(n_neighbors=10, weights='uniform',
@@ -391,8 +399,51 @@ multiNB = MultinomialNB(alpha=1.0, fit_prior=True, class_prior=None)
 # CommplementNB - Like multinomial but for imbalanced datasets
 compNB = ComplementNB(alpha=1.0, fit_prior=True, class_prior=None, norm=False)
 
+# Define scoring metrics
+_bagAccScorer = BagScorer(make_scorer(accuracy_score), 
+                          sparse_input=False) 
+_bagPreScorer = BagScorer(make_scorer(precision_score, average='weighted'), 
+                          sparse_input=False)
+_bagRecScorer = BagScorer(make_scorer(recall_score, average='weighted'), 
+                          sparse_input=False)
+
+_bagAccScorer_sparse = BagScorer(make_scorer(accuracy_score), 
+                                 sparse_input=True) 
+_bagPreScorer_sparse = BagScorer(make_scorer(precision_score, average='weighted'), 
+                                 sparse_input=True)
+_bagRecScorer_sparse = BagScorer(make_scorer(recall_score, average='weighted'), 
+                                 sparse_input=True)
+
+
 # Fit the estimator
-knn.fit()
+knn = _bagAccScorer.estimator_fit(knn, _train_bags_dense, 
+                                  _train_labels)
+multiNB = _bagAccScorer_sparse.estimator_fit(multiNB, _train_bags_cat, 
+                                             _train_labels_cat)
+compNB = _bagAccScorer_sparse.estimator_fit(multiNB, _train_bags_cat, 
+                                            _train_labels_cat)
 
 # Predict on the validation set
+yhat_knn = BagScorer.predict_bags(knn, _test_bags_dense)
+yhat_multiNB = BagScorer.predict_bags(multiNB, _test_bags_cat)
+yhat_compNB = BagScorer.predict_bags(compNB, _test_bags_cat)
+
+
 # Calculate evaluation metrics
+res_knn = {'bag_accuracy':_bagAccScorer(knn, _test_bags_dense, _test_labels),
+           'bag_precision':_bagPreScorer(knn, _test_bags_dense, _test_labels),
+           'bag_recall':_bagRecScorer(knn, _test_bags_dense, _test_labels),
+           }
+
+res_multiNB = {'bag_accuracy':_bagAccScorer_sparse(multiNB, _test_bags_cat, _test_labels_cat),
+               'bag_precision':_bagPreScorer_sparse(multiNB, _test_bags_cat, _test_labels_cat),
+               'bag_recall':_bagRecScorer_sparse(multiNB, _test_bags_cat, _test_labels_cat),
+               }
+
+res_compNB = {'bag_accuracy':_bagAccScorer_sparse(compNB, _test_bags_cat, _test_labels_cat),
+              'bag_precision':_bagPreScorer_sparse(compNB, _test_bags_cat, _test_labels_cat),
+              'bag_recall':_bagRecScorer_sparse(compNB, _test_bags_cat, _test_labels_cat),
+              }
+
+
+
