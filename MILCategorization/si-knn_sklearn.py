@@ -6,6 +6,21 @@ Created on Sun Jun 21 09:02:37 2020
 #TODO - Attempt ensemble methods
 #TODO - Attempt hyperparameter optimization
 #TODO - Feature selection
+#TODO - Confidence intervals on accuracy estimates (including confidence 
+    interval on any other evaluation metric)
+#TODO - Is it a problem that I have a significant number of features compared
+    to the number of instances? Should I use feature selection methods?
+#TODO - "Second, 5-fold cross-validation is not sufficiently precise. It may 
+    be necessary to repeat it 100 times to achieve adequate precision. Third, you 
+    have chosen as an accuracy score a discontinuous improper scoring rule 
+    (proportion classified correctly). Such an improper scoring rule will lead to 
+    selection of the wrong model."
+    From https://stats.stackexchange.com/questions/59630/test-accuracy-higher-than-training-how-to-interpret
+    
+    1. Repeat cross-validation a number of times in order to get a confidence 
+    interval on elvaluation metrics
+    2. What is the most proper evaluation metric in order to choose a good
+    estimator? Accuracy may not be preferable due to inbalanced data labels
 
 @author: z003vrzk
 """
@@ -14,7 +29,7 @@ Created on Sun Jun 21 09:02:37 2020
 import sys
 import os
 import configparser
-from typing import Union
+from typing import Union, TypedDict
 
 # Third party imports
 import numpy as np
@@ -54,6 +69,7 @@ loadMIL = LoadMIL(server_name,
                   database_name)
 
 #%%
+"""Load data"""
 
 # Load numeric dataset
 _file = r'../data/MIL_dataset.dat'
@@ -158,9 +174,22 @@ def _filter_bags_by_size(X:Union[np.ndarray, csr_matrix, list],
     return np.array(index, dtype=np.int16)
     
 
+def _print_results_dict(res:Union[dict[str,list], dict[str,float]],
+                        msg=None) -> None:
+    if msg:
+        print(msg)
+    
+    for key, value in res.items():
+        print(key, " : ", value)
+        
+    print("\n\n")
+    return None
 
 
 #%% Estimators
+"""Define several estimators
+Evaluate the estimators on the single-instance Multi-Class classification 
+problem"""
 
 # K-NN
 knn = KNeighborsClassifier(n_neighbors=10, weights='uniform',
@@ -200,9 +229,28 @@ res_comNB_si = cross_validate(estimator=compNB,
                           scoring=scoring,
                           )
 
+# Print results of single-instance classification problem
+_print_results_dict(res_knn_si, 
+                    ("Single-instance Multi-Class classification results of " +
+                     "KNN Estimator. " +
+                     "The instance labels are derived from bag labels.:\n"))
 
-#%% Predict on bags using most common label assigned to instances
-# AKA Single-instance inference
+_print_results_dict(res_multinomial_si, 
+                    ("Single-instance Multi-Class classification results of " +
+                     "Multinomial Native Bayes Estimator. " +
+                     "The instance labels are derived from bag labels.:\n"))
+
+_print_results_dict(res_comNB_si, 
+                    ("Single-instance Multi-Class classification results of " +
+                     "Component Native Bayes Estimator. " +
+                     "The instance labels are derived from bag labels.:\n"))
+
+
+#%% 
+"""Predict on bags using most frequent label assigned to instances
+AKA Single-instance inference of a bag label
+
+This section was typed before I made the BagScorer"""
 
 # Initial Values
 CV = 3
@@ -267,7 +315,8 @@ for train_index, test_index in rs.split(BAGS, BAG_LABELS):
 
 
 
-#%% Predict on bags using cross validation with single-instance inference
+#%% 
+"""Predict on bags using cross validation with single-instance inference"""
 
 # Create estimators
 knn = KNeighborsClassifier(n_neighbors=10, weights='uniform',
@@ -305,19 +354,20 @@ scoring_dense = {'bag_accuracy':bagAccScorer,
                  }
 
 # Cross validate bags
-res_knn_infer = cross_validate_bag(estimator=knn, 
-                            X=_train_bags_dense, 
-                            y=_train_labels, 
-                            groups=None, 
-                            scoring=scoring_dense, # Custom scorer... 
-                            cv=2,
-                            n_jobs=4, 
-                            verbose=0, 
-                            fit_params=None,
-                            pre_dispatch='2*n_jobs', 
-                            return_train_score=False,
-                            return_estimator=True, 
-                            error_score=np.nan)
+res_knn_infer = cross_validate_bag(
+    estimator=knn, 
+    X=_train_bags_dense, 
+    y=_train_labels, 
+    groups=None, 
+    scoring=scoring_dense, # Custom scorer... 
+    cv=2,
+    n_jobs=4, 
+    verbose=0, 
+    fit_params=None,
+    pre_dispatch='2*n_jobs', 
+    return_train_score=False,
+    return_estimator=True, 
+    error_score=np.nan)
 
 # Multinomial native bayes supports sparse features...
 accuracy_scorer = make_scorer(accuracy_score)
@@ -331,36 +381,49 @@ scoring_sparse = {'bag_accuracy':bagAccScorer,
                   'bag_recall':bagRecScorer,
                   }
 
-res_multinomial_infer = cross_validate_bag(estimator=multiNB, 
-                            X=_train_bags_cat,
-                            y=_train_labels_cat, 
-                            groups=None, 
-                            scoring=scoring_sparse, # Custom scorer... 
-                            cv=2,
-                            n_jobs=4, 
-                            verbose=0, 
-                            fit_params=None,
-                            pre_dispatch='2*n_jobs', 
-                            return_train_score=False,
-                            return_estimator=True, 
-                            error_score=np.nan)
+res_multiNB_infer = cross_validate_bag(
+    estimator=multiNB, 
+    X=_train_bags_cat,
+    y=_train_labels_cat, 
+    groups=None, 
+    scoring=scoring_sparse, # Custom scorer... 
+    cv=2,
+    n_jobs=4, 
+    verbose=0, 
+    fit_params=None,
+    pre_dispatch='2*n_jobs', 
+    return_train_score=False,
+    return_estimator=True, 
+    error_score=np.nan)
 
-res_comNB_infer = cross_validate_bag(estimator=compNB, 
-                            X=_train_bags_cat,
-                            y=_train_labels_cat, 
-                            groups=None, 
-                            scoring=scoring_sparse, # Custom scorer... 
-                            cv=2,
-                            n_jobs=4, 
-                            verbose=0, 
-                            fit_params=None,
-                            pre_dispatch='2*n_jobs', 
-                            return_train_score=False,
-                            return_estimator=True, 
-                            error_score=np.nan)
+res_compNB_infer = cross_validate_bag(
+    estimator=compNB, 
+    X=_train_bags_cat,
+    y=_train_labels_cat, 
+    groups=None, 
+    scoring=scoring_sparse, # Custom scorer... 
+    cv=2,
+    n_jobs=4, 
+    verbose=0, 
+    fit_params=None,
+    pre_dispatch='2*n_jobs', 
+    return_train_score=False,
+    return_estimator=True, 
+    error_score=np.nan)
+
+_print_results_dict(res_knn_infer, 
+                    ("Cross validation results of KNN Estimator using inference "+
+                     "of bag label based on mode statistic of instance labels:\n"))
+_print_results_dict(res_multiNB_infer, 
+                    ("Cross validation results of multinomial NB Estimator using inference "+
+                     "of bag label based on mode statistic of instance labels:\n"))
+_print_results_dict(res_compNB_infer, 
+                    ("Cross validation results of component NB Estimator using inference "+
+                     "of bag label based on mode statistic of instance labels:\n"))
 
 
-#%% Perform predictions on test set | final evaluation of model performance
+#%% 
+"""Perform predictions on test set | final evaluation of model performance"""
 
 # Define the training and testing data set
 # Use stratified folding to preserve class imbalance
@@ -399,51 +462,137 @@ multiNB = MultinomialNB(alpha=1.0, fit_prior=True, class_prior=None)
 # CommplementNB - Like multinomial but for imbalanced datasets
 compNB = ComplementNB(alpha=1.0, fit_prior=True, class_prior=None, norm=False)
 
+
 # Define scoring metrics
-_bagAccScorer = BagScorer(make_scorer(accuracy_score), 
-                          sparse_input=False) 
-_bagPreScorer = BagScorer(make_scorer(precision_score, average='weighted'), 
-                          sparse_input=False)
-_bagRecScorer = BagScorer(make_scorer(recall_score, average='weighted'), 
-                          sparse_input=False)
+_bagKnnScorer = {
+    'bag_accuracy':BagScorer(make_scorer(accuracy_score), 
+                             sparse_input=False) ,
+    'bag_precision':BagScorer(make_scorer(precision_score, average='weighted'), 
+                              sparse_input=False),
+    'bag_recall':BagScorer(make_scorer(recall_score, average='weighted'), 
+                           sparse_input=False),
+    }
 
-_bagAccScorer_sparse = BagScorer(make_scorer(accuracy_score), 
-                                 sparse_input=True) 
-_bagPreScorer_sparse = BagScorer(make_scorer(precision_score, average='weighted'), 
-                                 sparse_input=True)
-_bagRecScorer_sparse = BagScorer(make_scorer(recall_score, average='weighted'), 
-                                 sparse_input=True)
+_bagMultiNBScorer = {    
+    'bag_accuracy':BagScorer(make_scorer(accuracy_score), 
+                             sparse_input=True) ,
+    'bag_precision':BagScorer(make_scorer(precision_score, average='weighted'), 
+                              sparse_input=True),
+    'bag_recall':BagScorer(make_scorer(recall_score, average='weighted'), 
+                           sparse_input=True),
+    }
 
+_bagCompNBScorer = {    
+    'bag_accuracy':BagScorer(make_scorer(accuracy_score), 
+                             sparse_input=True) ,
+    'bag_precision':BagScorer(make_scorer(precision_score, average='weighted'), 
+                              sparse_input=True),
+    'bag_recall':BagScorer(make_scorer(recall_score, average='weighted'), 
+                           sparse_input=True),
+    }
 
 # Fit the estimator
-knn = _bagAccScorer.estimator_fit(knn, _train_bags_dense, 
-                                  _train_labels)
-multiNB = _bagAccScorer_sparse.estimator_fit(multiNB, _train_bags_cat, 
+knn = _bagKnnScorer['bag_accuracy'].estimator_fit(knn, 
+                                                  _train_bags_dense, 
+                                                  _train_labels)
+multiNB = _bagMultiNBScorer['bag_accuracy'].estimator_fit(multiNB, 
+                                             _train_bags_cat, 
                                              _train_labels_cat)
-compNB = _bagAccScorer_sparse.estimator_fit(multiNB, _train_bags_cat, 
+compNB = _bagCompNBScorer['bag_accuracy'].estimator_fit(compNB, 
+                                            _train_bags_cat, 
                                             _train_labels_cat)
 
+
 # Predict on the validation set
-yhat_knn = BagScorer.predict_bags(knn, _test_bags_dense)
-yhat_multiNB = BagScorer.predict_bags(multiNB, _test_bags_cat)
-yhat_compNB = BagScorer.predict_bags(compNB, _test_bags_cat)
+yhat_knn = _bagKnnScorer['bag_accuracy'].predict_bags(knn, _test_bags_dense)
+yhat_multiNB = _bagMultiNBScorer['bag_accuracy'].predict_bags(multiNB, _test_bags_cat)
+yhat_compNB = _bagCompNBScorer['bag_accuracy'].predict_bags(compNB, _test_bags_cat)
+
+# Predict on training set
+yhat_knn_train = _bagKnnScorer['bag_accuracy'].predict_bags(knn, _test_bags_dense)
+yhat_multiNB_train = _bagMultiNBScorer['bag_accuracy'].predict_bags(multiNB, _test_bags_cat)
+yhat_compNB_train = _bagCompNBScorer['bag_accuracy'].predict_bags(compNB, _test_bags_cat)
+
+# Calculate evaluation metrics (Final validation test set)
+res_knn_infer_test = {
+    'bag_accuracy':_bagKnnScorer['bag_accuracy'](knn, _test_bags_dense, _test_labels),
+    'bag_precision':_bagKnnScorer['bag_precision'](knn, _test_bags_dense, _test_labels),
+    'bag_recall':_bagKnnScorer['bag_recall'](knn, _test_bags_dense, _test_labels),
+    }
+
+res_multiNB_infer_test = {
+    'bag_accuracy':_bagMultiNBScorer['bag_accuracy'](multiNB, _test_bags_cat, _test_labels_cat),
+    'bag_precision':_bagMultiNBScorer['bag_precision'](multiNB, _test_bags_cat, _test_labels_cat),
+    'bag_recall':_bagMultiNBScorer['bag_recall'](multiNB, _test_bags_cat, _test_labels_cat),
+    }
+
+res_compNB_infer_test = {
+    'bag_accuracy':_bagCompNBScorer['bag_accuracy'](compNB, _test_bags_cat, _test_labels_cat),
+    'bag_precision':_bagCompNBScorer['bag_precision'](compNB, _test_bags_cat, _test_labels_cat),
+    'bag_recall':_bagCompNBScorer['bag_recall'](compNB, _test_bags_cat, _test_labels_cat),
+    }
 
 
-# Calculate evaluation metrics
-res_knn = {'bag_accuracy':_bagAccScorer(knn, _test_bags_dense, _test_labels),
-           'bag_precision':_bagPreScorer(knn, _test_bags_dense, _test_labels),
-           'bag_recall':_bagRecScorer(knn, _test_bags_dense, _test_labels),
-           }
+# Calculate evaluation metrics (Training set)
+res_knn_infer_train = {
+    'bag_accuracy':_bagKnnScorer['bag_accuracy'](knn, _train_bags_dense, _train_labels),
+    'bag_precision':_bagKnnScorer['bag_precision'](knn, _train_bags_dense, _train_labels),
+    'bag_recall':_bagKnnScorer['bag_recall'](knn, _train_bags_dense, _train_labels),
+    }
 
-res_multiNB = {'bag_accuracy':_bagAccScorer_sparse(multiNB, _test_bags_cat, _test_labels_cat),
-               'bag_precision':_bagPreScorer_sparse(multiNB, _test_bags_cat, _test_labels_cat),
-               'bag_recall':_bagRecScorer_sparse(multiNB, _test_bags_cat, _test_labels_cat),
-               }
+res_multiNB_infer_train = {
+    'bag_accuracy':_bagMultiNBScorer['bag_accuracy'](multiNB, _train_bags_cat, _train_labels_cat),
+    'bag_precision':_bagMultiNBScorer['bag_precision'](multiNB, _train_bags_cat, _train_labels_cat),
+    'bag_recall':_bagMultiNBScorer['bag_recall'](multiNB, _train_bags_cat, _train_labels_cat),
+    }
 
-res_compNB = {'bag_accuracy':_bagAccScorer_sparse(compNB, _test_bags_cat, _test_labels_cat),
-              'bag_precision':_bagPreScorer_sparse(compNB, _test_bags_cat, _test_labels_cat),
-              'bag_recall':_bagRecScorer_sparse(compNB, _test_bags_cat, _test_labels_cat),
-              }
+res_compNB_infer_train = {
+    'bag_accuracy':_bagCompNBScorer['bag_accuracy'](compNB, _train_bags_cat, _train_labels_cat),
+    'bag_precision':_bagCompNBScorer['bag_precision'](compNB, _train_bags_cat, _train_labels_cat),
+    'bag_recall':_bagCompNBScorer['bag_recall'](compNB, _train_bags_cat, _train_labels_cat),
+    }
 
 
+
+# Print information about the data set
+msg = ("The {} Estimator was trained on {} traing bags. Final evaluation was " +
+       "performed using {} testing bags\n\n")
+print(msg.format("KNN", 
+                 _train_bags_dense.shape[0], 
+                 _test_bags_dense.shape[0]))
+print(msg.format("Multinomial Native Bayes", 
+                 _train_bags_cat.shape[0], 
+                 _test_bags_cat.shape[0]))
+print(msg.format("Component Native Bayes", 
+                 _train_bags_cat.shape[0], 
+                 _test_bags_cat.shape[0]))
+
+msg = ("A total of {} {} bags were excluded becase they did not contain " +
+       "greater than 5 instances\n")
+print(msg.format(train_bags.shape[0] - _filter_train.shape[0], "training"))
+print(msg.format(test_bags.shape[0] - _filter_test.shape[0], "test"))
+
+
+# Print test results
+_print_results_dict(res_knn_infer_test, 
+                    ("Final evaluation results of KNN Estimator using inference "+
+                     "of bag label based on mode statistic of instance labels:\n"))
+_print_results_dict(res_multiNB_infer_test, 
+                    ("Final evaluation results of multinomial NB Estimator using inference "+
+                     "of bag label based on mode statistic of instance labels:\n"))
+_print_results_dict(res_compNB_infer_test, 
+                    ("Final evaluation results of component NB Estimator using inference "+
+                     "of bag label based on mode statistic of instance labels:\n"))
+
+
+# Print training results
+_print_results_dict(res_knn_infer_train, 
+                    ("Training evaluation of KNN Estimator using inference "+
+                     "of bag label based on mode statistic of instance labels:\n"))
+_print_results_dict(res_multiNB_infer_train, 
+                    ("Training evaluation results of multinomial NB Estimator using inference "+
+                     "of bag label based on mode statistic of instance labels:\n"))
+_print_results_dict(res_compNB_infer_train, 
+                    ("Training evaluation results of component NB Estimator using inference "+
+                     "of bag label based on mode statistic of instance labels:\n"))
 
