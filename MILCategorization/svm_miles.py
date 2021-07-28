@@ -130,7 +130,8 @@ dataset_categorical = load_mil_dataset(categorical_feature_file)
 
 
 # Split data into training and testing sets
-"""TODO: In the ideal scenario I will hand-pick the most optimal training 
+"""
+# TODO: In the ideal scenario I will hand-pick the most optimal training 
 bags. These will most accurately represent the categories that I 
 want to identify
 
@@ -175,11 +176,11 @@ print("There are {} single instances in the testing set\n".format(N_TEST_INSTANC
 # This means that the 'testing' set contains a similarity measure to the training
 # instances. I will perform cross validation on the testing instances
 embedded_train = embed_all_bags(concept_class=C_features, 
-                                bags=test_bags_sp,
+                                bags=[x for x in train_bags_sp],
                                 sigma=3,
                                 distance='euclidean')
 embedded_test = embed_all_bags(concept_class=C_features, 
-                                bags=train_bags_sp,
+                                bags=test_bags_sp,
                                 sigma=3,
                                 distance='euclidean')
 
