@@ -11,11 +11,11 @@ import os, sys
 from typing import Union
 
 # Third party imports
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedShuffleSplit
 import sklearn as skl
 from sklearn import svm
-import numpy as np
 from scipy.sparse import csr_matrix
+import numpy as np
 
 # Local imports
 if __name__ == '__main__':
@@ -26,7 +26,7 @@ if __name__ == '__main__':
     _PROJECT_DIR = os.path.join(os.sep, *_PARTS[:-1])
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
-from mil_load import load_mil_dataset, LoadMIL, bags_2_si
+from mil_load import load_mil_dataset, LoadMIL, bags_2_si, bags_2_si_generator
 from pyMILES.embedding import embed_all_bags
         
 # Global declarations
@@ -139,25 +139,41 @@ Note: Why is the proportion of training instances so low (15%)? It is because
 the training instances are used as the concept class.
 Instances in the concept class are used to embed the testing set onto a 
 feature space, which the SVM then predicts on"""
-train_bags_sp, test_bags_sp, train_labels, test_labels = train_test_split(
-    dataset_numeric['dataset'], 
-    dataset_numeric['bag_labels'],
-    train_size=0.15)
+# train_bags_sp, test_bags_sp, train_labels, test_labels = train_test_split(
+#     dataset_numeric['dataset'], 
+#     dataset_numeric['bag_labels'],
+#     train_size=0.15)
 
+# Create dataset for embedding bags into similarity of concept class
+ss = StratifiedShuffleSplit(n_splits=1, train_size=0.15)
+_concept_index, _train_test_index = ss.split(dataset_numeric['dataset'],
+                                             dataset_numeric['bag_labels'])
+concept_bags = dataset_numeric['dataset'][_concept_index]
+concept_labels = dataset_numeric['bag_labels'][_concept_index]
+_train_test_bags = dataset_numeric['dataset'][_train_test_index]
+_train_test_labels = dataset_numeric['bag_labels'][_train_test_index]
+# Create training and validation sets
+ss = StratifiedShuffleSplit(n_splits=1, train_size=0.5)
+_train_index, _test_index = ss.split(_train_test_bags, _train_test_labels)
+train_bags = _train_test_bags[_train_index]
+train_labels = _train_test_labels[_train_index]
+test_bags = _train_test_bags[_test_index]
+test_labels = _train_test_labels[_test_index]
+
+# Generate dense bags
+"""bags: (np.ndarray) shape (i,j,p) where n is the number of bags, j is the 
+    number of instances per bag, and p is the feature space per instance 
+    in a bag"""
+concept_bags = _densify_bags(concept_bags)
+train_bags = _densify_bags(train_bags)
+test_bags = _densify_bags(test_bags)
 
 """Create a concept class, the set of all training instances from positive and 
 negative bags C = {x^k : k=1, ..., n}
 Where x^k is the kth instance in the entire training set
 """
 # Create concept class from training instances
-C_features, C_labels = bags_2_si(train_bags_sp, train_labels, sparse=True)
-
-# Generate dense bags
-"""bags: (np.ndarray) shape (i,j,p) where n is the number of bags, j is the 
-    number of instances per bag, and p is the feature space per instance 
-    in a bag"""
-train_bags = _densify_bags(train_bags_sp)
-test_bags = _densify_bags(test_bags_sp)
+C_features, C_labels = bags_2_si(concept_bags, concept_labels)
 
 # Number of training instances
 # Number of testing instances
@@ -176,11 +192,11 @@ print("There are {} single instances in the testing set\n".format(N_TEST_INSTANC
 # This means that the 'testing' set contains a similarity measure to the training
 # instances. I will perform cross validation on the testing instances
 embedded_train = embed_all_bags(concept_class=C_features, 
-                                bags=[x for x in train_bags_sp],
+                                bags=[x for x in train_bags],
                                 sigma=3,
                                 distance='euclidean')
 embedded_test = embed_all_bags(concept_class=C_features, 
-                                bags=test_bags_sp,
+                                bags=[x for x in test_bags],
                                 sigma=3,
                                 distance='euclidean')
 
@@ -190,7 +206,7 @@ embedded_test = embed_all_bags(concept_class=C_features,
 
 #%%
 """Perform cross-validation on embedded dataset with two estimators:
-1. L1 SVM
+1. L1 SVM (regularization SVM with L1 distance)
 2. SVM with radial-basis-function distance kernel
 
 Use a custom
@@ -242,8 +258,12 @@ svmc_gs = skl.model_selection.GridSearchCV(
 
 # Filter training and testing instances so that only bags with >= 5 instances
 # Are included in grid search
-_filter_train = _filter_bags_by_size(train_bags, min_instances=5, max_instances=2000)
-_filter_test = _filter_bags_by_size(test_bags, min_instances=5, max_instances=2000)
+_filter_train = _filter_bags_by_size(train_bags, 
+                                     min_instances=5, 
+                                     max_instances=2000)
+_filter_test = _filter_bags_by_size(test_bags, 
+                                    min_instances=5, 
+                                    max_instances=2000)
 train_embed_filter = embedded_train[_filter_train]
 train_labels_filter = train_labels[_filter_train]
 test_embed_filter = embedded_test[_filter_test]
@@ -252,8 +272,8 @@ test_labels_filter = test_labels[_filter_test]
 # Perform cross validation - REMEMBER that we are performing cross validation
 # On the TESTING set this time because the testing bags were embedded using
 # the training bags as the concept class
-svmc_l1_gs.fit(np.transpose(test_embed_filter), test_labels_filter)
-svmc_gs.fit(np.transpose(test_embed_filter), test_labels_filter)
+svmc_l1_gs.fit(np.transpose(train_embed_filter), train_labels_filter)
+svmc_gs.fit(np.transpose(train_embed_filter), train_labels_filter)
 
 # Print results of cross-validation using MILES embedding w/ SVM estimator
 _print_results_dict(svmc_l1_gs.cv_results_, 

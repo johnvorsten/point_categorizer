@@ -17,7 +17,7 @@ import sqlalchemy
 from sqlalchemy.sql import text as sqltext
 import pandas as pd
 from sklearn.pipeline import Pipeline, FeatureUnion
-from scipy.sparse import vstack
+from scipy.sparse import csr_matrix
 
 # Local imports
 if __name__ == '__main__':
@@ -335,7 +335,8 @@ def save_mil_dataset(bags, bag_labels, file_name):
 
 
 
-def bags_2_si_generator(bags, bag_labels, sparse=False):
+def bags_2_si_generator(bags: np.ndarray, 
+                        bag_labels: np.ndarray):
     """Convert a n x (m x p) array of bag instances into a k x p array of
     instances. n is the number of bags, and m is the number of instances within
     each bag. m can vary per bag. k is the total number of instances within
@@ -346,27 +347,19 @@ def bags_2_si_generator(bags, bag_labels, sparse=False):
     bag_labels : (iterable) containing labels assocaited with each bag. Labels
         are expanded and each instance within a bag inherits the label of the
         bag
-    sparse : (bool) if True, the output instances are left as a sparse array.
-        Some sklearn estimators can handle sparse feature inputs
     output
     -------
     instances, labels : (generator) """
 
     for bag, label in zip(bags, bag_labels):
-        # Unpack bag into instances
+        # Labels inherit label of bag
+        labels = np.array([label].__mul__(bag.shape[0]))
 
-        if sparse:
-            instances = bag # Sparse array
-        else:
-            instances = bag.toarray() # Dense array
-
-        labels = np.array([label].__mul__(instances.shape[0]))
-
-        yield instances, labels
+        yield bag, labels
 
 
 
-def bags_2_si(bags, bag_labels, sparse=False):
+def bags_2_si(bags, bag_labels):
     """Convert a n x (m x p) array of bag instances into a k x p array of
     instances. n is the number of bags, and m is the number of instances within
     each bag. m can vary per bag. k is the total number of instances within
@@ -377,35 +370,28 @@ def bags_2_si(bags, bag_labels, sparse=False):
     bag_labels : (iterable) containing labels assocaited with each bag. Labels
         are expanded and each instance within a bag inherits the label of the
         bag
-    sparse : (bool) if True, the output instances are left as a sparse array.
-        Some sklearn estimators can handle sparse feature inputs
     output
     -------
     instances, labels : (np.array) or (scipy.sparse.csr.csr_matrix)
     depending on 'sparse'"""
 
+    if isinstance(bags, csr_matrix):
+        raise ValueError("bags_2_si does not support sparse inputs yet")
+
     # Initialize generator over bags
     bag_iterator = bags_2_si_generator(bags,
-                                       bag_labels,
-                                       sparse=sparse)
+                                       bag_labels)
 
     # Initialize datasets
     instances, labels = [], []
 
     # Gather datasets
     for part_instances, part_labels in bag_iterator:
-
         instances.append(part_instances)
         labels.append(part_labels)
 
-    # Flatten into otuput shape - [k x p] instances and [k] labels
-    if sparse:
-        # Row-stack sparse arrays into a sinlge  k x p sparse array
-        instances = vstack(instances)
-        labels = np.concatenate(labels)
-    else:
-        # Row-concatenate dense arrays into a single k x p array
-        instances = np.concatenate(instances)
-        labels = np.concatenate(labels)
+    # Row-concatenate sparse arrays into a sinlge  k x p array
+    instances = np.concatenate(instances, axis=0)
+    labels = np.concatenate(labels)
 
     return instances, labels
