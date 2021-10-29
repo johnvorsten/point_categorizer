@@ -37,6 +37,8 @@ from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev,
 # Globals
 CATEGORICAL_FEATURE_FILE = '../data/MIL_cat_dataset.dat'
 NUMERIC_FEATURE_FILE = '../data/MIL_dataset.dat'
+POINTNAME_VOCABULARY_FILENAME = '../data/vocab_name.txt'
+DESCRIPTOR_VOCABULARY_FILENAME = '../data/vocab_descriptor.txt'
 
 
 #%%
@@ -49,7 +51,6 @@ class LoadMIL:
                                      driver_name=driver_name,
                                      database_name=database_name)
         return None
-
 
     def bag_data_generator(self, pipeline, verbose=False):
         """Return a bag of commonly labeled data
@@ -71,9 +72,9 @@ class LoadMIL:
 
         # Create the pipeline
         if pipeline == 'whole':
-            full_pipeline = self.mil_transform_pipeline()
+            full_pipeline = self.numeric_transform_pipeline()
         elif pipeline == 'categorical':
-            full_pipeline = self.naive_bayes_transform_pipeline()
+            full_pipeline = self.categorical_transform_pipeline()
         else:
             raise ValueError('pipeline must be one of ["whole","categorical"]')
 
@@ -116,8 +117,8 @@ class LoadMIL:
 
             yield bag, label
 
-
-    def validate_bag(self, bag):
+    @staticmethod
+    def validate_bag(bag):
         """Determine if a bag of instances is valid. A bag is valid if the
         resulting bag has at least one instance
         inputs
@@ -145,16 +146,14 @@ class LoadMIL:
 
         return False
 
-
-    def mil_transform_pipeline(self):
+    @staticmethod
+    def numeric_transform_pipeline():
         """
         inputs
         ------
-        None : This pipeline is made to have static features. There is no need
-        for passing variables
         outputs
         ------
-        full_pipeline : (sklearn.pipeline) of all features for MIL / bag learning
+        full_pipeline: (sklearn.pipeline) of all features for multi-instance learning
         """
 
         # Transform pipeline
@@ -170,12 +169,10 @@ class LoadMIL:
                                                  remove_virtual=True)
 
         # Text feature encoders
-        name_file = r'../data/vocab_name.txt'
-        name_vocabulary = transform_pipeline.VocabularyText.read_vocabulary_disc(name_file)
+        name_vocabulary = transform_pipeline.VocabularyText.read_vocabulary_disc(POINTNAME_VOCABULARY_FILENAME)
         name_text_pipe = Transform.text_pipeline_label(attributes=['NAME'],
                                                   vocabulary=name_vocabulary)
-        descriptor_file = r'../data/vocab_descriptor.txt'
-        descriptor_vocabulary = transform_pipeline.VocabularyText.read_vocabulary_disc(descriptor_file)
+        descriptor_vocabulary = transform_pipeline.VocabularyText.read_vocabulary_disc(DESCRIPTOR_VOCABULARY_FILENAME)
         descriptor_text_pipe = Transform.text_pipeline_label(attributes=['DESCRIPTOR'],
                                                              vocabulary=descriptor_vocabulary)
 
@@ -202,8 +199,8 @@ class LoadMIL:
 
         return full_pipeline
 
-
-    def naive_bayes_transform_pipeline(self):
+    @staticmethod
+    def categorical_transform_pipeline():
         """Pipeline that only includes categorical and text features for
         naive_bayes categorical estimators
         inputs
@@ -228,12 +225,10 @@ class LoadMIL:
                                                  remove_virtual=True)
 
         # Text feature encoders
-        name_file = r'../data/vocab_name.txt'
-        name_vocabulary = transform_pipeline.VocabularyText.read_vocabulary_disc(name_file)
+        name_vocabulary = transform_pipeline.VocabularyText.read_vocabulary_disc(POINTNAME_VOCABULARY_FILENAME)
         name_text_pipe = Transform.text_pipeline_label(attributes=['NAME'],
                                                   vocabulary=name_vocabulary)
-        descriptor_file = r'../data/vocab_descriptor.txt'
-        descriptor_vocabulary = transform_pipeline.VocabularyText.read_vocabulary_disc(descriptor_file)
+        descriptor_vocabulary = transform_pipeline.VocabularyText.read_vocabulary_disc(DESCRIPTOR_VOCABULARY_FILENAME)
         descriptor_text_pipe = Transform.text_pipeline_label(attributes=['DESCRIPTOR'],
                                                              vocabulary=descriptor_vocabulary)
 
@@ -259,7 +254,6 @@ class LoadMIL:
             ])
 
         return full_pipeline
-
 
     def gather_mil_dataset(self, pipeline='whole'):
         """Return all bags as a numpy array
@@ -314,7 +308,6 @@ def load_mil_dataset(file_name):
     return dataset
 
 
-
 def save_mil_dataset(bags, bag_labels, file_name):
     """Picke and save an object
     input
@@ -332,7 +325,6 @@ def save_mil_dataset(bags, bag_labels, file_name):
         pickle.dump(MILData, f)
 
     return None
-
 
 
 def bags_2_si_generator(bags: np.ndarray, 
@@ -356,7 +348,6 @@ def bags_2_si_generator(bags: np.ndarray,
         labels = np.array([label].__mul__(bag.shape[0]))
 
         yield bag, labels
-
 
 
 def bags_2_si(bags, bag_labels):

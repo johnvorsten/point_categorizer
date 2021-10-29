@@ -9,6 +9,7 @@ Created on Thu Jun 10 20:07:07 2021
 import configparser
 import os, sys
 from typing import Union
+import pickle
 
 # Third party imports
 from sklearn.model_selection import (train_test_split, StratifiedShuffleSplit, 
@@ -23,6 +24,7 @@ from sklearn.metrics import (accuracy_score, recall_score,
                              balanced_accuracy_score)
 from scipy.sparse import csr_matrix
 import numpy as np
+from pyMILES.embedding import embed_all_bags
 
 # Local imports
 if __name__ == '__main__':
@@ -34,8 +36,7 @@ if __name__ == '__main__':
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
 from mil_load import load_mil_dataset, LoadMIL, bags_2_si, bags_2_si_generator
-from pyMILES.embedding import embed_all_bags
-        
+
 # Global declarations
 config = configparser.ConfigParser()
 config.read(r'../extract/sql_config.ini')
@@ -414,4 +415,27 @@ _print_results_dict(res_svmc_train,
                       "using embedding of bag label:\n"))
 
 
+
+#%% Pickle and save model for later
+
+
+# Save the model
+with open('./svmc_l1_miles.clf', mode='wb') as f:
+    pickle.dump(svmc_l1_best, f)
+    
+with open('./svmc_rbf_miles.clf', mode='wb') as f:
+    pickle.dump(svmc_best, f)
+
+# Save concept class examples for MILES embedding and prediction 
+with open('./miles_concept_features.dat', mode='wb') as f:
+    pickle.dump(C_features, f)
+    
+# Save training and validation data
+with open('./data_milesembedded_trian.dat', mode='wb') as f:
+    pickle.dump((train_embed_filter, train_labels_filter), f)
+
+with open('./data_milesembedded_test.dat', mode='wb') as f:
+    pickle.dump((test_embed_filter, test_labels_filter), f)
+    
+# Save validation results (manually, see validation_results_miles.txt)
 

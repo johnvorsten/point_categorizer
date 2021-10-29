@@ -1,0 +1,142 @@
+There are 14620 single instances in the training set
+
+There are 14518 single instances in the testing set
+
+MILES embedding Multi-Class classification results of SVM L1 Estimator. Bags are embedded into a feature vector:
+
+mean_fit_time  :  [ 5.07944854 11.11081497 13.96307675]
+std_fit_time  :  [0.08355932 0.54388639 0.2194806 ]
+mean_score_time  :  [0.02032359 0.01786168 0.00866985]
+std_score_time  :  [0.00400005 0.00177128 0.00117129]
+param_C  :  [0.5 2 5]
+params  :  [{'C': 0.5}, {'C': 2}, {'C': 5}]
+split0_test_accuracy  :  [0.81493506 0.84415584 0.83116883]
+split1_test_accuracy  :  [0.82736156 0.84690554 0.86644951]
+split2_test_accuracy  :  [0.80130293 0.82736156 0.81107492]
+mean_test_accuracy  :  [0.81453319 0.83947432 0.83623109]
+std_test_accuracy  :  [0.01064219 0.00863826 0.02288822]
+rank_test_accuracy  :  [3 1 2]
+split0_test_balanced-accuracy  :  [0.41277922 0.53975844 0.56373069]
+split1_test_balanced-accuracy  :  [0.42728836 0.50712963 0.55361111]
+split2_test_balanced-accuracy  :  [0.38746744 0.44940578 0.5319536 ]
+mean_test_balanced-accuracy  :  [0.40917834 0.49876462 0.54976513]
+std_test_balanced-accuracy  :  [0.01645501 0.03735756 0.01325492]
+rank_test_balanced-accuracy  :  [3 2 1]
+split0_test_precision  :  [0.81493506 0.84415584 0.83116883]
+split1_test_precision  :  [0.82736156 0.84690554 0.86644951]
+split2_test_precision  :  [0.80130293 0.82736156 0.81107492]
+mean_test_precision  :  [0.81453319 0.83947432 0.83623109]
+std_test_precision  :  [0.01064219 0.00863826 0.02288822]
+rank_test_precision  :  [3 1 2]
+split0_test_recall  :  [0.81493506 0.84415584 0.83116883]
+split1_test_recall  :  [0.82736156 0.84690554 0.86644951]
+split2_test_recall  :  [0.80130293 0.82736156 0.81107492]
+mean_test_recall  :  [0.81453319 0.83947432 0.83623109]
+std_test_recall  :  [0.01064219 0.00863826 0.02288822]
+rank_test_recall  :  [3 1 2]
+
+
+
+MILES embedding Multi-Class classification results of SVM Estimator w/ RBF kernel. Bags are embedded into a feature vector:
+
+mean_fit_time  :  [4.4727807  3.80716793 3.71224316 3.30282545 4.08313926 3.63406459
+ 3.59538047 3.23715806]
+std_fit_time  :  [0.09240116 0.03819587 0.09570051 0.08674675 0.16017511 0.10576675
+ 0.08571305 0.08827162]
+mean_score_time  :  [1.9472967  1.05334783 1.91697931 1.0008173  1.69716748 0.96902267
+ 1.62862341 0.94037731]
+std_score_time  :  [0.02209039 0.00983003 0.01255628 0.04920434 0.0376492  0.03916233
+ 0.13016467 0.03900134]
+param_C  :  [0.5 0.5 2 2 5 5 10 10]
+param_kernel  :  ['rbf' 'poly' 'rbf' 'poly' 'rbf' 'poly' 'rbf' 'poly']
+params  :  [{'C': 0.5, 'kernel': 'rbf'}, {'C': 0.5, 'kernel': 'poly'}, {'C': 2, 'kernel': 'rbf'}, {'C': 2, 'kernel': 'poly'}, {'C': 5, 'kernel': 'rbf'}, {'C': 5, 'kernel': 'poly'}, {'C': 10, 'kernel': 'rbf'}, {'C': 10, 'kernel': 'poly'}]
+split0_test_accuracy  :  [0.69480519 0.78571429 0.77597403 0.80194805 0.79545455 0.79220779
+ 0.78896104 0.78896104]
+split1_test_accuracy  :  [0.6970684  0.80130293 0.77198697 0.80456026 0.80456026 0.80781759
+ 0.83061889 0.78827362]
+split2_test_accuracy  :  [0.69381107 0.79153094 0.74592834 0.79153094 0.77850163 0.80130293
+ 0.79153094 0.7980456 ]
+mean_test_accuracy  :  [0.69522822 0.79284939 0.76462978 0.79934642 0.79283881 0.80044277
+ 0.80370363 0.79176009]
+std_test_accuracy  :  [0.00136303 0.00643196 0.01332371 0.00562833 0.01079798 0.00640163
+ 0.01906086 0.00445338]
+rank_test_accuracy  :  [8 4 7 3 5 2 1 6]
+split0_test_balanced-accuracy  :  [0.187651   0.4202495  0.34354266 0.48064    0.44290462 0.46867951
+ 0.43524872 0.46201285]
+split1_test_balanced-accuracy  :  [0.1625     0.40939153 0.29652116 0.45637566 0.42224868 0.47280423
+ 0.46873016 0.4392328 ]
+split2_test_balanced-accuracy  :  [0.16884615 0.37004681 0.25783578 0.43917989 0.33838014 0.44307387
+ 0.3630118  0.53004477]
+mean_test_balanced-accuracy  :  [0.17299905 0.39989595 0.29929987 0.45873185 0.40117781 0.46151921
+ 0.42233023 0.47709681]
+std_test_balanced-accuracy  :  [0.01067952 0.02156699 0.03504481 0.01700782 0.04519829 0.01315107
+ 0.04411544 0.03857761]
+rank_test_balanced-accuracy  :  [8 6 7 3 5 2 4 1]
+split0_test_precision  :  [0.69480519 0.78571429 0.77597403 0.80194805 0.79545455 0.79220779
+ 0.78896104 0.78896104]
+split1_test_precision  :  [0.6970684  0.80130293 0.77198697 0.80456026 0.80456026 0.80781759
+ 0.83061889 0.78827362]
+split2_test_precision  :  [0.69381107 0.79153094 0.74592834 0.79153094 0.77850163 0.80130293
+ 0.79153094 0.7980456 ]
+mean_test_precision  :  [0.69522822 0.79284939 0.76462978 0.79934642 0.79283881 0.80044277
+ 0.80370363 0.79176009]
+std_test_precision  :  [0.00136303 0.00643196 0.01332371 0.00562833 0.01079798 0.00640163
+ 0.01906086 0.00445338]
+rank_test_precision  :  [8 4 7 3 5 2 1 6]
+split0_test_recall  :  [0.69480519 0.78571429 0.77597403 0.80194805 0.79545455 0.79220779
+ 0.78896104 0.78896104]
+split1_test_recall  :  [0.6970684  0.80130293 0.77198697 0.80456026 0.80456026 0.80781759
+ 0.83061889 0.78827362]
+split2_test_recall  :  [0.69381107 0.79153094 0.74592834 0.79153094 0.77850163 0.80130293
+ 0.79153094 0.7980456 ]
+mean_test_recall  :  [0.69522822 0.79284939 0.76462978 0.79934642 0.79283881 0.80044277
+ 0.80370363 0.79176009]
+std_test_recall  :  [0.00136303 0.00643196 0.01332371 0.00562833 0.01079798 0.00640163
+ 0.01906086 0.00445338]
+rank_test_recall  :  [8 4 7 3 5 2 1 6]
+
+
+
+The SVMC Linear L1 Regularized Estimator was trained on 922 traing bags. Final evaluation was performed using 908 testing bags
+
+
+The SVMC kernelized L2 Regularized Estimator was trained on 922 traing bags. Final evaluation was performed using 908 testing bags
+
+
+A total of 1820 training bags were excluded becase they did not contain greater than 5 instances
+
+A total of 1834 test bags were excluded becase they did not contain greater than 5 instances
+
+Final evaluation results of Linear SVMC L1 Regularized Estimator using embedding of bag label:
+
+balanced_accuracy  :  0.5869329853742443
+bag_accuracy  :  0.8678414096916299
+bag_precision  :  0.872318061397803
+bag_recall  :  0.8678414096916299
+
+
+
+Final evaluation results of Kernel SVMC L2 Regularized Estimator using embedding of bag label:
+
+balanced_accuracy  :  0.4910545046674109
+bag_accuracy  :  0.8094713656387665
+bag_precision  :  0.8050893152542005
+bag_recall  :  0.8094713656387665
+
+
+
+Training evaluation results of Linear SVMC L1 Regularized Estimator using embedding of bag label:
+
+balanced_accuracy  :  0.9432175899435713
+bag_accuracy  :  0.9880694143167028
+bag_precision  :  0.9887022517881817
+bag_recall  :  0.9880694143167028
+
+
+
+Training evaluation results of Kernel SVMC L2 Regularized Estimator using embedding of bag label:
+
+balanced_accuracy  :  0.910963621689603
+bag_accuracy  :  0.9848156182212582
+bag_precision  :  0.9845155074886036
+bag_recall  :  0.9848156182212582

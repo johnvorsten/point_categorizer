@@ -8,9 +8,27 @@
 #Pictures
 *.png
 
-# Tensorflow stuff
+# Tensorflow directories for logging
 ranking/TF_Logs/**
 ranking/final_model/**
+
+# Trained & Pickled estimators for serving
+compNB_si.clf
+knn_si.clf
+multiNB_si.clf
+svmc_rbf_si.clf
+svmc_l1_si.clf
+svmc_l1_miles.clf
+svmc_rbf_miles.clf
+
+# Data used for training estimators
+data_milesembedded_test.dat
+data_milesembedded_trian.dat
+data_sicat_test.dat
+data_sicat_trian.dat
+data_sidense_test.dat
+data_sidense_trian.dat
+miles_concept_features.dat
 
 # Log directories
 */logs/*

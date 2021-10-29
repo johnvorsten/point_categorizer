@@ -30,6 +30,7 @@ import sys
 import os
 import configparser
 from typing import Union, TypedDict
+import pickle
 
 # Third party imports
 import numpy as np
@@ -727,3 +728,37 @@ res_compNB_infer_test['confusion'] = confusion_matrix(_test_labels, yhat_compNB)
 res_smvc_l1_infer_test['confusion'] = confusion_matrix(_test_labels, yhat_svmc_l1)
 res_smvc_infer_test['confusion'] = confusion_matrix(_test_labels, yhat_svmc)
 set(sorted(_test_labels))
+
+
+#%% Save the estimator
+
+with open('./knn_si.clf', mode='wb') as f:
+    pickle.dump(knn, f)
+    
+with open('./multiNB_si.clf', mode='wb') as f:
+    pickle.dump(multiNB, f)
+ 
+with open('./compNB_si.clf', mode='wb') as f:
+    pickle.dump(compNB, f)
+ 
+with open('./svmc_l1_si.clf', mode='wb') as f:
+    pickle.dump(svmc_l1, f)
+ 
+with open('./svmc_rbf_si.clf', mode='wb') as f:
+    pickle.dump(svmc, f)
+    
+    
+# Save training and validation data
+with open('./data_sidense_trian.dat', mode='wb') as f:
+    pickle.dump((_train_bags_dense, _train_labels), f)
+    
+with open('./data_sidense_test.dat', mode='wb') as f:
+    pickle.dump((_test_bags_dense, _test_labels), f)
+    
+with open('./data_sicat_trian.dat', mode='wb') as f:
+    pickle.dump((_train_bags_cat, _train_labels_cat), f)
+
+with open('./data_sicat_test.dat', mode='wb') as f:
+    pickle.dump((_test_bags_cat, _test_labels_cat), f)
+    
+    

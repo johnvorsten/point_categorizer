@@ -1,0 +1,127 @@
+Final evaluation results of KNN Estimator using inference of bag label based on mode statistic of instance labels:
+
+bag_accuracy  :  0.8568181818181818
+bag_precision  :  0.8568181818181818
+bag_recall  :  0.8568181818181818
+confusion  :  [[258   0   1   0   0   0   0   1   2   1]
+ [  0   0   0   0   0   1   0   0   3   0]
+ [  2   0  14   2   0   0   0   0   6   0]
+ [  3   0   1  50   0   0   0   0   6   0]
+ [  2   0   0   0   5   1   0   0   1   1]
+ [  0   0   0   1   0   1   0   0   3   0]
+ [  1   0   0   0   0   0  22   0   2   1]
+ [  6   0   0   0   0   0   1  20   2   0]
+ [  7   0   1   0   0   0   1   0   7   1]
+ [  1   0   0   0   0   0   0   0   1   0]]
+
+
+
+Final evaluation results of multinomial NB Estimator using inference of bag label based on mode statistic of instance labels:
+
+bag_accuracy  :  0.8772727272727273
+bag_precision  :  0.8772727272727273
+bag_recall  :  0.8772727272727273
+confusion  :  [[255   0   1   0   0   0   0   2   4   1]
+ [  0   0   0   0   0   3   0   0   1   0]
+ [  1   0  16   2   0   1   0   0   4   0]
+ [  0   0   1  58   0   1   0   0   0   0]
+ [  2   0   0   0   6   0   0   1   1   0]
+ [  1   0   0   1   0   3   0   0   0   0]
+ [  2   0   0   0   0   1  22   0   1   0]
+ [  9   0   0   0   0   0   0  19   1   0]
+ [  6   0   0   1   0   1   1   0   7   1]
+ [  1   0   0   0   0   0   0   0   1   0]]
+
+
+
+Final evaluation results of Complement NB Estimator using inference of bag label based on mode statistic of instance labels:
+
+bag_accuracy  :  0.8818181818181818
+bag_precision  :  0.8818181818181818
+bag_recall  :  0.8818181818181818
+confusion  :  [[255   1   1   2   0   0   0   1   3   0]
+ [  0   0   1   0   0   2   0   0   1   0]
+ [  0   0  17   3   0   0   0   0   4   0]
+ [  0   0   0  60   0   0   0   0   0   0]
+ [  0   0   1   0   6   0   0   0   3   0]
+ [  0   0   0   1   0   2   0   0   2   0]
+ [  2   1   0   0   0   0  21   0   2   0]
+ [  6   1   0   0   0   0   1  20   1   0]
+ [  5   0   1   1   0   0   2   0   7   1]
+ [  1   1   0   0   0   0   0   0   0   0]]
+
+
+
+Final evaluation results of SVMC L1 Estimator using inference of bag label based on mode statistic of instance labels:
+
+bag_accuracy  :  0.8795454545454545
+bag_precision  :  0.8795454545454545
+bag_recall  :  0.8795454545454545
+confusion  :  [[256   0   1   0   0   0   0   2   3   1]
+ [  0   0   2   0   0   0   0   0   2   0]
+ [  1   0  15   0   0   0   0   0   8   0]
+ [  0   0   1  57   0   1   0   0   1   0]
+ [  0   0   0   0   7   1   0   0   1   1]
+ [  0   0   0   1   0   2   0   0   2   0]
+ [  0   0   0   0   1   1  22   0   2   0]
+ [  5   1   0   0   0   0   1  21   1   0]
+ [  6   0   2   0   0   0   1   0   7   1]
+ [  0   0   0   0   0   0   0   0   2   0]]
+
+
+
+Final evaluation results of SVMC RBF L2 Estimator using inference of bag label based on mode statistic of instance labels:
+
+bag_accuracy  :  0.8772727272727273
+bag_precision  :  0.8772727272727273
+bag_recall  :  0.8772727272727273
+confusion  :  [[256   0   0   0   0   0   0   3   4   0]
+ [  0   0   0   0   0   1   0   0   3   0]
+ [  1   0  17   1   0   0   0   0   5   0]
+ [  1   0   0  56   0   1   0   0   2   0]
+ [  1   0   0   0   5   1   0   0   2   1]
+ [  0   0   0   1   0   1   0   0   2   1]
+ [  1   0   0   0   0   0  22   0   3   0]
+ [  6   0   0   0   0   0   1  21   1   0]
+ [  5   0   3   0   0   0   1   0   8   0]
+ [  0   0   0   0   0   0   0   0   2   0]]
+
+
+
+Training evaluation of KNN Estimator using inference of bag label based on mode statistic of instance labels:
+
+bag_accuracy  :  0.9632918886915335
+bag_precision  :  0.9632918886915335
+bag_recall  :  0.9632918886915335
+
+
+
+Training evaluation results of multinomial NB Estimator using inference of bag label based on mode statistic of instance labels:
+
+bag_accuracy  :  0.9147424511545293
+bag_precision  :  0.9147424511545293
+bag_recall  :  0.9147424511545293
+
+
+
+Training evaluation results of Complement NB Estimator using inference of bag label based on mode statistic of instance labels:
+
+bag_accuracy  :  0.9390171699230314
+bag_precision  :  0.9390171699230314
+bag_recall  :  0.9390171699230314
+
+
+
+Training evaluation results of SVMC L1 Estimator using inference of bag label based on mode statistic of instance labels:
+
+bag_accuracy  :  0.9715808170515098
+bag_precision  :  0.9715808170515098
+bag_recall  :  0.9715808170515098
+
+
+
+Training evaluation results of SVMC RBF L2 Estimator using inference of bag label based on mode statistic of instance labels:
+
+bag_accuracy  :  0.9751332149200711
+bag_precision  :  0.9751332149200711
+bag_recall  :  0.9751332149200711
