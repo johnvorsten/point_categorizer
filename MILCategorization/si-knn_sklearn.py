@@ -35,10 +35,11 @@ from typing import Union, TypedDict
 import numpy as np
 from sklearn.model_selection import ShuffleSplit
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import LinearSVC, SVC
 from sklearn.model_selection import cross_validate, StratifiedShuffleSplit
 from sklearn.metrics import (make_scorer, precision_score,
                              recall_score, accuracy_score, 
-                             balanced_accuracy_score)
+                             balanced_accuracy_score, confusion_matrix)
 from sklearn.naive_bayes import MultinomialNB, ComplementNB
 from scipy.sparse import csr_matrix
 
@@ -179,8 +180,9 @@ def _print_results_dict(res:Union[dict[str,list], dict[str,float]],
     if msg:
         print(msg)
     
-    for key, value in res.items():
-        print(key, " : ", value)
+    if hasattr(res, 'items'):
+        for key, value in res.items():
+            print(key, " : ", value)
         
     print("\n\n")
     return None
@@ -242,7 +244,7 @@ _print_results_dict(res_multinomial_si,
 
 _print_results_dict(res_comNB_si, 
                     ("Single-instance Multi-Class classification results of " +
-                     "Component Native Bayes Estimator. " +
+                     "Complement Native Bayes Estimator. " +
                      "The instance labels are derived from bag labels.:\n"))
 
 
@@ -319,14 +321,21 @@ for train_index, test_index in rs.split(BAGS, BAG_LABELS):
 """Predict on bags using cross validation with single-instance inference"""
 
 # Create estimators
-knn = KNeighborsClassifier(n_neighbors=10, weights='uniform',
+knn = KNeighborsClassifier(n_neighbors=3, weights='uniform',
                            algorithm='ball_tree', n_jobs=4)
 
 # Multinomial Native Bayes
-multiNB = MultinomialNB(alpha=1.0, fit_prior=True, class_prior=None)
+multiNB = MultinomialNB(alpha=0.5, fit_prior=True, class_prior=None)
 
 # CommplementNB - Like multinomial but for imbalanced datasets
-compNB = ComplementNB(alpha=1.0, fit_prior=True, class_prior=None, norm=False)
+compNB = ComplementNB(alpha=0.5, fit_prior=True, class_prior=None, norm=False)
+
+# SVC - Linear L1 regularized
+svmc_l1 = LinearSVC(loss='squared_hinge', penalty='l1', C=5, 
+                            dual=False, max_iter=2500)
+
+# SVC Using LibSVM uses the squared l2 loss
+svmc = SVC(kernel='rbf', gamma='scale', C=5)
 
 # Filter out bags with only a single instance
 _filter = _filter_bags_by_size(train_bags_cat, 
@@ -336,7 +345,7 @@ _filter = _filter_bags_by_size(train_bags_cat,
 # Convert bags to dense for KNN estimator
 _train_bags_dense = _densify_bags(train_bags[_filter])
 _train_labels = train_labels[_filter]
-# Keep bags sparse for Component Native Bayes and Multinomial
+# Keep bags sparse for Complement Native Bayes and Multinomial
 _train_bags_cat = train_bags_cat[_filter]
 _train_labels_cat = train_labels_cat[_filter]
 
@@ -354,7 +363,7 @@ scoring_dense = {'bag_accuracy':bagAccScorer,
                  }
 
 # Cross validate bags
-res_knn_infer = cross_validate_bag(
+res_knn_cv = cross_validate_bag(
     estimator=knn, 
     X=_train_bags_dense, 
     y=_train_labels, 
@@ -381,7 +390,7 @@ scoring_sparse = {'bag_accuracy':bagAccScorer,
                   'bag_recall':bagRecScorer,
                   }
 
-res_multiNB_infer = cross_validate_bag(
+res_multiNB_cv = cross_validate_bag(
     estimator=multiNB, 
     X=_train_bags_cat,
     y=_train_labels_cat, 
@@ -396,7 +405,7 @@ res_multiNB_infer = cross_validate_bag(
     return_estimator=True, 
     error_score=np.nan)
 
-res_compNB_infer = cross_validate_bag(
+res_compNB_cv = cross_validate_bag(
     estimator=compNB, 
     X=_train_bags_cat,
     y=_train_labels_cat, 
@@ -411,15 +420,53 @@ res_compNB_infer = cross_validate_bag(
     return_estimator=True, 
     error_score=np.nan)
 
-_print_results_dict(res_knn_infer, 
+res_svmc_l1_cv = cross_validate_bag(
+    estimator=svmc_l1, 
+    X=_train_bags_cat,
+    y=_train_labels_cat, 
+    groups=None, 
+    scoring=scoring_sparse, # Custom scorer... 
+    cv=2,
+    n_jobs=4, 
+    verbose=0, 
+    fit_params=None,
+    pre_dispatch='2*n_jobs', 
+    return_train_score=False,
+    return_estimator=True, 
+    error_score=np.nan)
+
+res_svmc_cv = cross_validate_bag(
+    estimator=svmc, 
+    X=_train_bags_cat,
+    y=_train_labels_cat, 
+    groups=None, 
+    scoring=scoring_sparse, # Custom scorer... 
+    cv=2,
+    n_jobs=4, 
+    verbose=0, 
+    fit_params=None,
+    pre_dispatch='2*n_jobs', 
+    return_train_score=False,
+    return_estimator=True, 
+    error_score=np.nan)
+
+_print_results_dict(res_knn_cv, 
                     ("Cross validation results of KNN Estimator using inference "+
                      "of bag label based on mode statistic of instance labels:\n"))
-_print_results_dict(res_multiNB_infer, 
+_print_results_dict(res_multiNB_cv, 
                     ("Cross validation results of multinomial NB Estimator using inference "+
                      "of bag label based on mode statistic of instance labels:\n"))
-_print_results_dict(res_compNB_infer, 
-                    ("Cross validation results of component NB Estimator using inference "+
+_print_results_dict(res_compNB_cv, 
+                    ("Cross validation results of Complement NB Estimator using inference "+
                      "of bag label based on mode statistic of instance labels:\n"))
+_print_results_dict(res_svmc_l1_cv, 
+                    ("Cross validation results of Linear SVM Estimator using inference "+
+                     "of bag label based on mode statistic of instance labels:\n"))
+_print_results_dict(res_svmc_cv, 
+                    ("Cross validation results of RBF SVM Estimator using inference "+
+                     "of bag label based on mode statistic of instance labels:\n"))
+
+
 
 
 #%% 
@@ -446,50 +493,81 @@ _train_bags_dense = _densify_bags(train_bags[_filter_train])
 _train_labels = train_labels[_filter_train]
 _test_bags_dense = _densify_bags(test_bags[_filter_test])
 _test_labels = test_labels[_filter_test]
-# Keep bags sparse for Component Native Bayes and Multinomial
+# Keep bags sparse for Complement Native Bayes and Multinomial
 _train_bags_cat = train_bags_cat[_filter_train_cat]
 _train_labels_cat = train_labels_cat[_filter_train_cat]
 _test_bags_cat = test_bags_cat[_filter_test_cat]
 _test_labels_cat = test_labels_cat[_filter_test_cat]
 
+# Define hyperparameters
+_knn_nneighbors = 3 # Best result of cross validation
+_multinb_alpha = 0.5 # Best result of cross validation
+_compnb_alpha = 0.9 # Best result of cross validation
+_svm_c = 5 # Best result of cross validation
+
 # Define estimators
-knn = KNeighborsClassifier(n_neighbors=10, weights='uniform',
+knn = KNeighborsClassifier(n_neighbors=_knn_nneighbors, weights='uniform',
                            algorithm='ball_tree', n_jobs=4)
 
 # Multinomial Native Bayes
-multiNB = MultinomialNB(alpha=1.0, fit_prior=True, class_prior=None)
+multiNB = MultinomialNB(alpha=_multinb_alpha, fit_prior=True, class_prior=None)
 
 # CommplementNB - Like multinomial but for imbalanced datasets
-compNB = ComplementNB(alpha=1.0, fit_prior=True, class_prior=None, norm=False)
+compNB = ComplementNB(alpha=_compnb_alpha, fit_prior=True, class_prior=None, norm=False)
 
+# SVC - Linear L1 regularized
+svmc_l1 = LinearSVC(loss='squared_hinge', penalty='l1', C=_svm_c, 
+                            dual=False, max_iter=2500)
+
+# SVC Using LibSVM uses the squared l2 loss
+svmc = SVC(kernel='rbf', gamma='scale', C=_svm_c)
 
 # Define scoring metrics
 _bagKnnScorer = {
     'bag_accuracy':BagScorer(make_scorer(accuracy_score), 
                              sparse_input=False) ,
-    'bag_precision':BagScorer(make_scorer(precision_score, average='weighted'), 
+    'bag_precision':BagScorer(make_scorer(precision_score, average='micro'), 
                               sparse_input=False),
-    'bag_recall':BagScorer(make_scorer(recall_score, average='weighted'), 
+    'bag_recall':BagScorer(make_scorer(recall_score, average='micro'), 
                            sparse_input=False),
     }
 
 _bagMultiNBScorer = {    
     'bag_accuracy':BagScorer(make_scorer(accuracy_score), 
                              sparse_input=True) ,
-    'bag_precision':BagScorer(make_scorer(precision_score, average='weighted'), 
+    'bag_precision':BagScorer(make_scorer(precision_score, average='micro'), 
                               sparse_input=True),
-    'bag_recall':BagScorer(make_scorer(recall_score, average='weighted'), 
+    'bag_recall':BagScorer(make_scorer(recall_score, average='micro'), 
                            sparse_input=True),
     }
 
 _bagCompNBScorer = {    
     'bag_accuracy':BagScorer(make_scorer(accuracy_score), 
                              sparse_input=True) ,
-    'bag_precision':BagScorer(make_scorer(precision_score, average='weighted'), 
+    'bag_precision':BagScorer(make_scorer(precision_score, average='micro'), 
                               sparse_input=True),
-    'bag_recall':BagScorer(make_scorer(recall_score, average='weighted'), 
+    'bag_recall':BagScorer(make_scorer(recall_score, average='micro'), 
                            sparse_input=True),
     }
+
+_bagsvmcl1Scorer = {    
+    'bag_accuracy':BagScorer(make_scorer(accuracy_score), 
+                             sparse_input=False) ,
+    'bag_precision':BagScorer(make_scorer(precision_score, average='micro'), 
+                              sparse_input=False),
+    'bag_recall':BagScorer(make_scorer(recall_score, average='micro'), 
+                           sparse_input=False),
+    }
+
+_bagsvmcScorer = {    
+    'bag_accuracy':BagScorer(make_scorer(accuracy_score), 
+                             sparse_input=False) ,
+    'bag_precision':BagScorer(make_scorer(precision_score, average='micro'), 
+                              sparse_input=False),
+    'bag_recall':BagScorer(make_scorer(recall_score, average='micro'), 
+                           sparse_input=False),
+    }
+
 
 # Fit the estimator
 knn = _bagKnnScorer['bag_accuracy'].estimator_fit(knn, 
@@ -501,17 +579,26 @@ multiNB = _bagMultiNBScorer['bag_accuracy'].estimator_fit(multiNB,
 compNB = _bagCompNBScorer['bag_accuracy'].estimator_fit(compNB, 
                                             _train_bags_cat, 
                                             _train_labels_cat)
-
+svmc_l1 = _bagsvmcl1Scorer['bag_accuracy'].estimator_fit(svmc_l1, 
+                                                      _train_bags_dense, 
+                                                      _train_labels)
+svmc = _bagsvmcScorer['bag_accuracy'].estimator_fit(svmc, 
+                                                   _train_bags_dense, 
+                                                   _train_labels)
 
 # Predict on the validation set
 yhat_knn = _bagKnnScorer['bag_accuracy'].predict_bags(knn, _test_bags_dense)
 yhat_multiNB = _bagMultiNBScorer['bag_accuracy'].predict_bags(multiNB, _test_bags_cat)
 yhat_compNB = _bagCompNBScorer['bag_accuracy'].predict_bags(compNB, _test_bags_cat)
+yhat_svmc_l1 = _bagKnnScorer['bag_accuracy'].predict_bags(svmc_l1, _test_bags_dense)
+yhat_svmc = _bagKnnScorer['bag_accuracy'].predict_bags(svmc, _test_bags_dense)
 
 # Predict on training set
-yhat_knn_train = _bagKnnScorer['bag_accuracy'].predict_bags(knn, _test_bags_dense)
-yhat_multiNB_train = _bagMultiNBScorer['bag_accuracy'].predict_bags(multiNB, _test_bags_cat)
-yhat_compNB_train = _bagCompNBScorer['bag_accuracy'].predict_bags(compNB, _test_bags_cat)
+yhat_knn_train = _bagKnnScorer['bag_accuracy'].predict_bags(knn, _train_bags_dense)
+yhat_multiNB_train = _bagMultiNBScorer['bag_accuracy'].predict_bags(multiNB, _train_bags_cat)
+yhat_compNB_train = _bagCompNBScorer['bag_accuracy'].predict_bags(compNB, _train_bags_cat)
+yhat_svmc_l1_train = _bagCompNBScorer['bag_accuracy'].predict_bags(svmc_l1, _train_bags_dense)
+yhat_svmc_train = _bagCompNBScorer['bag_accuracy'].predict_bags(svmc, _train_bags_dense)
 
 # Calculate evaluation metrics (Final validation test set)
 res_knn_infer_test = {
@@ -530,6 +617,18 @@ res_compNB_infer_test = {
     'bag_accuracy':_bagCompNBScorer['bag_accuracy'](compNB, _test_bags_cat, _test_labels_cat),
     'bag_precision':_bagCompNBScorer['bag_precision'](compNB, _test_bags_cat, _test_labels_cat),
     'bag_recall':_bagCompNBScorer['bag_recall'](compNB, _test_bags_cat, _test_labels_cat),
+    }
+
+res_smvc_l1_infer_test = {
+    'bag_accuracy':_bagsvmcl1Scorer['bag_accuracy'](svmc_l1, _test_bags_dense, _test_labels),
+    'bag_precision':_bagsvmcl1Scorer['bag_precision'](svmc_l1, _test_bags_dense, _test_labels),
+    'bag_recall':_bagsvmcl1Scorer['bag_recall'](svmc_l1, _test_bags_dense, _test_labels),
+    }
+
+res_smvc_infer_test = {
+    'bag_accuracy':_bagsvmcScorer['bag_accuracy'](svmc, _test_bags_dense, _test_labels),
+    'bag_precision':_bagsvmcScorer['bag_precision'](svmc, _test_bags_dense, _test_labels),
+    'bag_recall':_bagsvmcScorer['bag_recall'](svmc, _test_bags_dense, _test_labels),
     }
 
 
@@ -552,6 +651,18 @@ res_compNB_infer_train = {
     'bag_recall':_bagCompNBScorer['bag_recall'](compNB, _train_bags_cat, _train_labels_cat),
     }
 
+res_smvc_l1_infer_train = {
+    'bag_accuracy':_bagsvmcl1Scorer['bag_accuracy'](svmc_l1, _train_bags_dense, _train_labels),
+    'bag_precision':_bagsvmcl1Scorer['bag_precision'](svmc_l1, _train_bags_dense, _train_labels),
+    'bag_recall':_bagsvmcl1Scorer['bag_recall'](svmc_l1, _train_bags_dense, _train_labels),
+    }
+
+res_smvc_infer_train = {
+    'bag_accuracy':_bagsvmcScorer['bag_accuracy'](svmc, _train_bags_dense, _train_labels),
+    'bag_precision':_bagsvmcScorer['bag_precision'](svmc, _train_bags_dense, _train_labels),
+    'bag_recall':_bagsvmcScorer['bag_recall'](svmc, _train_bags_dense, _train_labels),
+    }
+
 
 
 # Print information about the data set
@@ -563,7 +674,7 @@ print(msg.format("KNN",
 print(msg.format("Multinomial Native Bayes", 
                  _train_bags_cat.shape[0], 
                  _test_bags_cat.shape[0]))
-print(msg.format("Component Native Bayes", 
+print(msg.format("Complement Native Bayes", 
                  _train_bags_cat.shape[0], 
                  _test_bags_cat.shape[0]))
 
@@ -581,7 +692,13 @@ _print_results_dict(res_multiNB_infer_test,
                     ("Final evaluation results of multinomial NB Estimator using inference "+
                      "of bag label based on mode statistic of instance labels:\n"))
 _print_results_dict(res_compNB_infer_test, 
-                    ("Final evaluation results of component NB Estimator using inference "+
+                    ("Final evaluation results of Complement NB Estimator using inference "+
+                     "of bag label based on mode statistic of instance labels:\n"))
+_print_results_dict(res_smvc_l1_infer_test, 
+                    ("Final evaluation results of SVMC L1 Estimator using inference "+
+                     "of bag label based on mode statistic of instance labels:\n"))
+_print_results_dict(res_smvc_infer_test, 
+                    ("Final evaluation results of SVMC RBF L2 Estimator using inference "+
                      "of bag label based on mode statistic of instance labels:\n"))
 
 
@@ -593,6 +710,20 @@ _print_results_dict(res_multiNB_infer_train,
                     ("Training evaluation results of multinomial NB Estimator using inference "+
                      "of bag label based on mode statistic of instance labels:\n"))
 _print_results_dict(res_compNB_infer_train, 
-                    ("Training evaluation results of component NB Estimator using inference "+
+                    ("Training evaluation results of Complement NB Estimator using inference "+
+                     "of bag label based on mode statistic of instance labels:\n"))
+_print_results_dict(res_smvc_l1_infer_train, 
+                    ("Training evaluation results of SVMC L1 Estimator using inference "+
+                     "of bag label based on mode statistic of instance labels:\n"))
+_print_results_dict(res_smvc_infer_train, 
+                    ("Training evaluation results of SVMC RBF L2 Estimator using inference "+
                      "of bag label based on mode statistic of instance labels:\n"))
 
+
+# Confusion matrix
+res_knn_infer_test['confusion'] = confusion_matrix(_test_labels, yhat_knn)
+res_multiNB_infer_test['confusion'] = confusion_matrix(_test_labels, yhat_multiNB)
+res_compNB_infer_test['confusion'] = confusion_matrix(_test_labels, yhat_compNB)
+res_smvc_l1_infer_test['confusion'] = confusion_matrix(_test_labels, yhat_svmc_l1)
+res_smvc_infer_test['confusion'] = confusion_matrix(_test_labels, yhat_svmc)
+set(sorted(_test_labels))

@@ -11,9 +11,16 @@ import os, sys
 from typing import Union
 
 # Third party imports
-from sklearn.model_selection import train_test_split, StratifiedShuffleSplit
+from sklearn.model_selection import (train_test_split, StratifiedShuffleSplit, 
+                                     GridSearchCV)
 import sklearn as skl
-from sklearn import svm
+from sklearn.svm import LinearSVC, SVC
+from sklearn.utils.validation import check_is_fitted
+from sklearn.metrics import (accuracy_score, precision_score, recall_score, 
+                             balanced_accuracy_score)
+from sklearn.metrics import (accuracy_score, recall_score, 
+                             make_scorer, precision_score,
+                             balanced_accuracy_score)
 from scipy.sparse import csr_matrix
 import numpy as np
 
@@ -139,22 +146,28 @@ Note: Why is the proportion of training instances so low (15%)? It is because
 the training instances are used as the concept class.
 Instances in the concept class are used to embed the testing set onto a 
 feature space, which the SVM then predicts on"""
-# train_bags_sp, test_bags_sp, train_labels, test_labels = train_test_split(
-#     dataset_numeric['dataset'], 
-#     dataset_numeric['bag_labels'],
-#     train_size=0.15)
+train_bags_sp, test_bags_sp, train_labels, test_labels = train_test_split(
+    dataset_numeric['dataset'], 
+    dataset_numeric['bag_labels'],
+    train_size=0.15)
 
 # Create dataset for embedding bags into similarity of concept class
 ss = StratifiedShuffleSplit(n_splits=1, train_size=0.15)
-_concept_index, _train_test_index = ss.split(dataset_numeric['dataset'],
-                                             dataset_numeric['bag_labels'])
+_concept_index, _train_test_index = next(ss.split(
+    dataset_numeric['dataset'],
+    dataset_numeric['bag_labels'])
+    )
 concept_bags = dataset_numeric['dataset'][_concept_index]
 concept_labels = dataset_numeric['bag_labels'][_concept_index]
 _train_test_bags = dataset_numeric['dataset'][_train_test_index]
 _train_test_labels = dataset_numeric['bag_labels'][_train_test_index]
+
 # Create training and validation sets
 ss = StratifiedShuffleSplit(n_splits=1, train_size=0.5)
-_train_index, _test_index = ss.split(_train_test_bags, _train_test_labels)
+_train_index, _test_index = next(ss.split(
+    _train_test_bags, _train_test_labels)
+    )
+
 train_bags = _train_test_bags[_train_index]
 train_labels = _train_test_labels[_train_index]
 test_bags = _train_test_bags[_test_index]
@@ -187,10 +200,22 @@ for x in test_bags:
 print("There are {} single instances in the training set\n".format(N_TRAIN_INSTANCES))
 print("There are {} single instances in the testing set\n".format(N_TEST_INSTANCES))
 
-# Encode data into similarity matrix
-# WARNING - testing bags are being embedded onto the training set
-# This means that the 'testing' set contains a similarity measure to the training
-# instances. I will perform cross validation on the testing instances
+"""Encode data into similarity matrix
+NOTICE - testing and training bags are embedded onto the concept class set
+This means that the 'testing' set contains a similarity measure to the training
+instances. 
+I will perform cross validation on the training instances and final evaluation 
+on testing instances
+embedded_train and test are (j,n) arrays wher each bag is encoded into a 
+feature vector which represents a similarity measure between the bag and 
+concept class. j is the number of instances in the concept class, and n is the 
+number of bags in the test/train set.
+A single embedded bag is stored along axis=0, so a single
+embedded bag can be sliced like embedded_bag = embedded_set[:,0].
+The similarity between the nth bag, and jth concept instance can be found like
+ embedded_set[j,n]
+For this reason, the estimator will be fed instances as np.transpose(embedded_bags)
+because it expects features to be alligned along axis=1"""
 embedded_train = embed_all_bags(concept_class=C_features, 
                                 bags=[x for x in train_bags],
                                 sigma=3,
@@ -199,9 +224,6 @@ embedded_test = embed_all_bags(concept_class=C_features,
                                 bags=[x for x in test_bags],
                                 sigma=3,
                                 distance='euclidean')
-
-
-
 
 
 #%%
@@ -217,27 +239,28 @@ LOSS = 'squared_hinge' # Loss function
 C = 1.0 # SVM regularization, inversely proportional
 
 # Define SVM
-svmc_l1 = skl.svm.LinearSVC(loss=LOSS, penalty=PENALTY, C=C, 
+svmc_l1 = LinearSVC(loss=LOSS, penalty=PENALTY, C=C, 
                             dual=False, max_iter=2500)
 
 # SVC Using LibSVM uses the squared l2 loss
-svmc = skl.svm.SVC(kernel='rbf', gamma=GAMMA_SVC, C=C)
+svmc = SVC(kernel='rbf', gamma=GAMMA_SVC, C=C)
 
 # Define grid search parameters
 params_l1svc = {'C':[0.5,2,5],
                 }
-params_svc = {'C':[2,5,10],
+params_svc = {'C':[0.5,2,5,10],
               'kernel':['rbf', 'poly']}
 
 # Define scorers
-scoring = {'accuracy':skl.metrics.make_scorer(skl.metrics.accuracy_score),
-           'precision':skl.metrics.make_scorer(skl.metrics.precision_score, average='weighted'),
-           'recall':skl.metrics.make_scorer(skl.metrics.recall_score, average='weighted'),
-           }
+scoring = {'accuracy':make_scorer(accuracy_score),
+           'balanced-accuracy':make_scorer(balanced_accuracy_score),
+           'precision':make_scorer(precision_score, average='micro'),
+           'recall':make_scorer(recall_score, average='micro'),
+            }
 
 
 # Grid search
-svmc_l1_gs = skl.model_selection.GridSearchCV(
+svmc_l1_gs = GridSearchCV(
     estimator=svmc_l1,
     param_grid=params_l1svc,
     scoring=scoring,
@@ -247,7 +270,7 @@ svmc_l1_gs = skl.model_selection.GridSearchCV(
     )
 
 
-svmc_gs = skl.model_selection.GridSearchCV(
+svmc_gs = GridSearchCV(
     estimator=svmc,
     param_grid=params_svc,
     scoring=scoring,
@@ -259,32 +282,34 @@ svmc_gs = skl.model_selection.GridSearchCV(
 # Filter training and testing instances so that only bags with >= 5 instances
 # Are included in grid search
 _filter_train = _filter_bags_by_size(train_bags, 
-                                     min_instances=5, 
-                                     max_instances=2000)
+                                      min_instances=5, 
+                                      max_instances=2000)
 _filter_test = _filter_bags_by_size(test_bags, 
                                     min_instances=5, 
                                     max_instances=2000)
-train_embed_filter = embedded_train[_filter_train]
+train_embed_filter = embedded_train[:,_filter_train]
 train_labels_filter = train_labels[_filter_train]
-test_embed_filter = embedded_test[_filter_test]
+test_embed_filter = embedded_test[:,_filter_test]
 test_labels_filter = test_labels[_filter_test]
 
 # Perform cross validation - REMEMBER that we are performing cross validation
 # On the TESTING set this time because the testing bags were embedded using
 # the training bags as the concept class
+# The estimator will be fed instances as np.transpose(embedded_bags)
+# because it expects features to be alligned along axis=1
 svmc_l1_gs.fit(np.transpose(train_embed_filter), train_labels_filter)
 svmc_gs.fit(np.transpose(train_embed_filter), train_labels_filter)
 
 # Print results of cross-validation using MILES embedding w/ SVM estimator
 _print_results_dict(svmc_l1_gs.cv_results_, 
                     ("MILES embedding Multi-Class classification results of " +
-                     "SVM L1 Estimator. " +
-                     "Bags are embedded into a feature vector:\n"))
+                      "SVM L1 Estimator. " +
+                      "Bags are embedded into a feature vector:\n"))
 
 _print_results_dict(svmc_gs.cv_results_, 
                     ("MILES embedding Multi-Class classification results of " +
-                     "SVM Estimator w/ RBF kernel. " +
-                     "Bags are embedded into a feature vector:\n"))
+                      "SVM Estimator w/ RBF kernel. " +
+                      "Bags are embedded into a feature vector:\n"))
 
 
 #%%
@@ -295,206 +320,98 @@ Use the preferred model to calculate evaluation metrics on training and
 testing instances
 """
 
-# Define the training and testing data set
-# Use stratified folding to preserve class imbalance
-# Filter out bags with only a single instance
+# Filter training and testing instances so that only bags with >= 5 instances
+# Are included in grid search
 _filter_train = _filter_bags_by_size(train_bags, 
-                                     min_instances=5,
-                                     max_instances=2000)
-_filter_test = _filter_bags_by_size(test_bags,
-                                    min_instances=5,
+                                      min_instances=5, 
+                                      max_instances=2000)
+_filter_test = _filter_bags_by_size(test_bags, 
+                                    min_instances=5, 
                                     max_instances=2000)
-
-# Convert bags to dense for KNN estimator
-train_embed_filter = embedded_train[_filter_train]
+train_embed_filter = embedded_train[:,_filter_train]
 train_labels_filter = train_labels[_filter_train]
-test_embed_filter = embedded_test[_filter_test]
+test_embed_filter = embedded_test[:,_filter_test]
 test_labels_filter = test_labels[_filter_test]
 
 # Define estimators (Choose from cross-validation)
-
-
-
-# Define scoring metrics
-scoring = {'accuracy':skl.metrics.make_scorer(skl.metrics.accuracy_score),
-           'precision':skl.metrics.make_scorer(skl.metrics.precision_score, average='weighted'),
-           'recall':skl.metrics.make_scorer(skl.metrics.recall_score, average='weighted'),
-           }
+svmc_l1_best = svmc_l1_gs.best_estimator_
+svmc_best = svmc_gs.best_estimator_
 
 # Fit the estimator
-
-
+# if not check_is_fitted(svmc_l1_best):
+#     svmc_l1_best.fit(np.transpose(train_embed_filter), train_labels_filter)
+# if not check_is_fitted(smvc_best):
+#     smvc_best.fit(np.transpose(train_embed_filter), train_labels_filter)
 
 # Predict on the validation set
-yhat_svml1_test = 
-yhat_svmrbf_test = 
+yhat_svml1_test = svmc_l1_best.predict(np.transpose(test_embed_filter))
+yhat_svmc_test = svmc_best.predict(np.transpose(test_embed_filter))
 
 # Predict on training set
-yhat_svml1_train = 
-yhat_svmrbf_train = 
+yhat_svml1_train = svmc_l1_best.predict(np.transpose(train_embed_filter))
+yhat_svmc_train = svmc_best.predict(np.transpose(train_embed_filter))
 
 # Calculate evaluation metrics (Final validation test set)
-res_knn_infer_test = {
-    'bag_accuracy':_bagKnnScorer['bag_accuracy'](knn, _test_bags_dense, _test_labels),
-    'bag_precision':_bagKnnScorer['bag_precision'](knn, _test_bags_dense, _test_labels),
-    'bag_recall':_bagKnnScorer['bag_recall'](knn, _test_bags_dense, _test_labels),
+res_svmc_l1_test = {
+    'balanced_accuracy':balanced_accuracy_score(test_labels_filter, yhat_svml1_test),
+    'bag_accuracy':accuracy_score(test_labels_filter, yhat_svml1_test),
+    'bag_precision':precision_score(test_labels_filter, yhat_svml1_test, average='weighted'),
+    'bag_recall':recall_score(test_labels_filter, yhat_svml1_test, average='weighted'),
     }
-
-res_multiNB_infer_test = {
-    'bag_accuracy':_bagMultiNBScorer['bag_accuracy'](multiNB, _test_bags_cat, _test_labels_cat),
-    'bag_precision':_bagMultiNBScorer['bag_precision'](multiNB, _test_bags_cat, _test_labels_cat),
-    'bag_recall':_bagMultiNBScorer['bag_recall'](multiNB, _test_bags_cat, _test_labels_cat),
+res_svmc_test = {
+    'balanced_accuracy':balanced_accuracy_score(test_labels_filter, yhat_svmc_test),
+    'bag_accuracy':accuracy_score(test_labels_filter, yhat_svmc_test),
+    'bag_precision':precision_score(test_labels_filter, yhat_svmc_test, average='weighted'),
+    'bag_recall':recall_score(test_labels_filter, yhat_svmc_test, average='weighted'),
     }
-
-res_compNB_infer_test = {
-    'bag_accuracy':_bagCompNBScorer['bag_accuracy'](compNB, _test_bags_cat, _test_labels_cat),
-    'bag_precision':_bagCompNBScorer['bag_precision'](compNB, _test_bags_cat, _test_labels_cat),
-    'bag_recall':_bagCompNBScorer['bag_recall'](compNB, _test_bags_cat, _test_labels_cat),
-    }
-
 
 # Calculate evaluation metrics (Training set)
-res_knn_infer_train = {
-    'bag_accuracy':_bagKnnScorer['bag_accuracy'](knn, _train_bags_dense, _train_labels),
-    'bag_precision':_bagKnnScorer['bag_precision'](knn, _train_bags_dense, _train_labels),
-    'bag_recall':_bagKnnScorer['bag_recall'](knn, _train_bags_dense, _train_labels),
+res_svmc_l1_train = {
+    'balanced_accuracy':balanced_accuracy_score(train_labels_filter, yhat_svml1_train),
+    'bag_accuracy':accuracy_score(train_labels_filter, yhat_svml1_train),
+    'bag_precision':precision_score(train_labels_filter, yhat_svml1_train, average='weighted'),
+    'bag_recall':recall_score(train_labels_filter, yhat_svml1_train, average='weighted'),
     }
-
-res_multiNB_infer_train = {
-    'bag_accuracy':_bagMultiNBScorer['bag_accuracy'](multiNB, _train_bags_cat, _train_labels_cat),
-    'bag_precision':_bagMultiNBScorer['bag_precision'](multiNB, _train_bags_cat, _train_labels_cat),
-    'bag_recall':_bagMultiNBScorer['bag_recall'](multiNB, _train_bags_cat, _train_labels_cat),
-    }
-
-res_compNB_infer_train = {
-    'bag_accuracy':_bagCompNBScorer['bag_accuracy'](compNB, _train_bags_cat, _train_labels_cat),
-    'bag_precision':_bagCompNBScorer['bag_precision'](compNB, _train_bags_cat, _train_labels_cat),
-    'bag_recall':_bagCompNBScorer['bag_recall'](compNB, _train_bags_cat, _train_labels_cat),
+res_svmc_train = {
+    'balanced_accuracy':balanced_accuracy_score(train_labels_filter, yhat_svmc_train),
+    'bag_accuracy':accuracy_score(train_labels_filter, yhat_svmc_train),
+    'bag_precision':precision_score(train_labels_filter, yhat_svmc_train, average='weighted'),
+    'bag_recall':recall_score(train_labels_filter, yhat_svmc_train, average='weighted'),
     }
 
 
 
 # Print information about the data set
 msg = ("The {} Estimator was trained on {} traing bags. Final evaluation was " +
-       "performed using {} testing bags\n\n")
-print(msg.format("KNN", 
-                 _train_bags_dense.shape[0], 
-                 _test_bags_dense.shape[0]))
-print(msg.format("Multinomial Native Bayes", 
-                 _train_bags_cat.shape[0], 
-                 _test_bags_cat.shape[0]))
-print(msg.format("Component Native Bayes", 
-                 _train_bags_cat.shape[0], 
-                 _test_bags_cat.shape[0]))
+        "performed using {} testing bags\n\n")
+print(msg.format("SVMC Linear L1 Regularized", 
+                  train_embed_filter.shape[1], 
+                  test_embed_filter.shape[1]))
+print(msg.format("SVMC kernelized L2 Regularized", 
+                  train_embed_filter.shape[1], 
+                  test_embed_filter.shape[1]))
 
 msg = ("A total of {} {} bags were excluded becase they did not contain " +
-       "greater than 5 instances\n")
+        "greater than 5 instances\n")
 print(msg.format(train_bags.shape[0] - _filter_train.shape[0], "training"))
 print(msg.format(test_bags.shape[0] - _filter_test.shape[0], "test"))
 
 
 # Print test results
-_print_results_dict(res_knn_infer_test, 
-                    ("Final evaluation results of KNN Estimator using inference "+
-                     "of bag label based on mode statistic of instance labels:\n"))
-_print_results_dict(res_multiNB_infer_test, 
-                    ("Final evaluation results of multinomial NB Estimator using inference "+
-                     "of bag label based on mode statistic of instance labels:\n"))
-_print_results_dict(res_compNB_infer_test, 
-                    ("Final evaluation results of component NB Estimator using inference "+
-                     "of bag label based on mode statistic of instance labels:\n"))
-
+_print_results_dict(res_svmc_l1_test, 
+                    ("Final evaluation results of Linear SVMC L1 Regularized Estimator "+
+                      "using embedding of bag label:\n"))
+_print_results_dict(res_svmc_test, 
+                    ("Final evaluation results of Kernel SVMC L2 Regularized Estimator "+
+                      "using embedding of bag label:\n"))
 
 # Print training results
-_print_results_dict(res_knn_infer_train, 
-                    ("Training evaluation of KNN Estimator using inference "+
-                     "of bag label based on mode statistic of instance labels:\n"))
-_print_results_dict(res_multiNB_infer_train, 
-                    ("Training evaluation results of multinomial NB Estimator using inference "+
-                     "of bag label based on mode statistic of instance labels:\n"))
-_print_results_dict(res_compNB_infer_train, 
-                    ("Training evaluation results of component NB Estimator using inference "+
-                     "of bag label based on mode statistic of instance labels:\n"))
+_print_results_dict(res_svmc_l1_train, 
+                    ("Training evaluation results of Linear SVMC L1 Regularized Estimator "+
+                      "using embedding of bag label:\n"))
+_print_results_dict(res_svmc_train, 
+                    ("Training evaluation results of Kernel SVMC L2 Regularized Estimator "+
+                      "using embedding of bag label:\n"))
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#%% Testing
-
-
-
-"""Estimators expect (instance,features). embedded bags are encoded where 
-features are along axis=1"""
-_reduced_embedded_bags = embedded_bags[:200]
-y_test_reduced = y_test[:200]
-svmc_l1_gs.fit(np.transpose(_reduced_embedded_bags), y_test_reduced)
-svmc_gs.fit(np.transpose(_reduced_embedded_bags), y_test_reduced)
-
-
-# Define SVM
-svmc_l1 = skl.svm.LinearSVC(loss=LOSS, penalty=PENALTY, C=C, dual=False, max_iter=5000)
-
-# SVC Using LibSVM uses the squared l2 loss
-svmc = skl.svm.SVC(kernel='rbf', gamma=GAMMA_SVC, C=C)
-
-# Fit and train models
-svmc_l1.fit(np.transpose(embedded_bags), y_test)
-y_pred_l1 = svmc_l1.predict(np.transpose(embedded_bags))
-accuracy_l1 = skl.metrics.accuracy_score(y_test, y_pred_l1)
-precision_l1 = skl.metrics.precision_score(y_test, y_pred_l1, average='weighted')
-recall_l1 = skl.metrics.recall_score(y_test, y_pred_l1, average='weighted')
-conf_l1 = skl.metrics.confusion_matrix(y_test, y_pred_l1)
-print("Accuracy L1: {}".format(accuracy_l1))
-print("Precision L1: {}".format(precision_l1))
-print("Recall L1: {}".format(recall_l1))
-print("Confusion Matrix L1\n: {}".format(conf_l1))
-
-svmc.fit(np.transpose(embedded_bags), y_test)
-y_pred_rb = svmc.predict(np.transpose(embedded_bags))
-accuracy_rb = skl.metrics.accuracy_score(y_test, y_pred_rb)
-precision_rb = skl.metrics.precision_score(y_test, y_pred_rb, average='weighted')
-recall_rb = skl.metrics.recall_score(y_test, y_pred_rb, average='weighted')
-conf_rb = skl.metrics.confusion_matrix(y_test, y_pred_rb)
-print("Accuracy L1: {}".format(accuracy_rb))
-print("Precision L1: {}".format(precision_rb))
-print("Recall L1: {}".format(recall_rb))
-print("Confusion Matrix L1\n: {}".format(conf_rb))
 
