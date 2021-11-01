@@ -290,6 +290,58 @@ class LoadMIL:
 
         return x, y
 
+    def get_single_mil_bag(self, pipeline='whole'):
+        """Return a bag of commonly labeled data
+        Bags are defined in SQL Server in the Points table on the group_id
+        Froeign Key"""
+        
+        # Retrieve a single unique bag label
+        sql = """SELECT top(1) group_id
+        FROM {}
+        WHERE IsNumeric(group_id) = 1
+        ORDER BY group_id ASC""".format(Points.__tablename__)
+        sel = sqltext(sql)
+        # List, remove a single item from the list
+        group_ids = self.Insert.core_select_execute(sel)
+        group_id = group_ids.pop().group_id
+        print(group_ids); print(type(group_ids))
+        print(group_id); print(type(group_id))
+
+        
+
+        # Create the pipeline
+        if pipeline == 'whole':
+            full_pipeline = self.numeric_transform_pipeline()
+        elif pipeline == 'categorical':
+            full_pipeline = self.categorical_transform_pipeline()
+        else:
+            raise ValueError('pipeline must be one of ["whole","categorical"]')
+        
+        # Retrieve bag label for each group_id
+        sel = sqlalchemy.select([Labeling]).where(Labeling.id.__eq__(group_id))
+        with self.Insert.engine.connect() as connection:
+            res = connection.execute(sel)
+            label = res.fetchone().bag_label
+
+        # Load the dataset
+        sel = sqlalchemy.select([Points]).where(Points.group_id.__eq__(group_id))
+        dfraw = self.Insert.pandas_select_execute(sel)
+
+        # Transform the dataset
+        try:
+            bag = full_pipeline.fit_transform(dfraw)
+        except ValueError as e:
+            print('Transform error, Skipped Group ID : ', group_id)
+            traceback.print_exc()
+            print(dfraw)
+            raise e
+
+        # Validate cleaned dataset
+        if not self.validate_bag(bag):
+            print("Invalid cleaned bag:\n")
+            print(bag)
+
+        return dfraw, bag, label
 
 
 def load_mil_dataset(file_name):
