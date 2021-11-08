@@ -985,7 +985,7 @@ class Transform():
             categories = categories_dict[col_name]
             categories_array.append(categories)
 
-        return np.array(categories_array)
+        return np.array(categories_array, dtype='object')
 
 
     def text_pipeline_cluster(self,

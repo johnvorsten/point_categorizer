@@ -20,6 +20,7 @@ from sklearn.pipeline import Pipeline, FeatureUnion
 from scipy.sparse import csr_matrix
 
 # Local imports
+from transform import Transform, VocabularyText
 if __name__ == '__main__':
     # Remove the drive letter on windows
     _CWD = os.path.splitdrive(os.getcwd())[1]
@@ -30,7 +31,6 @@ if __name__ == '__main__':
         sys.path.insert(0, _PROJECT_DIR)
 
 from extract import extract
-from transform import transform_pipeline
 from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev,
                           Customers, ClusteringHyperparameter, Labeling)
 
@@ -156,23 +156,14 @@ class LoadMIL:
         full_pipeline: (sklearn.pipeline) of all features for multi-instance learning
         """
 
-        # Transform pipeline
-        Transform = transform_pipeline.Transform()
-
         # Cleaning pipeline
-        clean_pipe = Transform.cleaning_pipeline(drop_attributes=None,
-                                                 nan_replace_dict=None,
-                                                 dtype_dict=None,
-                                                 unit_dict=None,
-                                                 remove_dupe=True,
-                                                 replace_numbers=True,
-                                                 remove_virtual=True)
+        clean_pipe = Transform.cleaning_pipeline()
 
         # Text feature encoders
-        name_vocabulary = transform_pipeline.VocabularyText.read_vocabulary_disc(POINTNAME_VOCABULARY_FILENAME)
+        name_vocabulary = VocabularyText.read_vocabulary_disc(POINTNAME_VOCABULARY_FILENAME)
         name_text_pipe = Transform.text_pipeline_label(attributes=['NAME'],
-                                                  vocabulary=name_vocabulary)
-        descriptor_vocabulary = transform_pipeline.VocabularyText.read_vocabulary_disc(DESCRIPTOR_VOCABULARY_FILENAME)
+                                                       vocabulary=name_vocabulary)
+        descriptor_vocabulary = VocabularyText.read_vocabulary_disc(DESCRIPTOR_VOCABULARY_FILENAME)
         descriptor_text_pipe = Transform.text_pipeline_label(attributes=['DESCRIPTOR'],
                                                              vocabulary=descriptor_vocabulary)
 
@@ -212,9 +203,6 @@ class LoadMIL:
         full_pipeline : (sklearn.pipeline) of all features for MIL / bag learning
         """
 
-        # Transform pipeline
-        Transform = transform_pipeline.Transform()
-
         # Cleaning pipeline
         clean_pipe = Transform.cleaning_pipeline(drop_attributes=None,
                                                  nan_replace_dict=None,
@@ -225,10 +213,10 @@ class LoadMIL:
                                                  remove_virtual=True)
 
         # Text feature encoders
-        name_vocabulary = transform_pipeline.VocabularyText.read_vocabulary_disc(POINTNAME_VOCABULARY_FILENAME)
+        name_vocabulary = VocabularyText.read_vocabulary_disc(POINTNAME_VOCABULARY_FILENAME)
         name_text_pipe = Transform.text_pipeline_label(attributes=['NAME'],
                                                   vocabulary=name_vocabulary)
-        descriptor_vocabulary = transform_pipeline.VocabularyText.read_vocabulary_disc(DESCRIPTOR_VOCABULARY_FILENAME)
+        descriptor_vocabulary = VocabularyText.read_vocabulary_disc(DESCRIPTOR_VOCABULARY_FILENAME)
         descriptor_text_pipe = Transform.text_pipeline_label(attributes=['DESCRIPTOR'],
                                                              vocabulary=descriptor_vocabulary)
 
