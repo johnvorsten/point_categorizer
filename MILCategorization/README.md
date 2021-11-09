@@ -2,11 +2,11 @@
 
 ## TODO
 Estimators (Pickling, saving)
-    Re-train estimator
-    Pickle SkLearn estimator
-    Save (training and validation) data for modular testing and validation
-    Record optimal hyperparameters
-    Document validation results (.txt)
+    # Re-train estimator
+    # Pickle SkLearn estimator
+    # Save (training and validation) data for modular testing and validation
+    # Record optimal hyperparameters
+    # Document validation results (.txt)
 
 Create HTTP API for accessing and serving predictions
     Document raw data input fields (what specifically is required?)

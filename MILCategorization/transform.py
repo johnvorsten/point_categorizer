@@ -3,7 +3,7 @@
 Created on Thu Jun 20 07:53:26 2019
 
 This is a package of useful pipelines and transformation classes used for
-processing data. This module contains :
+processing data. This module contains:
 
  'DataFrameSelector' - Retrieve values of certain columns from pd.DataFrame
  'DuplicateRemover' - Remove duplicates from named columns of a pd.DataFrame
@@ -21,15 +21,13 @@ processing data. This module contains :
  'WordDictToSparseTransformer' - Converts your word dictionary to a sparse
  matrix of encoded words
 
-Example usage :
+Example usage:
 
 @author: z003vrzk
 """
 
 # Python imports
-from pathlib import Path
 import re
-from collections import Counter,namedtuple
 import statistics
 from statistics import StatisticsError
 import pickle
@@ -45,8 +43,6 @@ from sklearn.feature_extraction.text import CountVectorizer
 from scipy.sparse import csr_matrix
 from sklearn.feature_extraction.text import CountVectorizer
 import numpy as np
-import sqlalchemy
-from sqlalchemy.sql import text as sqltext
 
 # Local imports
 if __name__ == '__main__':
@@ -58,18 +54,12 @@ if __name__ == '__main__':
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
 
-from extract import extract
-from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev,
-                                              Customers, ClusteringHyperparameter, 
-                                              Labeling, TypesCorrection)
-
 # Globals
 config = configparser.ConfigParser()
 config.read(r'../extract/sql_config.ini')
 server_name = config['sql_server']['DEFAULT_SQL_SERVER_NAME']
 driver_name = config['sql_server']['DEFAULT_SQL_DRIVER_NAME']
 database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
-Insert = extract.Insert(server_name, driver_name, database_name)
 
 
 #%%
@@ -117,8 +107,8 @@ class ArrayResize(BaseEstimator, TransformerMixin):
 class TextCleaner(BaseEstimator, TransformerMixin):
 
     def __init__(self, columns, replace_numbers=True):
-        """columns : columns to clean text in. Must be list of column indicies
-        replace_numbers : Boolean for wither to repalce numbers with empty string"""
+        """columns: columns to clean text in. Must be list of column indicies
+        replace_numbers: Boolean for wither to repalce numbers with empty string"""
         self.REPLACE_BY_EMPTY_RE= re.compile('[/(){}\[\]\|@\\\,;]')
         self.BAD_SYMBOLS_RE = re.compile('[^a-zA-Z0-9 _.]')
         self.NUMBERS_RE = re.compile('[0-9]')
@@ -153,7 +143,7 @@ class SetDtypes(BaseEstimator, TransformerMixin):
         """
         inputs
         ------
-        type_dict : (dict) where keys are column names and values are data types
+        type_dict: (dict) where keys are column names and values are data types
         Example
         type_dict = {'col1':int,'col2':str,'col3':np.int32}"""
         self.type_dict = type_dict
@@ -204,7 +194,7 @@ class ReplaceNone(BaseEstimator, TransformerMixin):
         """Fill None values with a string 'None'
         inputs
         -------
-        columns : (list) of string denoting column names in X"""
+        columns: (list) of string denoting column names in X"""
         self.columns = columns
         return None
 
@@ -246,9 +236,9 @@ class TextToWordDict(BaseEstimator, TransformerMixin):
     def __init__(self, seperator = ' ', heirarchial_weight_word_pattern=False):
         """parameters
         -------
-        seperator : (str or list of str) seperator between each text instance.
+        seperator: (str or list of str) seperator between each text instance.
             Used in re.split()
-        heirarchial_weight_word_pattern : (bool) setting this to True will
+        heirarchial_weight_word_pattern: (bool) setting this to True will
             weight each word by the order that it appears in the input sequence.
             For example, the word phrase 'foo.bar.baz.fizz' will be given
             counts that relate inversely to their position in the sequence. The
@@ -316,7 +306,7 @@ class WordDictToSparseTransformer(BaseEstimator, TransformerMixin):
     def __init__(self, vocabulary_size='all'):
         """parameters
         -------
-        vocabulary_size : int or 'all'. int will return specified size. 'all'
+        vocabulary_size: int or 'all'. int will return specified size. 'all'
         will return all unique words available"""
         self.vocabulary_size = vocabulary_size
         return None
@@ -371,14 +361,14 @@ class DuplicateRemover(BaseEstimator, TransformerMixin):
         """
         inputs
         -------
-        dupe_cols : (list) of string where each string is a column name in
+        dupe_cols: (list) of string where each string is a column name in
             the dataframe. Where the column has duplicated values in its index
             those rows / index will be removed
-        remove_dup : (bool) to remove duplicates from the columns in dupe_cols
+        remove_dup: (bool) to remove duplicates from the columns in dupe_cols
 
         outputs
         -------
-        X : (pd.DataFrame) with duplicate"""
+        X: (pd.DataFrame) with duplicate"""
         assert type(dupe_cols) == list, 'dupe_cols must be list'
         self.dupe_cols = dupe_cols
         self.remove_dupe = remove_dupe
@@ -410,11 +400,11 @@ class DuplicateRemover(BaseEstimator, TransformerMixin):
         in the column
         inputs
         -------
-        column : (str) name of column
-        X : (pd.DataFrame) dataframe to find duplicates in
+        column: (str) name of column
+        X: (pd.DataFrame) dataframe to find duplicates in
         output
         -------
-        duplicates : (list) of duplicate values in a column"""
+        duplicates: (list) of duplicate values in a column"""
 
         duplicates = []
         counts = {}
@@ -491,9 +481,11 @@ NAN_REPLACE_DICT = {'NETDEVID':'empty', 'NAME':'remove',
 
 TEXT_CLEAN_ATTRS = ['NAME','DESCRIPTOR','SYSTEM']
 
+
+
 # Modify units
-sel = sqlalchemy.select([TypesCorrection])
-units_df = Insert.pandas_select_execute(sel)
+TYPES_FILE = r'../data/clean_types.csv'
+units_df = pd.read_csv(TYPES_FILE)
 UNIT_DICT = {}
 for idx, unit in (units_df.iterrows()):
     depreciated_value = unit['depreciated_type']
@@ -516,6 +508,8 @@ TEXT_ATTRIBUTES = ['NAME', 'DESCRIPTOR', 'SYSTEM']
 REMOVE_DUPE=True
 REPLACE_NUMBERS=True
 REMOVE_VIRTUAL=True
+
+CATEGORIES_FILE = r'../data/categorical_categories.dat'
     
 class Transform():
 
@@ -534,12 +528,12 @@ class Transform():
         using sklearn.preprocessing.StandardScaler
         inputs
         ------
-        numeric_attributes : (list) of str. Each string is a column name of
+        numeric_attributes: (list) of str. Each string is a column name of
             a pandas dataframe. If None, then the classes standard numeric
             attributes will be used instead (see NUM_ATTRIBUTES)
         outputs
         -------
-        num_pipeline : (sklearn.pipeline.Pipeline) to transform data
+        num_pipeline: (sklearn.pipeline.Pipeline) to transform data
             Call cat_pipeline.fit_transform(dataframe) to transform your data
         """
 
@@ -551,27 +545,26 @@ class Transform():
         return num_pipeline
 
     @classmethod
-    def categorical_pipeline(cls, categorical_attributes=None,
-                             handle_unknown='ignore',
-                             categories_file=r'../data/categorical_categories.dat'):
+    def categorical_pipeline(cls,
+                             handle_unknown='ignore'):
         """Return a categorical pipeline
         The categorical pipeline will one-hot encode categorical attributes
         in your dataset
         inputs
         ------
-        categorical_attributes : (list) of str. Each string is a column name of
+        categorical_attributes: (list) of str. Each string is a column name of
             a pandas dataframe. If None, then the classes standard categorical
             attributes will be used instead (see CATEGORIAL_ATTRIBUTES)
         handle_unknown = (str) how to handle categorical values in sklearn
             one of ['error' | 'ignore']
         outputs
         -------
-        cat_pipeline : (sklearn.pipeline.Pipeline) to transform data
+        cat_pipeline: (sklearn.pipeline.Pipeline) to transform data
             Call cat_pipeline.fit_transform(dataframe) to transform your data
         """
 
         categories = cls._read_categories(CATEGORICAL_ATTRIBUTES,
-                                           categories_file)
+                                           CATEGORIES_FILE)
 
         cat_pipeline = Pipeline([
                 ('ReplaceNone', ReplaceNone(CATEGORICAL_ATTRIBUTES)),
@@ -605,7 +598,7 @@ class Transform():
         Unit Cleaner (self.unit_dict)
         Remove Duplicates (DUPE_COLS, REMOVE_DUPE)
         Virtual Remove (remove_virtual)
-        NOTE : To use this pipeline you should pass a pandas dataframe to its
+        NOTE: To use this pipeline you should pass a pandas dataframe to its
         fit_transform() method
         inputs
         -------
@@ -635,7 +628,6 @@ class Transform():
         return cleaning_pipeline
 
 
-
 class EncodingCategories:
 
     def __init__(self):
@@ -657,16 +649,16 @@ class EncodingCategories:
         to each column of a dataframe
         inputs
         -------
-        categories_dict : (dict) with key representing column name and
+        categories_dict: (dict) with key representing column name and
         value is an array representing unique valeus under column_name
         Example
-        categories_dict = {'TYPE' : <class 'numpy.ndarray'>
-                           'ALARMTYPE' : <class 'numpy.ndarray'>
-                           'FUNCTION'' : <class 'numpy.ndarray'>
-                           'VIRTUAL'' : <class 'numpy.ndarray'>
-                           'CS'' : <class 'numpy.ndarray'>
-                           'SENSORTYPE'' : <class 'numpy.ndarray'>
-                           'DEVUNITS' : <class 'numpy.ndarray'>}"""
+        categories_dict = {'TYPE': <class 'numpy.ndarray'>
+                           'ALARMTYPE': <class 'numpy.ndarray'>
+                           'FUNCTION'': <class 'numpy.ndarray'>
+                           'VIRTUAL'': <class 'numpy.ndarray'>
+                           'CS'': <class 'numpy.ndarray'>
+                           'SENSORTYPE'': <class 'numpy.ndarray'>
+                           'DEVUNITS': <class 'numpy.ndarray'>}"""
 
         with open(save_path, 'wb') as f:
             pickle.dump(categories_dict, f)
@@ -678,8 +670,8 @@ class EncodingCategories:
         """Get the categories of value from the columns of a dataframe
         inputs
         -------
-        dataframe : (pd.DataFrame) data to extract categories from
-        columns : (list) of strings representing column names of the passed
+        dataframe: (pd.DataFrame) data to extract categories from
+        columns: (list) of strings representing column names of the passed
             dataframe. Example ['TYPE', 'ALARMTYPE', 'FUNCTION', 'VIRTUAL',
                                 'CS', 'SENSORTYPE', 'DEVUNITS'] """
         categories_dict = {}
@@ -702,203 +694,6 @@ class VocabularyText:
         return None
 
     @staticmethod
-    def points_group_generator():
-        """Iterate over points by common customer ID
-        inputs
-        -------
-        outputs
-        -------
-        df_clean : (pd.DataFrame) of cleaned customer database points grouped
-        by the common customer"""
-        # Transform pipeline
-        Transform_ = Transform()
-        # Create 'clean' data processing pipeline
-        clean_pipe = Transform_.cleaning_pipeline(drop_attributes=None,
-                                                 nan_replace_dict=None,
-                                                 dtype_dict=None,
-                                                 unit_dict=None,
-                                                 remove_dupe=True,
-                                                 replace_numbers=True,
-                                                 remove_virtual=True)
-
-        sql = """SELECT id
-        FROM {}""".format(Customers.__tablename__)
-        sel = sqltext(sql)
-        customer_ids = Insert.core_select_execute(sel)
-
-        for row in customer_ids:
-            customer_id = row.id
-
-            sel = sqlalchemy.select([Points]).where(Points.customer_id.__eq__(customer_id))
-            dfraw = Insert.pandas_select_execute(sel)
-            if dfraw.shape[0] <= 1:
-                print('Customer ID {} has no associated points'.format(customer_id))
-                print('Customer will be skipped')
-                continue
-
-            try:
-                df_clean = clean_pipe.fit_transform(dfraw)
-            except Exception as e:
-                print('Transformation pipeline error at {}'.format(customer_id))
-                print(e)
-                continue
-
-            yield df_clean
-
-        return None
-
-    @staticmethod
-    def get_building_suffix(words):
-        """Decide if a token is the building suffix of some dataset
-        The building suffix is generally defined by this statistical property :
-        1) it occurs in most of the word names
-        2) it is the first token of the name
-
-        A token will be categorized as a building suffix if
-        a) 90% of points include it
-        b) 90% of names incldue the suffix as their first token
-
-        Example
-        words = [acc.hm.chw.asvs, acc.hm.chw.muflow, acc.hm.chw.swt,
-        acc.hm.chw.bpflow, acc.hm.chw.bpv, acc.hm.chw.flow]
-        parts = [['acc', 'hm', 'chw', 'asvs'],
-                 ['acc', 'hm', 'chw', 'muflow'],
-                 ['acc', 'hm', 'chw', 'swt'],
-                 ['acc', 'hm', 'chw', 'bpflow'],
-                 ['acc', 'hm', 'chw', 'bpv'],
-                 ['acc', 'hm', 'chw', 'flow']]"""
-
-        msg = "parts must be type list not {}".format(type(words))
-        assert isinstance(words, list), msg
-
-        # For counting (duh)
-        counter = Counter()
-
-        # Keep track of all name suffixes
-        suffixes = set([x[0] for x in words])
-
-        # Number of names
-        n_names = len(words)
-
-        # Pre-compute counts of tokens
-        for name in words:
-            counter.update(name)
-
-        for suffix in suffixes:
-            n_occurences = counter[suffix]
-
-            if (n_occurences / n_names) >= 0.9:
-                return suffix
-
-        return False
-
-
-    def get_fobidden_vocabulary(self):
-        """Iterate throguh all database points stored in SQL and retrieve
-        building sufflix acronyms
-        The building suffix acronyms will be excludied from the point naming
-        text 'bag-of-words' feature encoding
-        inputs
-        -------
-        None
-        outputs
-        -------
-        forbidden_vocabulary : (list) of strings that are assumed to be building
-        suffixes. Exclude these from feature name encodings"""
-        # Prepare to tokenize words
-        token_pattern = r'\.'
-        tokenizer = re.compile(token_pattern)
-
-        # Keep track of building suffixes
-        forbidden_vocabulary = []
-
-        # Get generator of points databases
-        df_generator = self.points_group_generator()
-
-        # iterate through word names and find building suffix (like acc, tfc, rgc)
-        for df_clean in df_generator:
-
-            # Keep track of words
-            words = []
-
-            # Split each name into tokens
-            for idx, word in df_clean['NAME'].iteritems():
-                parts = tokenizer.split(word)
-                words.append(parts)
-
-            suffix = self.get_building_suffix(words)
-            if suffix: # Suffix is False if the words do not contain a building suffix
-            # As determined in get_building_suffix()
-                forbidden_vocabulary.append(suffix)
-
-        return forbidden_vocabulary
-
-
-    def get_text_vocabulary(self, X, col_name, remove_suffix=True, max_features=None):
-        """Get the entire vocabulary of the feature col_name from X
-        Use this method specifically to get the point name vocabulary
-        from the 'NAME' attribute of my dataset. If remove_suffix is True
-        then a list of forbidden building suffix acronyms will be found,
-        and the final vocabulary will be the set difference of the total
-        vocabulary and the building suffix acronyms
-        inputs
-        -------
-        X : (pd.DataFrame)
-        col_name : (str) should be 'NAME', or others if I want
-        remove_suffix : (bool) True to calculate and exclude building suffix acronyms
-        max_features : (int) If not None, build a vocabulary that only consider
-            the top max_features ordered by term frequency across the corpus.
-            This parameter is ignored if vocabulary is not None.
-        outputs
-        -------
-        vocabulary : (list) of str representing total vocabulary of col_name
-        feature from X
-
-        Example Usage"""
-
-        # Calculate total vocabulary
-        # Default - 2 or more alphanumeric characters
-        token_pattern = r"(?u)\b\w\w+\b"
-        Count = CountVectorizer(input='content',
-                                stop_words=None,
-                                vocabulary=None,
-                                token_pattern=token_pattern,
-                                max_features=max_features)
-        Count.fit(X[col_name])
-        # Total vocabulary
-        feature_names = Count.get_feature_names()
-
-        # Remove building suffix if remove_suffix is True and col_name is NAME
-        if remove_suffix and col_name=='NAME':
-            forbidden_vocabulary = set(self.get_fobidden_vocabulary())
-            vocabulary = list(set(feature_names).difference(forbidden_vocabulary))
-        else:
-            vocabulary = feature_names
-
-        return vocabulary
-
-    @staticmethod
-    def save_vocabulary(vocabulary, file_name=r'../data/vocab_name.txt'):
-        """Convenience to save a vocabulary to file_name
-        inputs
-        -------
-        vocabulary : (list) of vocabulary strings
-        file_name : (str) to save vocabulary to"""
-
-        if os.path.isfile(file_name):
-            x = input('File {} Already exists. Overwrite? [y/n]'.format(file_name))
-            if x in ['y','yes','True','YES','Y','TRUE']:
-                pass
-            else:
-                return None
-
-        with open(file_name, 'wt') as f:
-            for vocab in vocabulary:
-                f.write(vocab + '\n')
-
-        return None
-
-    @staticmethod
     def read_vocabulary_disc(file_name):
         """Read vocabulary from a file and aggregate to a list
         inputs
@@ -906,7 +701,7 @@ class VocabularyText:
         none
         outputs
         -------
-        vocabulary : (list) of str"""
+        vocabulary: (list) of str"""
 
         with open(file_name, 'rt') as f:
             vocabulary = f.read().splitlines()

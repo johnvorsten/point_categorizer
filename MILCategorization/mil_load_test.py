@@ -8,17 +8,12 @@ Created on Thu Jun 18 19:28:03 2020
 # Python imports
 import sys
 import os
-import traceback
-import pickle
 
 # Third party imports
-import numpy as np
-import sqlalchemy
-from sqlalchemy.sql import text as sqltext
-import pandas as pd
-from sklearn.pipeline import Pipeline, FeatureUnion
 
 # Local imports
+import mil_load
+
 if __name__ == '__main__':
     # Remove the drive letter on windows
     _CWD = os.path.splitdrive(os.getcwd())[1]
@@ -28,16 +23,8 @@ if __name__ == '__main__':
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
 
-from extract import extract
-from transform import transform_pipeline
-from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev,
-                          Customers, ClusteringHyperparameter, Labeling)
-import mil_load
 
-Insert = extract.Insert(server_name='.\\DT_SQLEXPR2008',
-                        driver_name='SQL Server Native Client 10.0',
-                        database_name='Clustering')
-
+# Declarations
 LoadMIL = mil_load.LoadMIL()
 
 #%%
