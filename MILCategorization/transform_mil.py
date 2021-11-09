@@ -33,6 +33,7 @@ from statistics import StatisticsError
 import pickle
 import os, sys
 import configparser
+from collections import Counter
 
 # Third party imports
 import pandas as pd
@@ -76,7 +77,7 @@ class RemoveAttribute(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X, y=None):
-        X = X.drop(columns=self.columns)
+        X = X.drop(columns=self.columns, errors='ignore')
         return X
 
 

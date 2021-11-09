@@ -57,10 +57,6 @@ def test_validate_bag():
     return None
 
 
-
-
-
-
 def test_gather_mil_dataset():
     return None
 

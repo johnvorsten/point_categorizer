@@ -13,6 +13,7 @@ import unittest
 
 # Third party imports
 import pandas as pd
+from sklearn.svm import LinearSVC, SVC
 
 # Local imports
 if __name__ == '__main__':
@@ -23,7 +24,8 @@ if __name__ == '__main__':
     _PROJECT_DIR = os.path.join(os.sep, *_PARTS[:-1])
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
-from svm_miles_predict import MILESEmbedding, SVMC_L1_miles, RawInputData, concept_class_filename
+from svm_miles_predict import (MILESEmbedding, SVMC_L1_miles, RawInputData, 
+                               concept_class_filename, BasePredictor, Transform)
 from mil_load import LoadMIL
 
 # Global declarations
@@ -35,14 +37,87 @@ database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
 numeric_feature_file = config['sql_server']['DEFAULT_NUMERIC_FILE_NAME']
 categorical_feature_file = config['sql_server']['DEFAULT_CATEGORICAL_FILE_NAME']
 
-LoadMIL = LoadMIL(server_name, driver_name, database_name)
-numeric_pipeline = LoadMIL.numeric_transform_pipeline()
+# LoadMIL = LoadMIL(server_name, driver_name, database_name)
 
 
 #%% Class definitions
     
+class BasePredictorTest(unittest.TestCase):
+    SVMC_l1_classifier_filename = r"./svmc_l1_miles.clf"
+    SVMC_rbf_classifier_filename = r"./svmc_rbf_miles.clf"
+    concept_class_filename = r"./miles_concept_features.dat"
+    
+    def setUp(self):
+        
+        # Instance of BasePredictor
+        basePredictorL1 = BasePredictor(classifier_filename=self.SVMC_l1_classifier_filename)
+        basePredictorRBF = BasePredictor(classifier_filename=self.SVMC_rbf_classifier_filename)
 
-class MILESPredictTest:
+        # Load raw data from file or create raw data
+        
+        return None
+    
+    def test__load_predictor(self):
+        
+        classifierL1 = BasePredictor._load_predictor(self.SVMC_l1_classifier_filename)
+        classifierRBF = BasePredictor._load_predictor(self.SVMC_rbf_classifier_filename)
+        self.assertIsInstance(classifierL1, LinearSVC)
+        self.assertIsInstance(classifierRBF, SVC)
+        
+        return None
+        
+    def test__transform_data(self):
+        
+        # Construct raw data input
+        input_data = RawInputData(
+            # Required numeric attributes
+            DEVICEHI=122.0,
+            DEVICELO=32.0,
+            SIGNALHI=10,
+            SIGNALLO=0,
+            SLOPE=1.2104,
+            INTERCEPT=0.01,
+            # Required categorical attributes
+            TYPE="LAI",
+            ALARMTYPE="Standard",
+            FUNCTION="Value",
+            VIRTUAL=0,
+            CS="AE",
+            SENSORTYPE="VOLTAGE",
+            DEVUNITS="VDC",
+            # Requried text attributes
+            NAME="SHLH.AHU-ED.RAT",
+            DESCRIPTOR="RETURN TEMP",
+            )
+        
+        # Convert raw data to dataframe
+        dfraw = pd.DataFrame(data=[input_data])
+        
+        # Transform raw data
+        bag = Transform.numeric_transform_pipeline_MIL().fit_transform(dfraw)
+        # Embed data
+        MILESEmbedder = MILESEmbedding("./miles_concept_features.dat")
+        embedded_data = MILESEmbedder.embed_data(bag)
+        
+        return None
+    
+    def test_predict(self):
+        return None
+    
+
+class MILESEmbeddingTest(unittest.TestCase):
+    
+    def setUp(self):
+        return None
+    
+    def test__load_concept_class(self):
+        return None
+    
+    def test_embed_data(self):
+        return None
+
+
+class MILESPredictTest(unittest.TestCase):
     
     def setUp(self):
         return None
@@ -67,34 +142,5 @@ class MILESPredictTest:
 
 #%% Main
 
-# Construct raw data input
-input_data = RawInputData(
-    # Required numeric attributes
-    DEVICEHI=122.0,
-    DEVICELO=32.0,
-    SIGNALHI=10,
-    SIGNALLO=0,
-    SLOPE=1.2104,
-    INTERCEPT=0.01,
-    # Required categorical attributes
-    TYPE="LAI",
-    ALARMTYPE="Standard",
-    FUNCTION="Value",
-    VIRTUAL=0,
-    CS="AE",
-    SENSORTYPE="VOLTAGE",
-    DEVUNITS="VDC",
-    # Requried text attributes
-    NAME="SHLH.AHU-ED.RAT",
-    DESCRIPTOR="RETURN TEMP",
-    )
-
-# Convert raw data to dataframe
-dfraw = pd.DataFrame(data=[input_data])
-
-# Transform raw data
-bag = numeric_pipeline.fit_transform(dfraw)
-
-# Embed data
-MILESEmbedder = MILESEmbedding("./miles_concept_features.dat")
-embedded_data = MILESEmbedder.embed_data(clean_data)
+if __name__ == '__main__':
+    unittest.main()

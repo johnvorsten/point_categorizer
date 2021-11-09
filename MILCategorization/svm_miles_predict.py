@@ -23,12 +23,12 @@ import pandas as pd
 
 # Local imports
 from mil_load import LoadMIL
+from transform_mil import Transform
 
 # Global declarations
 SVMC_l1_classifier_filename = r"./svmc_l1_miles.clf"
 SVMC_rbf_classifier_filename = r"./svmc_rbf_miles.clf"
 concept_class_filename = r"./miles_concept_features.dat"
-numeric_pipeline = LoadMIL.numeric_transform_pipeline()
 
 #%% Classses and data
 
@@ -150,7 +150,7 @@ class BasePredictor:
         """
         
         df_raw = pd.DataFrame(data)
-        clean_data = numeric_pipeline.fit_transform(df_raw)
+        clean_data = Transform.numeric_transform_pipeline_MIL().fit_transform(df_raw)
         
         return clean_data
 

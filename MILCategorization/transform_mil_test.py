@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 # Local imports
-from transform import (Transform, VocabularyText, ReplaceNone, 
+from transform_mil import (Transform, VocabularyText, ReplaceNone, 
                        DataFrameSelector, OneHotEncoder, RemoveAttribute, 
                        RemoveNan, SetDtypes, TextCleaner, UnitCleaner, 
                        DuplicateRemover, VirtualRemover, EncodingCategories)
@@ -168,7 +168,6 @@ def test_categorical_pipe():
 def test_read_categories():
 
     # Ititialize
-    categories_file = r'../data/categorical_categories.dat'
     categories = Transform._read_categories(CATEGORICAL_ATTRIBUTES, 
                                             CATEGORIES_FILE)
 
@@ -196,14 +195,15 @@ def test_read_categories():
     df_clean1 = clean_pipe.fit_transform(dataset_raw)
 
     # Transform
-    df0 = ReplaceNone.fit_transform(df_clean1)
-    df1_array = DataFrameSelector.fit_transform(df0)
-    ohearray = OneHotEncoder.fit_transform(df1_array).toarray()
+    df0 = replaceNone.fit_transform(df_clean1)
+    df1_array = dataFrameSelector.fit_transform(df0)
+    ohearray = oneHotEncoder.fit_transform(df1_array).toarray()
 
     # Examine the transformers
     print(df0[CATEGORICAL_ATTRIBUTES].iloc[:5])
     print(df1_array[:5])
     OneHotEncoder.categories
+    print("OneHotArray Columns: ", ohearray.columns)
 
     return None
 
@@ -314,7 +314,7 @@ def test_time():
     df5 = DuplicateRemover.fit_transform(df4)
 
     t6 = time.time()
-    df6 = virtualRemover.fit_transform(df5)
+    virtualRemover.fit_transform(df5)
     t7 = time.time()
 
     print('RemoveAttribute : {}'.format(t1 - t0))
