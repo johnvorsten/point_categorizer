@@ -8,6 +8,7 @@ Created on Thu Jun 18 19:28:03 2020
 # Python imports
 import sys
 import os
+import configparser
 
 # Third party imports
 
@@ -25,7 +26,12 @@ if __name__ == '__main__':
 
 
 # Declarations
-LoadMIL = mil_load.LoadMIL()
+config = configparser.ConfigParser()
+config.read(r'../extract/sql_config.ini')
+server_name = config['sql_server']['DEFAULT_SQL_SERVER_NAME']
+driver_name = config['sql_server']['DEFAULT_SQL_DRIVER_NAME']
+database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
+LoadMIL = mil_load.LoadMIL(server_name, driver_name, database_name)
 
 #%%
 
@@ -52,11 +58,7 @@ def test_validate_bag():
 
 
 
-def test_mil_transform_pipeline():
 
-    mil_transform_pipeline = LoadMIL.mil_transform_pipeline()
-
-    return None
 
 
 def test_gather_mil_dataset():

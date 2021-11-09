@@ -54,12 +54,14 @@ if __name__ == '__main__':
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
 
-# Globals
+# Declarations
 config = configparser.ConfigParser()
 config.read(r'../extract/sql_config.ini')
 server_name = config['sql_server']['DEFAULT_SQL_SERVER_NAME']
 driver_name = config['sql_server']['DEFAULT_SQL_DRIVER_NAME']
 database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
+
+
 
 
 #%%
@@ -454,75 +456,11 @@ class VirtualRemover(BaseEstimator, TransformerMixin):
 
 
 #%%
-
-DROP_ATTRIBUTES = ['CTSYSNAME', 'TMEMBER', 'ALARMHIGH', 'ALARMLOW',
-        'COMBOID', 'PROOFPRSNT', 'PROOFDELAY', 'NORMCLOSE', 'INVERTED',
-        'LAN', 'DROP', 'POINT', 'ADDRESSEXT', 'DEVNUMBER', 'CTSENSTYPE',
-        'CONTRLTYPE', 'UNITSTYPE', 'SIGUNITS', 'NUMBERWIRE', 'POWER',
-        'WIRESIZE', 'WIRELENGTH', 'S1000TYPE','INITVALUE']
-
-UNUSED = ['SLOPE', 'INTERCEPT']
-
-TYPE_DICT = {'NAME':str, 'NETDEVID':str,
-             'DESCRIPTOR':str, 'ALARMTYPE':str,
-             'FUNCTION':str, 'VIRTUAL':str,
-             'SYSTEM':str, 'CS':str,
-             'SENSORTYPE':str, 'DEVUNITS':str}
-
-NAN_REPLACE_DICT = {'NETDEVID':'empty', 'NAME':'remove',
-                          'DESCRIPTOR':'empty','TYPE':'mode',
-                          'ALARMTYPE':'mode',
-                          'FUNCTION':'Value','VIRTUAL':'False',
-                          'SYSTEM':'empty','CS':'empty',
-                          'SENSORTYPE':'digital','DEVICEHI':'zero',
-                          'DEVICELO':'zero','DEVUNITS':'empty',
-                          'SIGNALHI':'zero','SIGNALLO':'zero',
-                          'SLOPE':'zero','INTERCEPT':'zero'}
-
-TEXT_CLEAN_ATTRS = ['NAME','DESCRIPTOR','SYSTEM']
-
-
-
-# Modify units
-TYPES_FILE = r'../data/clean_types.csv'
-units_df = pd.read_csv(TYPES_FILE)
-UNIT_DICT = {}
-for idx, unit in (units_df.iterrows()):
-    depreciated_value = unit['depreciated_type']
-    new_value = unit['new_type']
-    if new_value == '0':
-        new_value = ''
-    UNIT_DICT[depreciated_value] = new_value
-
-# Remove duplicates from the NAME column
-DUPE_COLS = ['NAME']
-
-# Categorical attributes in dataset that should be one-hot encoded
-CATEGORICAL_ATTRIBUTES = ['TYPE', 'ALARMTYPE', 'FUNCTION', 'VIRTUAL', 'CS',
-                   'SENSORTYPE', 'DEVUNITS']
-NUM_ATTRIBUTES = ['DEVICEHI', 'DEVICELO', 'SIGNALHI', 'SIGNALLO',
-                       'SLOPE', 'INTERCEPT']
-
-TEXT_ATTRIBUTES = ['NAME', 'DESCRIPTOR', 'SYSTEM']
-
-REMOVE_DUPE=True
-REPLACE_NUMBERS=True
-REMOVE_VIRTUAL=True
-
-CATEGORIES_FILE = r'../data/categorical_categories.dat'
-    
+ 
 class Transform():
 
-    def __init__(self):
-        """Transformation pipeline
-        inputs
-        -------
-        None
-        """
-        return None
-
     @classmethod
-    def numeric_pipeline(cls):
+    def numeric_pipeline(cls, numeric_attributes):
         """Return a numeric pipeline
         The numeric pipeline will scale numeric attributes in your dataset
         using sklearn.preprocessing.StandardScaler
@@ -538,14 +476,16 @@ class Transform():
         """
 
         num_pipeline = Pipeline([
-                ('selector', DataFrameSelector(NUM_ATTRIBUTES)),
+                ('selector', DataFrameSelector(numeric_attributes)),
                 ('std_scaler',StandardScaler())
                 ])
 
         return num_pipeline
 
     @classmethod
-    def categorical_pipeline(cls,
+    def categorical_pipeline(cls, 
+                             categorical_attributes, 
+                             categories_file,
                              handle_unknown='ignore'):
         """Return a categorical pipeline
         The categorical pipeline will one-hot encode categorical attributes
@@ -563,12 +503,12 @@ class Transform():
             Call cat_pipeline.fit_transform(dataframe) to transform your data
         """
 
-        categories = cls._read_categories(CATEGORICAL_ATTRIBUTES,
-                                           CATEGORIES_FILE)
+        categories = cls._read_categories(categorical_attributes,
+                                          categories_file)
 
         cat_pipeline = Pipeline([
-                ('ReplaceNone', ReplaceNone(CATEGORICAL_ATTRIBUTES)),
-                ('DataFrameSelector', DataFrameSelector(CATEGORICAL_ATTRIBUTES)),
+                ('ReplaceNone', ReplaceNone(categorical_attributes)),
+                ('DataFrameSelector', DataFrameSelector(categorical_attributes)),
                 ('OneHotEncoder', OneHotEncoder(categories=categories,
                                                 handle_unknown=handle_unknown)),
                 ])
@@ -589,7 +529,16 @@ class Transform():
         return np.array(categories_array, dtype='object')
 
     @classmethod
-    def cleaning_pipeline(cls):
+    def cleaning_pipeline(cls, 
+                          drop_attributes=None,
+                          nan_replace_dict=None,
+                          dtype_dict=None,
+                          unit_dict=None,
+                          dupe_cols=None,
+                          remove_dupe=True,
+                          replace_numbers=True,
+                          remove_virtual=True,
+                          text_clean_attributes=None):
         """Cleaning pipeline
         Remove attributes (self.drop_attributes)
         Remove nan (self.nan_replace_dict)
@@ -616,16 +565,274 @@ class Transform():
         dataframe = cleaning_pipeline.fit_transform(X)"""
 
         cleaning_pipeline = Pipeline([
-                ('RemoveAttribute', RemoveAttribute(DROP_ATTRIBUTES)),
-                ('RemoveNan', RemoveNan(NAN_REPLACE_DICT)),
-                ('SetDtypes', SetDtypes(TYPE_DICT)),
-                ('TextCleaner', TextCleaner(TEXT_CLEAN_ATTRS, replace_numbers=REPLACE_NUMBERS)),
-                ('UnitCleaner', UnitCleaner(UNIT_DICT)),
-                ('DuplicateRemover', DuplicateRemover(DUPE_COLS, remove_dupe=REMOVE_DUPE)),
-                ('VirtualRemover', VirtualRemover(remove_virtual=REMOVE_VIRTUAL))
+                ('RemoveAttribute', RemoveAttribute(drop_attributes)),
+                ('RemoveNan', RemoveNan(nan_replace_dict)),
+                ('SetDtypes', SetDtypes(dtype_dict)),
+                ('TextCleaner', TextCleaner(text_clean_attributes, replace_numbers=replace_numbers)),
+                ('UnitCleaner', UnitCleaner(unit_dict)),
+                ('DuplicateRemover', DuplicateRemover(dupe_cols, remove_dupe=remove_dupe)),
+                ('VirtualRemover', VirtualRemover(remove_virtual=remove_virtual))
                 ])
 
         return cleaning_pipeline
+
+    @classmethod
+    def categorical_transform_pipeline_MIL(cls):
+        """Pipeline that only includes categorical and text features for
+        naive_bayes categorical estimators
+        inputs
+        ------
+        outputs
+        ------
+        full_pipeline: (sklearn.pipeline) of all features for MIL / bag learning
+        """
+    
+        # Specific configuration for MIL
+        # Drop these attributes from being included
+        DROP_ATTRIBUTES = ['CTSYSNAME', 'TMEMBER', 'ALARMHIGH', 'ALARMLOW',
+                           'COMBOID', 'PROOFPRSNT', 'PROOFDELAY', 'NORMCLOSE', 
+                           'INVERTED', 'LAN', 'DROP', 'POINT', 'ADDRESSEXT', 'DEVNUMBER', 
+                           'CTSENSTYPE', 'CONTRLTYPE', 'UNITSTYPE', 'SIGUNITS', 'NUMBERWIRE', 
+                           'POWER', 'WIRESIZE', 'WIRELENGTH', 'S1000TYPE','INITVALUE']
+        # Not used
+        UNUSED = ['SLOPE', 'INTERCEPT']
+        # Mapping form attribute name to data type in pandas DF
+        TYPE_DICT = {'NAME':str, 'NETDEVID':str,
+                     'DESCRIPTOR':str, 'ALARMTYPE':str,
+                     'FUNCTION':str, 'VIRTUAL':str,
+                     'SYSTEM':str, 'CS':str,
+                     'SENSORTYPE':str, 'DEVUNITS':str}
+        # Replace NAN wiht these values in specific columns
+        NAN_REPLACE_DICT = {'NETDEVID':'empty', 'NAME':'remove',
+                            'DESCRIPTOR':'empty','TYPE':'mode',
+                            'ALARMTYPE':'mode',
+                            'FUNCTION':'Value','VIRTUAL':'False',
+                            'SYSTEM':'empty','CS':'empty',
+                            'SENSORTYPE':'digital','DEVICEHI':'zero',
+                            'DEVICELO':'zero','DEVUNITS':'empty',
+                            'SIGNALHI':'zero','SIGNALLO':'zero',
+                            'SLOPE':'zero','INTERCEPT':'zero'}
+        # Text attributes
+        TEXT_CLEAN_ATTRS = ['NAME','DESCRIPTOR','SYSTEM']
+        
+        # The TYPE attribute can be many categories, but they will be reduced
+        # To a predefined list
+        TYPES_FILE = r'../data/clean_types.csv'
+        units_df = pd.read_csv(TYPES_FILE)
+        UNIT_DICT = {}
+        for idx, unit in (units_df.iterrows()):
+            depreciated_value = unit['depreciated_type']
+            new_value = unit['new_type']
+            if new_value == '0':
+                new_value = ''
+            UNIT_DICT[depreciated_value] = new_value
+        
+        # Remove duplicates from the NAME column
+        DUPE_COLS = ['NAME']
+        REMOVE_DUPE=True # Remove duplicates from specified attributes
+        # Categorical attributes in dataset that should be one-hot encoded
+        CATEGORICAL_ATTRIBUTES = ['TYPE', 'ALARMTYPE', 'FUNCTION', 'VIRTUAL', 'CS',
+                                  'SENSORTYPE', 'DEVUNITS']
+        # Numeric attributes - Scaled
+        NUM_ATTRIBUTES = ['DEVICEHI', 'DEVICELO', 'SIGNALHI', 'SIGNALLO',
+                          'SLOPE', 'INTERCEPT']
+        # Remove numbers from the NAME attribute, ex AHU01 -> AHU
+        REPLACE_NUMBERS=True
+        # Remove instances where the attribute 'VIRTUAL' is TRUE
+        REMOVE_VIRTUAL=True
+        # Vocabulary and categories data
+        CATEGORIES_FILE = r'../data/categorical_categories.dat'
+        POINTNAME_VOCABULARY_FILENAME = '../data/vocab_name.txt'
+        DESCRIPTOR_VOCABULARY_FILENAME = '../data/vocab_descriptor.txt'
+    
+        # Cleaning pipeline
+        clean_pipe = cls.cleaning_pipeline(
+            drop_attributes=DROP_ATTRIBUTES,
+            nan_replace_dict=NAN_REPLACE_DICT,
+            dtype_dict=TYPE_DICT,
+            unit_dict=UNIT_DICT,
+            dupe_cols=DUPE_COLS,
+            remove_dupe=REMOVE_DUPE,
+            replace_numbers=REPLACE_NUMBERS,
+            remove_virtual=REMOVE_VIRTUAL,
+            text_clean_attributes=TEXT_CLEAN_ATTRS)
+    
+        # Text feature encoders
+        name_vocabulary = VocabularyText.read_vocabulary_disc(POINTNAME_VOCABULARY_FILENAME)
+        name_text_pipe = cls.text_pipeline_label(attributes=['NAME'],
+                                                 vocabulary=name_vocabulary)
+        descriptor_vocabulary = VocabularyText.read_vocabulary_disc(DESCRIPTOR_VOCABULARY_FILENAME)
+        descriptor_text_pipe = cls.text_pipeline_label(attributes=['DESCRIPTOR'],
+                                                       vocabulary=descriptor_vocabulary)
+    
+        # Categorical Features
+        categorical_pipe = Transform.categorical_pipeline(
+            categorical_attributes=CATEGORICAL_ATTRIBUTES,
+            handle_unknown='ignore',
+            categories_file=CATEGORIES_FILE)
+    
+        # Numeric features - EXCLUDE FROM CATEGORICAL PIPE
+        
+        # Union
+        combined_features = FeatureUnion(transformer_list=[
+            ('CategoricalPipe', categorical_pipe),
+            ('NameTextPipe', name_text_pipe),
+            ('DescriptorTextPipe',descriptor_text_pipe),
+            ])
+        full_pipeline = Pipeline([
+            ('CleaningPipe', clean_pipe),
+            ('CombinedCategorical', combined_features),
+            ])
+    
+        return full_pipeline
+    
+    @classmethod
+    def numeric_transform_pipeline_MIL(cls):
+        """
+        Pipeline for MIL which includes numeric and categorical features
+        inputs
+        ------
+        outputs
+        ------
+        full_pipeline: (sklearn.pipeline) of all features for multi-instance learning
+        """
+        
+        # Specific configuration for MIL
+        # Drop these attributes from being included
+        DROP_ATTRIBUTES = ['CTSYSNAME', 'TMEMBER', 'ALARMHIGH', 'ALARMLOW',
+                           'COMBOID', 'PROOFPRSNT', 'PROOFDELAY', 'NORMCLOSE', 
+                           'INVERTED', 'LAN', 'DROP', 'POINT', 'ADDRESSEXT', 'DEVNUMBER', 
+                           'CTSENSTYPE', 'CONTRLTYPE', 'UNITSTYPE', 'SIGUNITS', 'NUMBERWIRE', 
+                           'POWER', 'WIRESIZE', 'WIRELENGTH', 'S1000TYPE','INITVALUE']
+        # Not used
+        UNUSED = ['SLOPE', 'INTERCEPT']
+        # Mapping form attribute name to data type in pandas DF
+        TYPE_DICT = {'NAME':str, 'NETDEVID':str,
+                     'DESCRIPTOR':str, 'ALARMTYPE':str,
+                     'FUNCTION':str, 'VIRTUAL':str,
+                     'SYSTEM':str, 'CS':str,
+                     'SENSORTYPE':str, 'DEVUNITS':str}
+        # Replace NAN wiht these values in specific columns
+        NAN_REPLACE_DICT = {'NETDEVID':'empty', 'NAME':'remove',
+                            'DESCRIPTOR':'empty','TYPE':'mode',
+                            'ALARMTYPE':'mode',
+                            'FUNCTION':'Value','VIRTUAL':'False',
+                            'SYSTEM':'empty','CS':'empty',
+                            'SENSORTYPE':'digital','DEVICEHI':'zero',
+                            'DEVICELO':'zero','DEVUNITS':'empty',
+                            'SIGNALHI':'zero','SIGNALLO':'zero',
+                            'SLOPE':'zero','INTERCEPT':'zero'}
+        # Text attributes
+        TEXT_CLEAN_ATTRS = ['NAME','DESCRIPTOR','SYSTEM']
+        
+        # The TYPE attribute can be many categories, but they will be reduced
+        # To a predefined list
+        TYPES_FILE = r'../data/clean_types.csv'
+        units_df = pd.read_csv(TYPES_FILE)
+        UNIT_DICT = {}
+        for idx, unit in (units_df.iterrows()):
+            depreciated_value = unit['depreciated_type']
+            new_value = unit['new_type']
+            if new_value == '0':
+                new_value = ''
+            UNIT_DICT[depreciated_value] = new_value
+        
+        # Remove duplicates from the NAME column
+        DUPE_COLS = ['NAME']
+        REMOVE_DUPE=True # Remove duplicates from specified attributes
+        # Categorical attributes in dataset that should be one-hot encoded
+        CATEGORICAL_ATTRIBUTES = ['TYPE', 'ALARMTYPE', 'FUNCTION', 'VIRTUAL', 'CS',
+                                  'SENSORTYPE', 'DEVUNITS']
+        # Numeric attributes - Scaled
+        NUM_ATTRIBUTES = ['DEVICEHI', 'DEVICELO', 'SIGNALHI', 'SIGNALLO',
+                          'SLOPE', 'INTERCEPT']
+        # Remove numbers from the NAME attribute, ex AHU01 -> AHU
+        REPLACE_NUMBERS=True
+        # Remove instances where the attribute 'VIRTUAL' is TRUE
+        REMOVE_VIRTUAL=True
+        # Vocabulary and categories data
+        CATEGORIES_FILE = r'../data/categorical_categories.dat'
+        POINTNAME_VOCABULARY_FILENAME = '../data/vocab_name.txt'
+        DESCRIPTOR_VOCABULARY_FILENAME = '../data/vocab_descriptor.txt'
+        
+        # Cleaning pipeline
+        clean_pipe = cls.cleaning_pipeline(
+            drop_attributes=DROP_ATTRIBUTES,
+            nan_replace_dict=NAN_REPLACE_DICT,
+            dtype_dict=TYPE_DICT,
+            unit_dict=UNIT_DICT,
+            dupe_cols=DUPE_COLS,
+            remove_dupe=REMOVE_DUPE,
+            replace_numbers=REPLACE_NUMBERS,
+            remove_virtual=REMOVE_VIRTUAL,
+            text_clean_attributes=TEXT_CLEAN_ATTRS)
+    
+        # Text feature encoders
+        name_vocabulary = VocabularyText.read_vocabulary_disc(POINTNAME_VOCABULARY_FILENAME)
+        name_text_pipe = Transform.text_pipeline_label(attributes=['NAME'],
+                                                       vocabulary=name_vocabulary)
+        descriptor_vocabulary = VocabularyText.read_vocabulary_disc(DESCRIPTOR_VOCABULARY_FILENAME)
+        descriptor_text_pipe = Transform.text_pipeline_label(attributes=['DESCRIPTOR'],
+                                                             vocabulary=descriptor_vocabulary)
+    
+    
+        # Categorical Features
+        categorical_pipe = Transform.categorical_pipeline(
+            categorical_attributes=CATEGORICAL_ATTRIBUTES,
+            handle_unknown='ignore',
+            categories_file=CATEGORIES_FILE)
+    
+        # Numeric features
+        numeric_pipe = Transform.numeric_pipeline(numeric_attributes=NUM_ATTRIBUTES)
+    
+        # Union
+        combined_features = FeatureUnion(transformer_list=[
+            ('CategoricalPipe', categorical_pipe),
+            ('NameTextPipe',name_text_pipe),
+            ('DescriptorTextPipe',descriptor_text_pipe),
+            ('NumericPipe',numeric_pipe),
+            ])
+        full_pipeline = Pipeline([
+            ('CleaningPipe', clean_pipe),
+            ('CombinedNumeric', combined_features),
+            ])
+    
+        return full_pipeline
+
+    @classmethod
+    def text_pipeline_label(cls, attributes,
+                            token_pattern=r"(?u)\b\w\w+\b",
+                            vocabulary=None):
+        """Return a text vectorizer for multi instance labeling
+        inputs
+        -------
+        attribute: (str) name of feature column to bianize
+        token_pattern: (str) regex pattern used to tokenize text
+        vocabulary: (list) of vocabulary in feature
+        outputs
+        -------
+        text_pipe: (sklearn.Pipeline)
+
+        Example
+        """
+        msg='attributes must be type list, not {}'.format(type(attributes))
+        assert isinstance(attributes, list), msg
+        msg='Only one attribute per text pipeline'
+        assert len(attributes) == 1, msg
+
+        # vocabulary = None means get vocabulary from passed data
+        Count = CountVectorizer(input='content',
+                                stop_words=None,
+                                vocabulary=vocabulary,
+                                token_pattern=token_pattern)
+
+        text_pipeline = Pipeline([
+            ('DataFrameSelector',DataFrameSelector(attributes)),
+            ('ArrayResize', ArrayResize(shape=-1)),
+            ('CountVectorizer', Count),
+            ])
+
+        return text_pipeline
 
 
 class EncodingCategories:
@@ -707,3 +914,7 @@ class VocabularyText:
             vocabulary = f.read().splitlines()
 
         return vocabulary
+    
+
+
+

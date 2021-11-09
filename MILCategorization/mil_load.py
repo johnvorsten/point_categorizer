@@ -10,17 +10,17 @@ import sys
 import os
 import traceback
 import pickle
+from typing import Union
 
 # Third party imports
 import numpy as np
 import sqlalchemy
 from sqlalchemy.sql import text as sqltext
 import pandas as pd
-from sklearn.pipeline import Pipeline, FeatureUnion
 from scipy.sparse import csr_matrix
 
 # Local imports
-from transform import Transform, VocabularyText
+from transform_mil import Transform
 if __name__ == '__main__':
     # Remove the drive letter on windows
     _CWD = os.path.splitdrive(os.getcwd())[1]
@@ -53,6 +53,7 @@ class LoadMIL:
                                      database_name=database_name)
         return None
 
+
     def bag_data_generator(self, pipeline, verbose=False):
         """Return a bag of commonly labeled data
         Bags are defined in SQL Server in the Points table on the group_id
@@ -73,9 +74,9 @@ class LoadMIL:
 
         # Create the pipeline
         if pipeline == 'whole':
-            full_pipeline = self.numeric_transform_pipeline()
+            full_pipeline = Transform.numeric_transform_pipeline_MIL()
         elif pipeline == 'categorical':
-            full_pipeline = self.categorical_transform_pipeline()
+            full_pipeline = Transform.categorical_transform_pipeline_MIL()
         else:
             raise ValueError('pipeline must be one of ["whole","categorical"]')
 
@@ -147,102 +148,6 @@ class LoadMIL:
 
         return False
 
-    @staticmethod
-    def numeric_transform_pipeline():
-        """
-        inputs
-        ------
-        outputs
-        ------
-        full_pipeline: (sklearn.pipeline) of all features for multi-instance learning
-        """
-
-        # Cleaning pipeline
-        clean_pipe = Transform.cleaning_pipeline()
-
-        # Text feature encoders
-        name_vocabulary = VocabularyText.read_vocabulary_disc(POINTNAME_VOCABULARY_FILENAME)
-        name_text_pipe = Transform.text_pipeline_label(attributes=['NAME'],
-                                                       vocabulary=name_vocabulary)
-        descriptor_vocabulary = VocabularyText.read_vocabulary_disc(DESCRIPTOR_VOCABULARY_FILENAME)
-        descriptor_text_pipe = Transform.text_pipeline_label(attributes=['DESCRIPTOR'],
-                                                             vocabulary=descriptor_vocabulary)
-
-
-        # Categorical Features
-        categorical_pipe = Transform.categorical_pipeline(categorical_attributes=None,
-                              handle_unknown='ignore',
-                              categories_file=r'../data/categorical_categories.dat')
-
-        # Numeric features
-        numeric_pipe = Transform.numeric_pipeline(numeric_attributes=None)
-
-        # Union
-        combined_features = FeatureUnion(transformer_list=[
-            ('CategoricalPipe', categorical_pipe),
-            ('NameTextPipe',name_text_pipe),
-            ('DescriptorTextPipe',descriptor_text_pipe),
-            ('NumericPipe',numeric_pipe),
-            ])
-        full_pipeline = Pipeline([
-            ('CleaningPipe', clean_pipe),
-            ('CombinedCategorical',combined_features),
-            ])
-
-        return full_pipeline
-
-    @staticmethod
-    def categorical_transform_pipeline():
-        """Pipeline that only includes categorical and text features for
-        naive_bayes categorical estimators
-        inputs
-        ------
-        None : This pipeline is made to have static features. There is no need
-        for passing variables
-        outputs
-        ------
-        full_pipeline : (sklearn.pipeline) of all features for MIL / bag learning
-        """
-
-        # Cleaning pipeline
-        clean_pipe = Transform.cleaning_pipeline(drop_attributes=None,
-                                                 nan_replace_dict=None,
-                                                 dtype_dict=None,
-                                                 unit_dict=None,
-                                                 remove_dupe=True,
-                                                 replace_numbers=True,
-                                                 remove_virtual=True)
-
-        # Text feature encoders
-        name_vocabulary = VocabularyText.read_vocabulary_disc(POINTNAME_VOCABULARY_FILENAME)
-        name_text_pipe = Transform.text_pipeline_label(attributes=['NAME'],
-                                                  vocabulary=name_vocabulary)
-        descriptor_vocabulary = VocabularyText.read_vocabulary_disc(DESCRIPTOR_VOCABULARY_FILENAME)
-        descriptor_text_pipe = Transform.text_pipeline_label(attributes=['DESCRIPTOR'],
-                                                             vocabulary=descriptor_vocabulary)
-
-
-        # Categorical Features
-        categorical_pipe = Transform.categorical_pipeline(categorical_attributes=None,
-                              handle_unknown='ignore',
-                              categories_file=r'../data/categorical_categories.dat')
-
-        # Numeric features - EXCLUDE
-        # numeric_pipe = Transform.numeric_pipeline(numeric_attributes=None)
-
-        # Union
-        combined_features = FeatureUnion(transformer_list=[
-            ('CategoricalPipe', categorical_pipe),
-            ('NameTextPipe',name_text_pipe),
-            ('DescriptorTextPipe',descriptor_text_pipe),
-            # ('NumericPipe',numeric_pipe), # EXCLUDE
-            ])
-        full_pipeline = Pipeline([
-            ('CleaningPipe', clean_pipe),
-            ('CombinedCategorical',combined_features),
-            ])
-
-        return full_pipeline
 
     def gather_mil_dataset(self, pipeline='whole'):
         """Return all bags as a numpy array
@@ -279,6 +184,7 @@ class LoadMIL:
 
         return x, y
 
+
     def get_single_mil_bag(self, pipeline='whole'):
         """Return a bag of commonly labeled data
         Bags are defined in SQL Server in the Points table on the group_id
@@ -296,13 +202,11 @@ class LoadMIL:
         print(group_ids); print(type(group_ids))
         print(group_id); print(type(group_id))
 
-        
-
         # Create the pipeline
         if pipeline == 'whole':
-            full_pipeline = self.numeric_transform_pipeline()
+            full_pipeline = Transform.numeric_transform_pipeline_MIL()
         elif pipeline == 'categorical':
-            full_pipeline = self.categorical_transform_pipeline()
+            full_pipeline = Transform.categorical_transform_pipeline_MIL()
         else:
             raise ValueError('pipeline must be one of ["whole","categorical"]')
         
@@ -333,7 +237,7 @@ class LoadMIL:
         return dfraw, bag, label
 
 
-def load_mil_dataset(file_name):
+def load_mil_dataset_from_file(file_name: Union[str, bytes]):
     """
     inputs
     ------
@@ -349,7 +253,7 @@ def load_mil_dataset(file_name):
     return dataset
 
 
-def save_mil_dataset(bags, bag_labels, file_name):
+def save_mil_dataset_to_file(bags, bag_labels, file_name):
     """Picke and save an object
     input
     -------

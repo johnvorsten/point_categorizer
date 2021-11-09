@@ -33,7 +33,7 @@ from extract.sql_tools import SQLBase
 from extract.sql_tools import NameUsedError
 from extract.sql_tools import sqlalchemy_connection_str
 
-# Global
+# Declarations
 DEFAULT_SQL_MDF_SEARCH_DIRECTORY = r"D:\Z - Saved SQL Databases"
 
 
@@ -305,6 +305,7 @@ class Extract():
 
         raise AssertionError("Function should not return here")
 
+
     def _get_folder_name(self, path_mdf, save_directory):
         """Return a string that is the folder name where a path_mdf file and
         path_ldf file will be saved
@@ -565,11 +566,18 @@ class Insert:
         select : (sqlalchemy.sql.selectable.Select)
 
         Example
+        sql = '''SELECT distinct group_id
+        FROM {}
+        WHERE IsNumeric(group_id) = 1
+        ORDER BY group_id ASC'''.format(Points.__tablename__)
+        sel = sqltext(sql)
+        group_ids = Insert.core_select_execute(sel)
         """
         with self.engine.connect() as connection:
             res = connection.execute(select).fetchall()
 
         return res
+
 
     def pandas_select_execute(self, select):
         """Given a sqlalchemy.sql.selectable.Select object, execute the select
