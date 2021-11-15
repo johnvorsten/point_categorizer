@@ -62,9 +62,6 @@ server_name = config['sql_server']['DEFAULT_SQL_SERVER_NAME']
 driver_name = config['sql_server']['DEFAULT_SQL_DRIVER_NAME']
 database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
 
-
-
-
 #%%
 
 
@@ -618,8 +615,8 @@ class Transform():
         
         # The TYPE attribute can be many categories, but they will be reduced
         # To a predefined list
-        TYPES_FILE = r'../data/clean_types.csv'
-        units_df = pd.read_csv(TYPES_FILE)
+        TYPES_FILE = r'../data/typescorrection.csv'
+        units_df = pd.read_csv(TYPES_FILE, delimiter=',', encoding='utf-8', engine='python', quotechar='\'')
         UNIT_DICT = {}
         for idx, unit in (units_df.iterrows()):
             depreciated_value = unit['depreciated_type']
@@ -728,8 +725,8 @@ class Transform():
         
         # The TYPE attribute can be many categories, but they will be reduced
         # To a predefined list
-        TYPES_FILE = r'../data/clean_types.csv'
-        units_df = pd.read_csv(TYPES_FILE)
+        TYPES_FILE = r'../data/typescorrection.csv'
+        units_df = pd.read_csv(TYPES_FILE, delimiter=',', encoding='utf-8', engine='python', quotechar='\'')
         UNIT_DICT = {}
         for idx, unit in (units_df.iterrows()):
             depreciated_value = unit['depreciated_type']
@@ -890,8 +887,21 @@ class EncodingCategories:
             cat_array = np.array(list(categories))
             categories_dict[col] = cat_array
 
-        # Handle 'DEVUNITS' separately
-        categories_dict['DEVUNITS'] = np.array(list(Transform().unit_dict.values()))
+        # The TYPE attribute can be many categories, but they will be reduced
+        # To a predefined list
+        TYPES_FILE = r'../data/typescorrection.csv'
+        units_df = pd.read_csv(TYPES_FILE, delimiter=',', encoding='utf-8', 
+                               engine='python', quotechar='\'')
+        UNIT_DICT = {}
+        for idx, unit in (units_df.iterrows()):
+            depreciated_value = unit['depreciated_type']
+            new_value = unit['new_type']
+            if new_value == '0':
+                new_value = ''
+            UNIT_DICT[depreciated_value] = new_value
+
+        # Handle 'DEVUNITS' separately by reading clean data types
+        categories_dict['DEVUNITS'] = np.array(list(set(UNIT_DICT.values())), dtype=str)
 
         return categories_dict
 

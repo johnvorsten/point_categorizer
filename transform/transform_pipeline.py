@@ -1230,7 +1230,7 @@ class EncodingCategories:
             categories_dict[col] = cat_array
 
         # Handle 'DEVUNITS' separately
-        categories_dict['DEVUNITS'] = np.array(list(Transform().unit_dict.values()))
+        categories_dict['DEVUNITS'] = np.array(list(set(Transform().unit_dict.values())))
 
         return categories_dict
 

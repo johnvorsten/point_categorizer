@@ -75,8 +75,9 @@ TEXT_CLEAN_ATTRS = ['NAME','DESCRIPTOR','SYSTEM']
 
 # The TYPE attribute can be many categories, but they will be reduced
 # To a predefined list
-TYPES_FILE = r'../data/clean_types.csv'
-units_df = pd.read_csv(TYPES_FILE)
+TYPES_FILE = r'../data/typescorrection.csv'
+units_df = pd.read_csv(TYPES_FILE, delimiter=',', encoding='utf-8', 
+                       engine='python', quotechar='\'')
 UNIT_DICT = {}
 for idx, unit in (units_df.iterrows()):
     depreciated_value = unit['depreciated_type']
@@ -127,14 +128,12 @@ class TransformMILTest(unittest.TestCase):
                                            text_clean_attributes=TEXT_CLEAN_ATTRS)
     
         df = clean_pipe.fit_transform(dataset_raw)
-    
-        return df
+            
+        return None
     
     def test_categorical_pipe(self):
     
-        Insert = extract.Insert(server_name='.\\DT_SQLEXPR2008',
-                                driver_name='SQL Server Native Client 10.0',
-                                database_name='Clustering')
+        Insert = extract.Insert(server_name, driver_name, database_name)
     
         customer_id = 15
         sel = sqlalchemy.select([Points]).where(Points.customer_id.__eq__(customer_id))
@@ -159,12 +158,13 @@ class TransformMILTest(unittest.TestCase):
     
         df_clean = clean_pipe.fit_transform(dataset_raw)
         ohe_array = categorical_pipe.fit_transform(df_clean).toarray()
+        print("Example OneHotEcoded Array: ", ohe_array[0])
     
         # Find more about categorical pipe
-        ohe = categorical_pipe.named_steps['catEncoder']
-        ohe.categories # ohe.categories_ when categories='auto'
+        ohe = categorical_pipe.named_steps['OneHotEncoder']
+        print("Categories used for OneHotEncoder", ohe.categories)
     
-        return ohe_array
+        return None
     
     def test_read_categories(self):
     
@@ -174,12 +174,11 @@ class TransformMILTest(unittest.TestCase):
     
         replaceNone = ReplaceNone(CATEGORICAL_ATTRIBUTES)
         dataFrameSelector = DataFrameSelector(CATEGORICAL_ATTRIBUTES)
-        oneHotEncoder = OneHotEncoder(categories=categories)
+        oneHotEncoder = OneHotEncoder(categories=categories,
+                                      handle_unknown='ignore')
     
         # Get raw database
-        Insert = extract.Insert(server_name,
-                                driver_name,
-                                database_name)
+        Insert = extract.Insert(server_name, driver_name, database_name)
         customer_id = 15
         sel = sqlalchemy.select([Points]).where(Points.customer_id.__eq__(customer_id))
         dataset_raw = Insert.pandas_select_execute(sel)
@@ -200,19 +199,11 @@ class TransformMILTest(unittest.TestCase):
         df1_array = dataFrameSelector.fit_transform(df0)
         ohearray = oneHotEncoder.fit_transform(df1_array).toarray()
     
-        # Examine the transformers
-        print(df0[CATEGORICAL_ATTRIBUTES].iloc[:5])
-        print(df1_array[:5])
-        OneHotEncoder.categories
-        print("OneHotArray Columns: ", ohearray.columns)
-    
         return None
     
     def test_numeric_pipe(self):
     
-        Insert = extract.Insert(server_name='.\\DT_SQLEXPR2008',
-                                driver_name='SQL Server Native Client 10.0',
-                                database_name='Clustering')
+        Insert = extract.Insert(server_name, driver_name, database_name)
     
         customer_id = 15
         sel = sqlalchemy.select([Points]).where(Points.customer_id.__eq__(customer_id))
@@ -233,15 +224,13 @@ class TransformMILTest(unittest.TestCase):
         numeric_pipe = Transform.numeric_pipeline(numeric_attributes=NUM_ATTRIBUTES)
     
         df_clean = clean_pipe.fit_transform(dataset_raw)
-        df_numeric = numeric_pipe.fit_transfor(df_clean)
+        df_numeric = numeric_pipe.fit_transform(df_clean)
     
-        return df_numeric
+        return None
     
     def test_text_pipe(self):
     
-        Insert = extract.Insert(server_name,
-                                driver_name,
-                                database_name)
+        Insert = extract.Insert(server_name, driver_name, database_name)
     
         customer_id = 15
         sel = sqlalchemy.select([Points]).where(Points.customer_id.__eq__(customer_id))
@@ -270,24 +259,22 @@ class TransformMILTest(unittest.TestCase):
     
         dataset = full_pipeline.fit_transform(dataset_raw)
     
-        return dataset
+        return None
     
     def test_timeself(self):
     
-        Insert = extract.Insert(server_name,
-                                driver_name,
-                                database_name)
+        Insert = extract.Insert(server_name, driver_name, database_name)
     
         customer_id = 15
         sel = sqlalchemy.select([Points]).where(Points.customer_id.__eq__(customer_id))
         dataset_raw = Insert.pandas_select_execute(sel)
     
-        removeAttribute = RemoveAttribute(Transform.drop_attributes)
-        removeNan = RemoveNan(Transform.nan_replace_dict)
-        setDtypes = SetDtypes(Transform.type_dict)
-        textCleaner = TextCleaner(Transform._text_clean_attrs, replace_numbers=True)
-        unitCleaner = UnitCleaner(Transform.unit_dict)
-        duplicateRemover = DuplicateRemover(Transform.dupe_cols, remove_dupe=True)
+        removeAttribute = RemoveAttribute(DROP_ATTRIBUTES)
+        removeNan = RemoveNan(NAN_REPLACE_DICT)
+        setDtypes = SetDtypes(TYPE_DICT)
+        textCleaner = TextCleaner(TEXT_CLEAN_ATTRS, replace_numbers=True)
+        unitCleaner = UnitCleaner(UNIT_DICT)
+        duplicateRemover = DuplicateRemover(DUPE_COLS, remove_dupe=True)
         virtualRemover = VirtualRemover(remove_virtual=True)
     
         t0 = time.time()
@@ -309,7 +296,7 @@ class TransformMILTest(unittest.TestCase):
         indicies = duplicateRemover.get_duplicate_indicies(df4, 'NAME')
         print('Duplicate names')
         print(df4['NAME'].iloc[indicies[:50]])
-        df5 = DuplicateRemover.fit_transform(df4)
+        df5 = duplicateRemover.fit_transform(df4)
     
         t6 = time.time()
         virtualRemover.fit_transform(df5)
@@ -328,9 +315,7 @@ class TransformMILTest(unittest.TestCase):
     def test_calc_categories_dict(self):
     
         """Generate data to find categories"""
-        Insert = extract.Insert(server_name='.\\DT_SQLEXPR2008',
-                                driver_name='SQL Server Native Client 10.0',
-                                database_name='Clustering')
+        Insert = extract.Insert(server_name, driver_name, database_name)
     
         sel = sqlalchemy.select([Points])
         dataset_raw = Insert.pandas_select_execute(sel)
@@ -360,83 +345,20 @@ class TransformMILTest(unittest.TestCase):
     
         df_clean = categories_clean_pipe.fit_transform(dataset_raw)
     
-        """Calculate and save categories to be used later"""
+        # Calculate categories to be used later
         Encoding = EncodingCategories()
         columns = ['TYPE', 'ALARMTYPE', 'FUNCTION', 'VIRTUAL',
                    'CS', 'SENSORTYPE', 'DEVUNITS']
-        categories_dict = Encoding.calc_categories_dict(df_clean, columns)
-        save_path = r'../data/categorical_categories.dat'
-    
-        Encoding.save_categories_to_disc(categories_dict, save_path)
-        categories_dict1 = Encoding.read_categories_from_disc(save_path)
-        for key in set((*categories_dict.keys(), *categories_dict1.keys())):
-            assert(np.array_equal(categories_dict[key], categories_dict1[key]))
-    
-        return None
-    
-    def test_get_building_suffix(self):
-        """Test whether a set of points is a building suffix word"""
-    
-        Insert = extract.Insert(server_name='.\\DT_SQLEXPR2008',
-                                driver_name='SQL Server Native Client 10.0',
-                                database_name='Clustering')
-    
-        sel = sqlalchemy.select([Points]).where(Points.customer_id.__eq__(18))
-        dataset_raw = Insert.pandas_select_execute(sel)
-    
-        # Split name variable
-        token_pattern = r'\.'
-        tokenizer = re.compile(token_pattern)
-    
-        # Keep track of words
-        words = []
-    
-        # Split each name into tokens
-        for idx, word in dataset_raw['NAME'].iteritems():
-            parts = tokenizer.split(word)
-            words.append(parts)
-    
-        # Get vocabulary
-        vocabularyText = VocabularyText()
-        suffix = vocabularyText.get_building_suffix(words)
-        print("Suffix found : ", suffix)
-    
-        return None
-    
-    def test_get_text_vocabulary(self):
-    
-        """Generate data to find Vocabulary"""
-        Insert = extract.Insert(server_name='.\\DT_SQLEXPR2008',
-                                driver_name='SQL Server Native Client 10.0',
-                                database_name='Clustering')
-    
-        sel = sqlalchemy.select([Points])
-        dataset_raw = Insert.pandas_select_execute(sel)
-    
-        # Create 'clean' data processing pipeline
-        clean_pipe = Transform.cleaning_pipeline(
-            drop_attributes=DROP_ATTRIBUTES,
-            nan_replace_dict=NAN_REPLACE_DICT,
-            dtype_dict=TYPE_DICT,
-            unit_dict=UNIT_DICT,
-            dupe_cols=DUPE_COLS,
-            remove_dupe=REMOVE_DUPE,
-            replace_numbers=REPLACE_NUMBERS,
-            remove_virtual=REMOVE_VIRTUAL,
-            text_clean_attributes=TEXT_CLEAN_ATTRS)
-    
-        df_clean = clean_pipe.fit_transform(dataset_raw)
-    
-        # Get vocabulary for DESCRIPTOR feature - a text feature
-        vocabulary = VocabularyText\
-            .get_text_vocabulary(X=df_clean,
-                                 col_name='DESCRIPTOR',
-                                 remove_suffix=False,
-                                 max_features=80)
-    
-        # Sove vocabulary
-        file_name = r'../data/vocab_descriptor.txt'
-        VocabularyText.save_vocabulary(vocabulary, file_name)
+        categories_dict_calc = Encoding.calc_categories_dict(df_clean, columns)
+        
+        if not os.path.exists(CATEGORIES_FILE):
+            raise OSError("Categories file not found: {}".\
+                          format(CATEGORIES_FILE))
+        
+        # Compare categoires read to those saved on disc
+        categories_dict_read = Encoding.read_categories_from_disc(CATEGORIES_FILE)
+        for key in set((*categories_dict_calc.keys(), *categories_dict_read.keys())):
+            self.assertEqual(set(categories_dict_calc[key]), set(categories_dict_read[key]))
     
         return None
 
