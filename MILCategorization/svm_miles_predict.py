@@ -65,6 +65,8 @@ class RawInputData:
     # Requried text attributes
     NAME: str
     DESCRIPTOR: str
+    NETDEVID: str
+    SYSTEM: str
 
 
 class MILESEmbedding:
@@ -79,7 +81,6 @@ class MILESEmbedding:
     def _load_concept_class(filename:Union[str,bytes]) -> np.ndarray:
         with open(filename, mode='rb') as pickled_features:
             C_features = pickle.load(pickled_features)
-        # TODO Error on missing file
         return C_features
     
     def embed_data(self, bag: np.ndarray, sigma: int=3):
