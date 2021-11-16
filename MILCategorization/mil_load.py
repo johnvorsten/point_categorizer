@@ -29,7 +29,6 @@ if __name__ == '__main__':
     _PROJECT_DIR = os.path.join(os.sep, *_PARTS[:-1])
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
-
 from extract import extract
 from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev,
                                               Customers, 

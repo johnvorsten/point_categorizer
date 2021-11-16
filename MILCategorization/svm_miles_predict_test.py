@@ -16,10 +16,6 @@ import pandas as pd
 from sklearn.svm import LinearSVC, SVC
 
 # Local imports
-from svm_miles_predict import (MILESEmbedding, SVMC_L1_miles, RawInputData, 
-                               concept_class_filename, BasePredictor, Transform)
-from mil_load import LoadMIL
-
 if __name__ == '__main__':
     # Remove the drive letter on windows
     _CWD = os.path.splitdrive(os.getcwd())[1]
@@ -28,6 +24,9 @@ if __name__ == '__main__':
     _PROJECT_DIR = os.path.join(os.sep, *_PARTS[:-1])
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
+from svm_miles_predict import (MILESEmbedding, SVMC_L1_miles, RawInputData, 
+                               BasePredictor, Transform)
+from mil_load import LoadMIL
 
 
 # Global declarations
@@ -39,24 +38,24 @@ database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
 numeric_feature_file = config['sql_server']['DEFAULT_NUMERIC_FILE_NAME']
 categorical_feature_file = config['sql_server']['DEFAULT_CATEGORICAL_FILE_NAME']
 MILES_CONCEPT_FEATURES = "./miles_concept_features.dat"
-
+SVMC_l1_classifier_filename = r"./svmc_l1_miles.clf"
+SVMC_rbf_classifier_filename = r"./svmc_rbf_miles.clf"
+    
 LoadMIL = LoadMIL(server_name, driver_name, database_name)
 
 
 #%% Class definitions
     
 class BasePredictorTest(unittest.TestCase):
-    SVMC_l1_classifier_filename = r"./svmc_l1_miles.clf"
-    SVMC_rbf_classifier_filename = r"./svmc_rbf_miles.clf"
-    concept_class_filename = r"./miles_concept_features.dat"
+
     
     def setUp(self):
         
         # Instance of BasePredictor
         self.basePredictorL1 = BasePredictor(
-            classifier_filename=self.SVMC_l1_classifier_filename)
+            classifier_filename=SVMC_l1_classifier_filename)
         self.basePredictorRBF = BasePredictor(
-            classifier_filename=self.SVMC_rbf_classifier_filename)
+            classifier_filename=SVMC_rbf_classifier_filename)
 
         # Construct raw data input
         # This is intended to test input gathered from a web form. Not all
@@ -121,10 +120,10 @@ class BasePredictorTest(unittest.TestCase):
     
     def test_predict(self):
         
-        # Test l1 estimator with both types of input
+        # Test l1 Linear estimator with both types of input
         results_l1_input = self.basePredictorL1.predict(self.dfraw_input)
         results_l1_load = self.basePredictorL1.predict(self.dfraw_load)
-
+        # Test L2 RBF Kernel estimator with both types of input
         results_rbf_input = self.basePredictorRBF.predict(self.dfraw_input)
         results_rbf_load = self.basePredictorRBF.predict(self.dfraw_load)
         

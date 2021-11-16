@@ -8,7 +8,7 @@ Created on Thu Jun 10 20:07:07 2021
 # Python imports
 import configparser
 import os, sys
-from typing import Union
+from typing import Union, Dict
 import pickle
 
 # Third party imports
@@ -114,8 +114,7 @@ def _densify_bags(X : Union[np.ndarray, csr_matrix]) -> np.ndarray:
         
     return dense_bags
 
-
-def _print_results_dict(res:Union[dict[str,list], dict[str,float]],
+def _print_results_dict(res:Union[Dict[str,list], Dict[str,float]],
                         msg=None) -> None:
     if msg:
         print(msg)

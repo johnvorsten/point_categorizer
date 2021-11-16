@@ -9,9 +9,7 @@ import sys
 import os
 import configparser
 
-
 # Third party imports
-
 
 # Local imports
 if __name__ == '__main__':
@@ -22,7 +20,6 @@ if __name__ == '__main__':
     _PROJECT_DIR = os.path.join(os.sep, *_PARTS[:-1])
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
-
 from MILCategorization import mil_load
 
 # Globals
