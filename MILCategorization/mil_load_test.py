@@ -14,6 +14,7 @@ import unittest
 # Third party imports
 from scipy.sparse import csr_matrix
 import numpy as np
+import sqlalchemy
 
 # Local imports
 if __name__ == '__main__':
@@ -25,7 +26,12 @@ if __name__ == '__main__':
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
 from mil_load import (LoadMIL, load_mil_dataset_from_file, bags_2_si_generator, 
-                      bags_2_si)
+                      bags_2_si, legacy_numeric_transform_pipeline_MIL)
+from extract import extract
+from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev,
+                                              Customers, 
+                                              ClusteringHyperparameter, 
+                                              Labeling)
 
 # Declarations
 config = configparser.ConfigParser()
@@ -73,6 +79,25 @@ class MILLoadTest(unittest.TestCase):
         self.assertIsInstance(labels, np.ndarray)
         self.assertIsInstance(data, np.ndarray)
     
+        return None
+    
+    def test_legacy_numeric_transform_pipeline_MIL(self):
+        
+        # Get some raw data
+        Insert = extract.Insert(server_name, driver_name, database_name)
+        group_id = 15
+        sel = sqlalchemy.select([Points]).where(Points.group_id.__eq__(group_id))
+        dfraw = Insert.pandas_select_execute(sel)
+        
+        # Get the legacy pipeline
+        full_pipeline = legacy_numeric_transform_pipeline_MIL()
+        
+        # Transform data
+        bag = full_pipeline.fit_transform(dfraw)
+        
+        # Observe output number of attributes, should be 3236 for compatability
+        self.assertEquals(bag.shape[1], 3236)
+            
         return None
 
 

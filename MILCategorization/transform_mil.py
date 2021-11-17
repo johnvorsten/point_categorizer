@@ -528,38 +528,49 @@ class Transform():
 
     @classmethod
     def cleaning_pipeline(cls, 
-                          drop_attributes=None,
-                          nan_replace_dict=None,
-                          dtype_dict=None,
-                          unit_dict=None,
-                          dupe_cols=None,
-                          remove_dupe=True,
-                          replace_numbers=True,
-                          remove_virtual=True,
-                          text_clean_attributes=None):
+                          drop_attributes,
+                          nan_replace_dict,
+                          dtype_dict,
+                          unit_dict,
+                          dupe_cols,
+                          remove_dupe,
+                          replace_numbers,
+                          remove_virtual,
+                          text_clean_attributes):
         """Cleaning pipeline
-        Remove attributes (self.drop_attributes)
-        Remove nan (self.nan_replace_dict)
-        Change data types (self._type_dict)
+        Remove attributes (drop_attributes)
+        Remove nan (nan_replace_dict)
+        Change data types (_type_dict)
         Clean Text (TEXT_CLEAN_ATTRS, REPLACE_NUMBERS)
-        Unit Cleaner (self.unit_dict)
+        Unit Cleaner (unit_dict)
         Remove Duplicates (DUPE_COLS, REMOVE_DUPE)
         Virtual Remove (remove_virtual)
         NOTE: To use this pipeline you should pass a pandas dataframe to its
         fit_transform() method
         inputs
         -------
+        drop_attributes: (list) of srings containing attribute names to drop
+        nan_replace_dict: (dict) of {string:string} notating what to do with
+        attributes when encountering a 'nan' value
+        dtype_dict: (dict) of {string:type} showing which attribute names 
+        should be cast as which data type
+        unit_dict: (dict) of {string:string} correcting the DEVUNITS attribute
+        to an accepted type of data
+        dupe_cols: (list) of strings defining which attribute to consider when
+        removing instances
+        remove_dupe: (bool)
+        replace_numbers: (bool) remove numbers from the NAME, DESCRIPTOR
+        remove_virtual: (bool) remove instances where the VIRTUAL attribute is
+        True
+        text_clean_attributes: (list) of strings naming attributes to pass
+        through a text cleaner
         ouput
         -------
         A sklearn pipeline object containing modifier classes.
-        To view the modifiers
-        see Pipeline.named_steps attribute or Pipeline.__getitem__(ind)
 
         Example usage
         X = pd.DataFrame(data, columns, index)
-        cleaning_pipeline = cleaning_pipeline(REMOVE_DUPE=True,
-                                              REPLACE_NUMBERS=True,
-                                              remove_virtual=True)
+        cleaning_pipeline = cleaning_pipeline([...])
         dataframe = cleaning_pipeline.fit_transform(X)"""
 
         cleaning_pipeline = Pipeline([
@@ -616,7 +627,8 @@ class Transform():
         # The TYPE attribute can be many categories, but they will be reduced
         # To a predefined list
         TYPES_FILE = r'../data/typescorrection.csv'
-        units_df = pd.read_csv(TYPES_FILE, delimiter=',', encoding='utf-8', engine='python', quotechar='\'')
+        units_df = pd.read_csv(TYPES_FILE, delimiter=',', encoding='utf-8', 
+                               engine='python', quotechar='\'')
         UNIT_DICT = {}
         for idx, unit in (units_df.iterrows()):
             depreciated_value = unit['depreciated_type']
@@ -726,7 +738,8 @@ class Transform():
         # The TYPE attribute can be many categories, but they will be reduced
         # To a predefined list
         TYPES_FILE = r'../data/typescorrection.csv'
-        units_df = pd.read_csv(TYPES_FILE, delimiter=',', encoding='utf-8', engine='python', quotechar='\'')
+        units_df = pd.read_csv(TYPES_FILE, delimiter=',', encoding='utf-8', 
+                               engine='python', quotechar='\'')
         UNIT_DICT = {}
         for idx, unit in (units_df.iterrows()):
             depreciated_value = unit['depreciated_type']

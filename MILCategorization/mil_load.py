@@ -18,6 +18,7 @@ import sqlalchemy
 from sqlalchemy.sql import text as sqltext
 import pandas as pd
 from scipy.sparse import csr_matrix
+from sklearn.pipeline import Pipeline, FeatureUnion
 
 # Local imports
 from transform_mil import Transform
@@ -34,6 +35,8 @@ from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev,
                                               Customers, 
                                               ClusteringHyperparameter, 
                                               Labeling)
+from transform import transform_pipeline
+
 
 # Globals
 CATEGORICAL_FEATURE_FILE = '../data/MIL_cat_dataset.dat'
@@ -252,7 +255,6 @@ def load_mil_dataset_from_file(file_name: Union[str, bytes]):
 
     return dataset
 
-
 def save_mil_dataset_to_file(bags, bag_labels, file_name):
     """Picke and save an object
     input
@@ -270,7 +272,6 @@ def save_mil_dataset_to_file(bags, bag_labels, file_name):
         pickle.dump(MILData, f)
 
     return None
-
 
 def bags_2_si_generator(bags: np.ndarray, 
                         bag_labels: np.ndarray):
@@ -293,7 +294,6 @@ def bags_2_si_generator(bags: np.ndarray,
         labels = np.array([label].__mul__(bag.shape[0]))
 
         yield bag, labels
-
 
 def bags_2_si(bags, bag_labels):
     """Convert a n x (m x p) array of bag instances into a k x p array of
@@ -331,3 +331,49 @@ def bags_2_si(bags, bag_labels):
     labels = np.concatenate(labels)
 
     return instances, labels
+
+def legacy_numeric_transform_pipeline_MIL():
+    
+    # Transform pipeline
+    TransformLegacy = transform_pipeline.Transform()
+    # Legacy categorication dictionary...
+    
+    # Cleaning pipeline
+    clean_pipe = TransformLegacy.cleaning_pipeline(drop_attributes=None,
+                                                   nan_replace_dict=None,
+                                                   dtype_dict=None,
+                                                   unit_dict=None,
+                                                   remove_dupe=True,
+                                                   replace_numbers=True,
+                                                   remove_virtual=True)
+    # Text feature encoders
+    name_vocabulary = transform_pipeline.VocabularyText.read_vocabulary_disc(POINTNAME_VOCABULARY_FILENAME)
+    name_text_pipe = TransformLegacy.text_pipeline_label(attributes=['NAME'],
+                                                  vocabulary=name_vocabulary)
+    descriptor_vocabulary = transform_pipeline.VocabularyText.read_vocabulary_disc(DESCRIPTOR_VOCABULARY_FILENAME)
+        
+    descriptor_text_pipe = TransformLegacy.text_pipeline_label(attributes=['DESCRIPTOR'],
+                                                         vocabulary=descriptor_vocabulary)
+
+    # Categorical Features
+    categorical_pipe = TransformLegacy.categorical_pipeline(
+        categorical_attributes=None,
+        handle_unknown='ignore',
+        categories_file=r'../data/categorical_categories_old.dat')
+    # Numeric features
+    numeric_pipe = TransformLegacy.numeric_pipeline(numeric_attributes=None)
+    # Union
+    combined_features = FeatureUnion(transformer_list=[
+        ('CategoricalPipe', categorical_pipe),
+        ('NameTextPipe',name_text_pipe),
+        ('DescriptorTextPipe',descriptor_text_pipe),
+        ('NumericPipe',numeric_pipe),
+        ])
+    full_pipeline = Pipeline([
+        ('CleaningPipe', clean_pipe),
+        ('CombinedCategorical',combined_features),
+        ])
+    
+    return full_pipeline
+
+

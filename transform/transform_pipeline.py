@@ -469,6 +469,7 @@ class VirtualRemover(BaseEstimator, TransformerMixin):
 class DepreciatedError(Exception):
     pass
 
+
 class JVDBPipe():
 
     def __init__(self):
@@ -987,12 +988,11 @@ class Transform():
 
         return np.array(categories_array, dtype='object')
 
-
     def text_pipeline_cluster(self,
-                      vocab_size,
-                      attributes,
-                      heirarchial_weight_word_pattern,
-                      seperator='.'):
+                              vocab_size,
+                              attributes,
+                              heirarchial_weight_word_pattern,
+                              seperator='.'):
         """Return a pipeline for use only on text attributes. The point of this
         function is to control removing duplicates and removing numbers
 
@@ -1120,11 +1120,11 @@ class Transform():
         drop_attributes : (list) of str. Each str is a column name to drop
             in your dataset. If None then the class default of self.drop_attributes
             is used
-        replace_nan : (dict) of key:value where key is the column name in your
+        nan_replace_dict : (dict) of key:value where key is the column name in your
             dataset that contains nan values, and value is the value to replace
             the nan with. If None then the lass default of self.nan_replace_dict
             is used. see self.nan_replace_dict
-        mod_dtypes : (dict) of key:value where key is the column name in your
+        dtype_dict : (dict) of key:value where key is the column name in your
             dataset that contains mixed data types, and value is the dtype to
             cast all values in the dataset as
             If None then the lass default of self._type_dict is used
