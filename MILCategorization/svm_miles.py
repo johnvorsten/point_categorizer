@@ -35,7 +35,8 @@ if __name__ == '__main__':
     _PROJECT_DIR = os.path.join(os.sep, *_PARTS[:-1])
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
-from mil_load import load_mil_dataset, LoadMIL, bags_2_si, bags_2_si_generator
+from mil_load import (load_mil_dataset_from_file, LoadMIL, bags_2_si, 
+                      bags_2_si_generator)
 
 # Global declarations
 config = configparser.ConfigParser()
@@ -46,7 +47,7 @@ database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
 numeric_feature_file = config['sql_server']['DEFAULT_NUMERIC_FILE_NAME']
 categorical_feature_file = config['sql_server']['DEFAULT_CATEGORICAL_FILE_NAME']
 
-LoadMIL = LoadMIL(server_name, driver_name, database_name)
+loadMIL = LoadMIL(server_name, driver_name, database_name)
 
 
 #%%
@@ -125,16 +126,39 @@ def _print_results_dict(res:Union[Dict[str,list], Dict[str,float]],
     print("\n\n")
     return None
 
+def pickle_save_to_file(save_path: str, classifier: object) -> None:
+    
+    if os.path.isfile(save_path):
+        msg="You are attenpting to overwrite an existing file at {}\n"\
+            .format(save_path)
+        msg+="Input Y/y to continue"
+        res = input(msg)
+        
+        if res in ['y','Y']:
+            with open(save_path, mode='wb') as f:
+                pickle.dump(classifier, f)
+            
+    else:
+        with open(save_path, mode='wb') as f:
+            pickle.dump(classifier, f)
+            
+    return None
+
+
 #%%
 """Load data"""
 
 # Load data from DB and run through pipeline
-# bags, labels = LoadMIL.gather_mil_dataset(pipeline='whole')
+dataset_numeric = {'dataset':None,'bag_labels':None}
+dataset_numeric['dataset'], dataset_numeric['bag_labels'] = \
+    loadMIL.gather_mil_dataset(pipeline='whole')
+dataset_categorical = {'dataset':None,'bag_labels':None}
+dataset_categorical['dataset'], dataset_categorical['bag_labels'] = \
+    loadMIL.gather_mil_dataset(pipeline='categorical')
 
 # Load data from saved file
-dataset_numeric = load_mil_dataset(numeric_feature_file)
-dataset_categorical = load_mil_dataset(categorical_feature_file)
-
+# dataset_numeric = load_mil_dataset_from_file(numeric_feature_file)
+# dataset_categorical = load_mil_dataset_from_file(categorical_feature_file)
 
 # Split data into training and testing sets
 """
@@ -419,22 +443,15 @@ _print_results_dict(res_svmc_train,
 
 
 # Save the model
-with open('./svmc_l1_miles.clf', mode='wb') as f:
-    pickle.dump(svmc_l1_best, f)
-    
-with open('./svmc_rbf_miles.clf', mode='wb') as f:
-    pickle.dump(svmc_best, f)
+pickle_save_to_file('./svmc_l1_miles.clf', svmc_l1_best)
+pickle_save_to_file('./svmc_rbf_miles.clf', svmc_best)
 
 # Save concept class examples for MILES embedding and prediction 
-with open('./miles_concept_features.dat', mode='wb') as f:
-    pickle.dump(C_features, f)
-    
-# Save training and validation data
-with open('./data_milesembedded_trian.dat', mode='wb') as f:
-    pickle.dump((train_embed_filter, train_labels_filter), f)
+pickle_save_to_file('./miles_concept_features.dat', C_features)
 
-with open('./data_milesembedded_test.dat', mode='wb') as f:
-    pickle.dump((test_embed_filter, test_labels_filter), f)
-    
+# Save training and validation data
+pickle_save_to_file('./data_milesembedded_trian.dat', (train_embed_filter, train_labels_filter))
+pickle_save_to_file('./data_milesembedded_test.dat', (test_embed_filter, test_labels_filter))
+
 # Save validation results (manually, see validation_results_miles.txt)
 

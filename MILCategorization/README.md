@@ -69,9 +69,9 @@ svmc_rbf_si.clf - RBF L2 penalized SVM trained on single instances which inherit
 svmc_l1_si.clf - Linear L1 penalized SVM trained on single instances which inherit the bag label
 
 Saved data:
-data_milesembedded_test - A tuple of (data, labels) where data is a dense array of size (4663, 908) and labels are an array of size (908). Each slice along axis=1 of data is related to a label along axis=0 in labels
+data_milesembedded_test - A tuple of (data, labels) where data is a dense array of size (5035, 907) and labels are an array of size (907). Each slice along axis=1 of data is related to a label along axis=0 in labels
 
-data_milesembedded_trian - A tuple of (data, labels) where data is a dense array of size (4663, 922) and labels are an array of size (922). Each slice along axis=1 of data is related to a label along axis=0 in labels
+data_milesembedded_trian - A tuple of (data, labels) where data is a dense array of size (5035, 907) and labels are an array of size (907). Each slice along axis=1 of data is related to a label along axis=0 in labels
 
 data_sicat_test - A tuple of (data, labels) where data is a numpy array of size (440) containing numpy arrays of shape (n,3236) where n is the number of instances within a bag. The test set contains 440 bags. Labels are an array of size (440). Each bag along axis=0 of data is related to a label along axis=0 in labels. Instances within bags are categorically encoded, and contain sparse feature vectors. Use this set for traning and prediction using ONLY the multinomial native bayes and complement native bayes estimators
 

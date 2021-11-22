@@ -1,0 +1,4 @@
+Status
+Value
+Counter
+On/Off

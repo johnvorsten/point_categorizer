@@ -56,7 +56,6 @@ class LoadMIL:
                                      database_name=database_name)
         return None
 
-
     def bag_data_generator(self, pipeline, verbose=False):
         """Return a bag of commonly labeled data
         Bags are defined in SQL Server in the Points table on the group_id
@@ -151,7 +150,6 @@ class LoadMIL:
 
         return False
 
-
     def gather_mil_dataset(self, pipeline='whole'):
         """Return all bags as a numpy array
         inputs
@@ -165,11 +163,11 @@ class LoadMIL:
             Each bag is an array of instances
             Each instance is a CSR array of features
 
-            Example
-            dataset = gather_mil_dataset() # np.array rank 3
-            bag0 = dataset[0] # np.array rank 2
-            instance0_1 = bag0[1] # CSR Array
-            """
+        Example
+        dataset = gather_mil_dataset() # np.array rank 3
+        bag0 = dataset[0] # np.array rank 2
+        instance0_1 = bag0[1] # CSR Array
+        """
 
         # Initialize list until I can later form array
         dataset = []
@@ -186,7 +184,6 @@ class LoadMIL:
         y = np.array(bag_labels)
 
         return x, y
-
 
     def get_single_mil_bag(self, pipeline='whole'):
         """Return a bag of commonly labeled data
@@ -238,6 +235,46 @@ class LoadMIL:
             print(bag)
 
         return dfraw, bag, label
+
+    def get_raw_dataset(self) -> (list, list):
+        """Return all instance and labels from the database table 'Points'"""
+        
+        # Raw point bags and labels associated with each bag
+        bags = []
+        bag_labels = []
+        
+        # Retrieve all unique bag labels
+        sql = """SELECT distinct group_id
+        FROM {}
+        WHERE IsNumeric(group_id) = 1
+        ORDER BY group_id ASC""".format(Points.__tablename__)
+        sel = sqltext(sql)
+        group_ids = self.Insert.core_select_execute(sel)
+
+        # Retrieve bag label for each group_id
+        sql_label = """SELECT id, bag_label
+                    FROM {}
+                    WHERE id = {}"""
+        sql_bag = """SELECT *
+                    FROM {}
+                    WHERE group_id = {}"""
+                    
+        for row in group_ids:
+            # Retrieve bag label
+            group_id= row.group_id
+            sel = sqltext(sql_label.format(Labeling.__tablename__, group_id))
+            with self.Insert.engine.connect() as connection:
+                res = connection.execute(sel)
+                label = res.fetchone().bag_label
+        
+            # Load the dataset
+            sel = sqlalchemy.select([Points]).where(Points.group_id.__eq__(group_id))
+            dfraw = self.Insert.pandas_select_execute(sel)
+            
+            bags.append(dfraw)
+            bag_labels.append(label)
+            
+        return bags, bag_labels
 
 
 def load_mil_dataset_from_file(file_name: Union[str, bytes]):

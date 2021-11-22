@@ -29,7 +29,7 @@ Created on Sun Jun 21 09:02:37 2020
 import sys
 import os
 import configparser
-from typing import Union, TypedDict
+from typing import Union, Dict
 import pickle
 
 # Third party imports
@@ -54,7 +54,7 @@ if __name__ == '__main__':
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
 
-from mil_load import LoadMIL, load_mil_dataset
+from mil_load import LoadMIL, load_mil_dataset_from_file
 from bag_cross_validate import cross_validate_bag, BagScorer, bags_2_si
 
 # Global declarations
@@ -66,34 +66,39 @@ database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
 numeric_feature_file = config['sql_server']['DEFAULT_NUMERIC_FILE_NAME']
 categorical_feature_file = config['sql_server']['DEFAULT_CATEGORICAL_FILE_NAME']
 
-loadMIL = LoadMIL(server_name,
-                  driver_name,
-                  database_name)
+loadMIL = LoadMIL(server_name, driver_name, database_name)
 
-#%%
-"""Load data"""
+#%% Load data
+# Load data from DB and run through pipeline
+dataset_numeric = {'dataset':None,'bag_labels':None}
+dataset_numeric['dataset'], dataset_numeric['bag_labels'] = \
+    loadMIL.gather_mil_dataset(pipeline='whole')
+dataset_categorical = {'dataset':None,'bag_labels':None}
+dataset_categorical['dataset'], dataset_categorical['bag_labels'] = \
+    loadMIL.gather_mil_dataset(pipeline='categorical')
+    
+# Load numeric dataset from file
+# numeric_feature_file = r'../data/MIL_dataset.dat'
+# dataset_numeric = load_mil_dataset_from_file(numeric_feature_file)
+# Load categorical dataset from file
+# categorical_feature_file = r'../data/MIL_cat_dataset.dat'
+# dataset_categorical = load_mil_dataset_from_file(categorical_feature_file)
 
-# Load numeric dataset
-_file = r'../data/MIL_dataset.dat'
-_dataset = load_mil_dataset(_file)
-_bags = _dataset['dataset']
-_bag_labels = _dataset['bag_labels']
-
-# Load categorical dataset
-_cat_file = r'../data/MIL_cat_dataset.dat'
-_cat_dataset = load_mil_dataset(_cat_file)
-_cat_bags = _cat_dataset['dataset']
-_cat_bag_labels = _cat_dataset['bag_labels']
+# Unpack loaded data
+bags = dataset_numeric['dataset']
+bag_labels = dataset_numeric['bag_labels']
+cat_bags = dataset_categorical['dataset']
+cat_bag_labels = dataset_categorical['bag_labels']
 
 # Split numeric dataset
 rs = StratifiedShuffleSplit(n_splits=1, test_size=0.2, train_size=0.8)
-train_index, test_index = next(rs.split(_bags, _bag_labels))
-train_bags, train_labels = _bags[train_index], _bag_labels[train_index]
-test_bags, test_labels = _bags[test_index], _bag_labels[test_index]
+train_index, test_index = next(rs.split(bags, bag_labels))
+train_bags, train_labels = bags[train_index], bag_labels[train_index]
+test_bags, test_labels = bags[test_index], bag_labels[test_index]
 
 # Split categorical dataset
-train_bags_cat, train_labels_cat = _cat_bags[train_index], _cat_bag_labels[train_index]
-test_bags_cat, test_labels_cat = _cat_bags[test_index], _cat_bag_labels[test_index]
+train_bags_cat, train_labels_cat = cat_bags[train_index], cat_bag_labels[train_index]
+test_bags_cat, test_labels_cat = cat_bags[test_index], cat_bag_labels[test_index]
 
 # Unpack bags into single instances for training and testing
 # Bags to single instances
@@ -176,7 +181,7 @@ def _filter_bags_by_size(X:Union[np.ndarray, csr_matrix, list],
     return np.array(index, dtype=np.int16)
     
 
-def _print_results_dict(res:Union[dict[str,list], dict[str,float]],
+def _print_results_dict(res:Union[Dict[str,list], Dict[str,float]],
                         msg=None) -> None:
     if msg:
         print(msg)
@@ -188,6 +193,24 @@ def _print_results_dict(res:Union[dict[str,list], dict[str,float]],
     print("\n\n")
     return None
 
+
+def pickle_save_to_file(save_path: str, classifier: object) -> None:
+    
+    if os.path.isfile(save_path):
+        msg="You are attenpting to overwrite an existing file at {}\n"\
+            .format(save_path)
+        msg+="Input Y/y to continue"
+        res = input(msg)
+        
+        if res in ['y','Y']:
+            with open(save_path, mode='wb') as f:
+                pickle.dump(classifier, f)
+            
+    else:
+        with open(save_path, mode='wb') as f:
+            pickle.dump(classifier, f)
+            
+    return None
 
 #%% Estimators
 """Define several estimators
@@ -732,33 +755,17 @@ set(sorted(_test_labels))
 
 #%% Save the estimator
 
-with open('./knn_si.clf', mode='wb') as f:
-    pickle.dump(knn, f)
-    
-with open('./multiNB_si.clf', mode='wb') as f:
-    pickle.dump(multiNB, f)
- 
-with open('./compNB_si.clf', mode='wb') as f:
-    pickle.dump(compNB, f)
- 
-with open('./svmc_l1_si.clf', mode='wb') as f:
-    pickle.dump(svmc_l1, f)
- 
-with open('./svmc_rbf_si.clf', mode='wb') as f:
-    pickle.dump(svmc, f)
-    
+# Save all estimators
+pickle_save_to_file('./knn_si.clf', knn)
+pickle_save_to_file('./multiNB_si.clf', multiNB)
+pickle_save_to_file('./compNB_si.clf', compNB)
+pickle_save_to_file('./svmc_l1_si.clf', svmc_l1)
+pickle_save_to_file('./svmc_rbf_si.clf', svmc)
     
 # Save training and validation data
-with open('./data_sidense_trian.dat', mode='wb') as f:
-    pickle.dump((_train_bags_dense, _train_labels), f)
-    
-with open('./data_sidense_test.dat', mode='wb') as f:
-    pickle.dump((_test_bags_dense, _test_labels), f)
-    
-with open('./data_sicat_trian.dat', mode='wb') as f:
-    pickle.dump((_train_bags_cat, _train_labels_cat), f)
+pickle_save_to_file('./data_sidense_trian.dat', (_train_bags_dense, _train_labels))
+pickle_save_to_file('./data_sidense_test.dat', (_test_bags_dense, _test_labels))
+pickle_save_to_file('./data_sicat_trian.dat', (_train_bags_cat, _train_labels_cat))
+pickle_save_to_file('./data_sicat_test.dat', (_test_bags_cat, _test_labels_cat))
 
-with open('./data_sicat_test.dat', mode='wb') as f:
-    pickle.dump((_test_bags_cat, _test_labels_cat), f)
-    
     

@@ -1,0 +1,22 @@
+nan
+ohm
+BTUh
+ppm
+BTU
+mA
+secs
+ton/h
+Hz
+VA
+ft2
+A
+PCT
+kWh
+V
+ft3/m
+rh
+DEG F
+ft/min
+count
+gpm
+in H2O

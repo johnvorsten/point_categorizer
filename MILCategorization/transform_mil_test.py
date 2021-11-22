@@ -314,7 +314,7 @@ class TransformMILTest(unittest.TestCase):
     
     def test_calc_categories_dict(self):
     
-        """Generate data to find categories"""
+        # Generate data to find categories
         Insert = extract.Insert(server_name, driver_name, database_name)
     
         sel = sqlalchemy.select([Points])

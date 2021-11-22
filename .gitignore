@@ -24,6 +24,8 @@ svmc_rbf_miles.clf
 # Data used for training estimators
 data_milesembedded_test.dat
 data_milesembedded_trian.dat
+data_milesembedded_test_label.dat
+data_milesembedded_train_label.dat
 data_sicat_test.dat
 data_sicat_trian.dat
 data_sidense_test.dat
