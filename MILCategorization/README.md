@@ -81,5 +81,7 @@ data_sidense_test - A tuple of (data, labels) where data is a numpy array of siz
 
 data_sidense_trian - A tuple of (data, labels) where data is a numpy array of size (1689) containing numpy arrays of shape (n,3236) where n is the number of instances within a bag. The test set contains 1689 bags. Labels are an array of size (1689). Each bag along axis=0 of data is related to a label along axis=0 in labels
 
-
+History
+Old data had 3236 features..
+New data has...
 

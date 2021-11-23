@@ -32,6 +32,7 @@ data_sidense_test.dat
 data_sidense_trian.dat
 miles_concept_features.dat
 categorical_categories_old.dat
+categorical_categories_LEGACY.dat
 
 # Log directories
 */logs/*

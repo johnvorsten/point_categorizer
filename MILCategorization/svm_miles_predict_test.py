@@ -14,6 +14,7 @@ import unittest
 # Third party imports
 import pandas as pd
 from sklearn.svm import LinearSVC, SVC
+import numpy as np
 
 # Local imports
 if __name__ == '__main__':
@@ -25,7 +26,7 @@ if __name__ == '__main__':
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
 from svm_miles_predict import (MILESEmbedding, SVMC_L1_miles, RawInputData, 
-                               BasePredictor, Transform)
+                               BasePredictor, Transform, CONCEPT_FEATURES)
 from mil_load import LoadMIL
 
 
@@ -94,8 +95,8 @@ class BasePredictorTest(unittest.TestCase):
     
     def test__load_predictor(self):
         
-        classifierL1 = BasePredictor._load_predictor(self.SVMC_l1_classifier_filename)
-        classifierRBF = BasePredictor._load_predictor(self.SVMC_rbf_classifier_filename)
+        classifierL1 = BasePredictor._load_predictor(SVMC_l1_classifier_filename)
+        classifierRBF = BasePredictor._load_predictor(SVMC_rbf_classifier_filename)
         self.assertIsInstance(classifierL1, LinearSVC)
         self.assertIsInstance(classifierRBF, SVC)
         
@@ -138,15 +139,54 @@ class BasePredictorTest(unittest.TestCase):
         return None
     
 
+    
+
 class MILESEmbeddingTest(unittest.TestCase):
     
     def setUp(self):
+        self.MILESEmbedder = MILESEmbedding(MILES_CONCEPT_FEATURES)
         return None
     
     def test__load_concept_class(self):
+        
+        self.MILESEmbedder._load_concept_class(MILES_CONCEPT_FEATURES)
+        
         return None
     
     def test_embed_data(self):
+        
+        test_bag = np.zeros(10,CONCEPT_FEATURES)
+        embedded_bag = self.MILESEmbedded.embed_data(test_bag, sigma=5.0)
+        self.assertTrue(np.all()embedded_bag)
+        
+        return None
+    
+    def test_validate_bag_size_concept(self):
+        
+        # Test bag
+        test_bag = np.zeros(10, CONCEPT_FEATURES)
+        # Correct number of features
+        self.assertEqual(
+            self.MILESEmbedder.validate_bag_size_configuration(test_bag), True)
+        # Incorrect number of features
+        test_bag = np.zeros(10, 99)
+        self.assertEqual(
+            self.MILESEmbedder.validate_bag_size_configuration(test_bag), True)
+        
+        return None
+    
+    def test_validate_bag_size_configuration(self):
+        
+        # Test bag
+        test_bag = np.zeros(10, CONCEPT_FEATURES)
+        # Correct number of features
+        self.assertEqual(
+            self.MILESEmbedder.validate_bag_size_configuration(test_bag), True)
+        # Incorrect number of features
+        test_bag = np.zeros(10, 99)
+        self.assertEqual(
+            self.MILESEmbedder.validate_bag_size_configuration(test_bag), True)
+        
         return None
 
 

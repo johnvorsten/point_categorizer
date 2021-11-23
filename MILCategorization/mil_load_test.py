@@ -55,7 +55,6 @@ class MILLoadTest(unittest.TestCase):
         
         return None
     
-    
     def test_validate_bag(self):
     
         bag_generator = LoadMIL.bag_data_generator(pipeline='whole',
@@ -65,10 +64,8 @@ class MILLoadTest(unittest.TestCase):
     
         return None
     
-    
     def test_gather_mil_dataset(self):
         return None
-    
     
     def test_load_mil_dataset(self):
         
