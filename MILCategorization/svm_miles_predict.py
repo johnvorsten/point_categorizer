@@ -29,7 +29,7 @@ from transform_mil import Transform
 SVMC_l1_classifier_filename = r"./svmc_l1_miles.clf"
 SVMC_rbf_classifier_filename = r"./svmc_rbf_miles.clf"
 concept_class_filename = r"./miles_concept_features.dat"
-CONCEPT_FEATURES = 2855 # Number of concept class features
+N_CONCEPT_FEATURES = 2855 # Number of concept class features
 
 #%% Classses and data
 
@@ -102,7 +102,7 @@ class MILESEmbedding:
         if not self.validate_bag_size_configuration(bag):
             msg=("Bag passed must have {} features according to configuration " +
              "sanity check. Got {}")
-            raise ValueError(msg.format(CONCEPT_FEATURES, bag.shape[1]))
+            raise ValueError(msg.format(N_CONCEPT_FEATURES, bag.shape[1]))
             
         return embed_bag(self.C_features, bag, sigma=sigma, distance='euclidean')
     
@@ -119,11 +119,11 @@ class MILESEmbedding:
         pipeline (see configuration)
         """
         
-        if not bag.shape[1] == CONCEPT_FEATURES:
+        if not bag.shape[1] == N_CONCEPT_FEATURES:
             msg=("The passed bag is of shape {}. Expected bag "+ 
                  "shape {}. Bag and feature must have the same instance space "+ 
                  "/ shape along axis=1.")
-            print(msg.format(bag.shape, CONCEPT_FEATURES))
+            print(msg.format(bag.shape, N_CONCEPT_FEATURES))
             return False
         
         return True
@@ -149,6 +149,30 @@ class MILESEmbedding:
             return False
         
         return True
+    
+    def _validate_transformed_data(self, data: np.ndarray):
+        """Validate that the exact required input data is used for prediction 
+        on the estimator
+        the embedding is a (j,) array where each bag is encoded into a 
+        feature vector which represents a similarity measure between the bag and 
+        concept class. j is the number of instances in the concept class
+        The concept class is chosen to be 4633 instances long
+        inputs
+        -------
+        data: (np.ndarray) data must be a dense numpy array with shape (n, 3236)
+        outputs
+        -------
+        bool
+        """
+        
+        if data.shape[0] == self.C_features.shape[0]:
+            return True
+        else:
+            msg=("Invalid data shape. Got {}, required a dense numpy array " +
+                 "with shape {}")
+            raise ValueError(msg.format((data.shape[0], self.C_features.shape[0])))
+            
+        return False
 
 
 class BasePredictor:
@@ -158,7 +182,9 @@ class BasePredictor:
         self.classifier = self._load_predictor(classifier_filename)
         # Load transform pipeline
         self.numeric_transform_pipeline_MIL = Transform.numeric_transform_pipeline_MIL()
-        
+        # Load embedding class member
+        self.MILESEmbedder = MILESEmbedding(concept_class_filename)
+
         return None
     
     @staticmethod
@@ -184,17 +210,13 @@ class BasePredictor:
         
         # Transform raw data
         clean_data = self._transform_data(data)
-        
         # Embed raw data
-        MILESEmbedder = MILESEmbedding(concept_class_filename)
-        embedded_data = MILESEmbedder.embed_data(clean_data)
-        
-        # Validate data to estimator
-        self._validate_transformed_data(embedded_data)
+        embedded_data = self.MILESEmbedder.embed_data(clean_data)
         
         # Predict on embedded vector
-        # embedded_data is of shape (n,p)
-        prediction = self.classifier.predict(np.transpose(embedded_data))
+        # embedded_data is of shape (k,) where k is the number of instances
+        # In the concept class (concept class is shape k,p)
+        prediction = self.classifier.predict(self._determine_reshape(embedded_data))
         
         return prediction
 
@@ -208,34 +230,25 @@ class BasePredictor:
         """
         
         df_raw = pd.DataFrame(data)
-        clean_data = self.numeric_transform_pipeline_MIL().fit_transform(df_raw)
+        clean_data = self.numeric_transform_pipeline_MIL.fit_transform(df_raw)
         
         return clean_data
 
-    def _validate_transformed_data(self, data: np.ndarray):
-        """Validate that the exact required input data is used for prediction 
-        on the estimator
-        the embedding is a (j,) array where each bag is encoded into a 
-        feature vector which represents a similarity measure between the bag and 
-        concept class. j is the number of instances in the concept class
-        The concept class is chosen to be 4633 instances long
-        inputs
-        -------
-        data: (np.ndarray) data must be a dense numpy array with shape (n, 3236)
-        outputs
-        -------
-        bool
-        """
-        
-        if data.shape[0] == CONCEPT_FEATURES:
-            return True
+    def _determine_reshape(self, data: np.ndarray) -> np.ndarray:
+        """"Determine if input data should be reshaped to (1,n) if it is a
+        single instance"""
+        if data.ndim == 1:
+            # A single instance must be of shape (1,n)
+            return data.reshape(1,-1)
+        elif data.ndim == 2:
+            # Multiple instances of shape (j_instances, n_features)
+            # If multipple instances are passed then the embedding produces a 
+            # (n_features, j_instances) output -> requires transpose
+            return np.transpose(data)
         else:
-            msg=("Invalid data shape. Got {}, required a dense numpy array " +
-                 "with shape {}".format(data.shape, CONCEPT_FEATURES))
-            raise ValueError(msg)
-            
-        return False
-
+            msg="Data passed with more than 2 dimensions. Got {}"
+            raise ValueError(msg.format(data.ndim))
+        return data
 
 class SVMC_L1_miles:
     

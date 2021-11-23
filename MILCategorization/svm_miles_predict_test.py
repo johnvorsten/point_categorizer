@@ -26,7 +26,7 @@ if __name__ == '__main__':
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
 from svm_miles_predict import (MILESEmbedding, SVMC_L1_miles, RawInputData, 
-                               BasePredictor, Transform, CONCEPT_FEATURES)
+                               BasePredictor, Transform, N_CONCEPT_FEATURES)
 from mil_load import LoadMIL
 
 
@@ -49,7 +49,6 @@ LoadMIL = LoadMIL(server_name, driver_name, database_name)
     
 class BasePredictorTest(unittest.TestCase):
 
-    
     def setUp(self):
         
         # Instance of BasePredictor
@@ -104,18 +103,23 @@ class BasePredictorTest(unittest.TestCase):
         
     def test__transform_data(self):
         
-        # Transform raw data
-        bag = Transform.numeric_transform_pipeline_MIL().fit_transform(self.dfraw_input)
+        # The loaded bag (self.bag_load) should match the manually transformed 
+        # bag
+        bag_manual = Transform.numeric_transform_pipeline_MIL().fit_transform(self.dfraw_load)
+        self.assertTrue(np.equal(bag_manual.toarray(), self.bag_load.toarray()).all())
+        
         # Embed data
         MILESEmbedder = MILESEmbedding(MILES_CONCEPT_FEATURES)
-        embedded_data = MILESEmbedder.embed_data(bag)
+        embedded_data_manual = MILESEmbedder.embed_data(bag_manual)
+        embedded_data_load = MILESEmbedder.embed_data(self.bag_load)
+        self.assertTrue(np.equal(
+            embedded_data_manual, embedded_data_load
+            ).all())
         
-        bag_load = Transform.numeric_transform_pipeline_MIL().fit_transform(self.dfraw_load)
-        # Embed data
-        embedded_data = MILESEmbedder.embed_data(bag_load)
-        
-        self.assertEqual(bag_load, self.bag_load)
-        self.assertEqual(embedded_data, bag_load)
+        # Transform raw data (from input class)
+        bag = Transform.numeric_transform_pipeline_MIL().fit_transform(self.dfraw_input)
+        embedded_raw_bag = MILESEmbedder.embed_data(bag)
+        self.assertEqual(embedded_raw_bag.shape[0], MILESEmbedder.C_features.shape[0])
         
         return None
     
@@ -131,61 +135,65 @@ class BasePredictorTest(unittest.TestCase):
         label_set = {'ahu','alarm', 'boiler','chiller','exhaust_fan',
                      'misc','room','rtu','skip','unknown'}
         
-        self.assertTrue(results_l1_input in label_set)
-        self.assertTrue(results_l1_load in label_set)
-        self.assertTrue(results_rbf_input in label_set)
-        self.assertTrue(results_rbf_load in label_set)
+        # Results are a numpy array holding str
+        self.assertTrue(results_l1_input[0] in label_set)
+        self.assertTrue(results_l1_load[0] in label_set)
+        self.assertTrue(results_rbf_input[0] in label_set)
+        self.assertTrue(results_rbf_load[0] in label_set)
         
         return None
-    
-
     
 
 class MILESEmbeddingTest(unittest.TestCase):
     
     def setUp(self):
+        
         self.MILESEmbedder = MILESEmbedding(MILES_CONCEPT_FEATURES)
+        
         return None
     
     def test__load_concept_class(self):
         
-        self.MILESEmbedder._load_concept_class(MILES_CONCEPT_FEATURES)
+        C_features = self.MILESEmbedder._load_concept_class(MILES_CONCEPT_FEATURES)
+        self.assertEqual(C_features.shape[1], N_CONCEPT_FEATURES)
         
         return None
     
     def test_embed_data(self):
         
-        test_bag = np.zeros(10,CONCEPT_FEATURES)
-        embedded_bag = self.MILESEmbedded.embed_data(test_bag, sigma=5.0)
-        self.assertTrue(np.all()embedded_bag)
+        test_bag = np.zeros((10, N_CONCEPT_FEATURES))
+        embedded_bag = self.MILESEmbedder.embed_data(test_bag, sigma=5.0)
+        # The embedding shape should be equal to (k,1) where k is the number
+        # Of instances in the concept class
+        self.assertEqual(embedded_bag.shape[0], self.MILESEmbedder.C_features.shape[0])
         
         return None
     
     def test_validate_bag_size_concept(self):
         
         # Test bag
-        test_bag = np.zeros(10, CONCEPT_FEATURES)
+        test_bag = np.zeros((10, N_CONCEPT_FEATURES))
         # Correct number of features
         self.assertEqual(
             self.MILESEmbedder.validate_bag_size_configuration(test_bag), True)
         # Incorrect number of features
-        test_bag = np.zeros(10, 99)
+        test_bag = np.zeros((10, 99))
         self.assertEqual(
-            self.MILESEmbedder.validate_bag_size_configuration(test_bag), True)
+            self.MILESEmbedder.validate_bag_size_configuration(test_bag), False)
         
         return None
     
     def test_validate_bag_size_configuration(self):
         
         # Test bag
-        test_bag = np.zeros(10, CONCEPT_FEATURES)
+        test_bag = np.zeros((10, N_CONCEPT_FEATURES))
         # Correct number of features
         self.assertEqual(
             self.MILESEmbedder.validate_bag_size_configuration(test_bag), True)
         # Incorrect number of features
-        test_bag = np.zeros(10, 99)
+        test_bag = np.zeros((10, 99))
         self.assertEqual(
-            self.MILESEmbedder.validate_bag_size_configuration(test_bag), True)
+            self.MILESEmbedder.validate_bag_size_configuration(test_bag), False)
         
         return None
 
