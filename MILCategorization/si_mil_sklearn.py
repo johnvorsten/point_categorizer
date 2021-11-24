@@ -76,7 +76,7 @@ dataset_numeric['dataset'], dataset_numeric['bag_labels'] = \
 dataset_categorical = {'dataset':None,'bag_labels':None}
 dataset_categorical['dataset'], dataset_categorical['bag_labels'] = \
     loadMIL.gather_mil_dataset(pipeline='categorical')
-    
+
 # Load numeric dataset from file
 # numeric_feature_file = r'../data/MIL_dataset.dat'
 # dataset_numeric = load_mil_dataset_from_file(numeric_feature_file)
@@ -84,7 +84,7 @@ dataset_categorical['dataset'], dataset_categorical['bag_labels'] = \
 # categorical_feature_file = r'../data/MIL_cat_dataset.dat'
 # dataset_categorical = load_mil_dataset_from_file(categorical_feature_file)
 
-# Unpack loaded data
+# Unpack data
 bags = dataset_numeric['dataset']
 bag_labels = dataset_numeric['bag_labels']
 cat_bags = dataset_categorical['dataset']
@@ -446,8 +446,8 @@ res_compNB_cv = cross_validate_bag(
 
 res_svmc_l1_cv = cross_validate_bag(
     estimator=svmc_l1, 
-    X=_train_bags_cat,
-    y=_train_labels_cat, 
+    X=_train_bags_dense,
+    y=_train_labels, 
     groups=None, 
     scoring=scoring_sparse, # Custom scorer... 
     cv=2,
@@ -461,8 +461,8 @@ res_svmc_l1_cv = cross_validate_bag(
 
 res_svmc_cv = cross_validate_bag(
     estimator=svmc, 
-    X=_train_bags_cat,
-    y=_train_labels_cat, 
+    X=_train_bags_dense,
+    y=_train_labels, 
     groups=None, 
     scoring=scoring_sparse, # Custom scorer... 
     cv=2,

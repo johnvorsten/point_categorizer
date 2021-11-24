@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Oct 29 12:55:56 2021
+Created on Wed 2021-11-24
 TODO: Predict with the following inputs:
     List of RawInputData [RawInputData, RawInputData]
     Single RawInputData (without converting to dataframe)
@@ -18,6 +18,8 @@ import unittest
 # Third party imports
 import pandas as pd
 from sklearn.svm import LinearSVC, SVC
+from sklearn.naive_bayes import MultinomialNB, ComplementNB
+from sklearn.neighbors import KNeighborsClassifier
 import numpy as np
 
 # Local imports
@@ -29,11 +31,10 @@ if __name__ == '__main__':
     _PROJECT_DIR = os.path.join(os.sep, *_PARTS[:-1])
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
-from svm_miles_predict import (MILESEmbedding, SVMCL1MILESPredictor, 
-                               SVMCRBFMILESPredictor, RawInputData, 
-                               BasePredictor, Transform, N_CONCEPT_FEATURES)
+from svm_miles_predict import (KNNPredictor, MultiNBPredictor, CompNBPredictor,
+                               SVMCL1SIPredictor, SVMCRBFSIPredictor,
+                               CompNBPredictor, BasePredictor, RawInputData)
 from mil_load import LoadMIL
-
 
 # Global declarations
 config = configparser.ConfigParser()
@@ -41,26 +42,24 @@ config.read(r'../extract/sql_config.ini')
 server_name = config['sql_server']['DEFAULT_SQL_SERVER_NAME']
 driver_name = config['sql_server']['DEFAULT_SQL_DRIVER_NAME']
 database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
-numeric_feature_file = config['sql_server']['DEFAULT_NUMERIC_FILE_NAME']
-categorical_feature_file = config['sql_server']['DEFAULT_CATEGORICAL_FILE_NAME']
-MILES_CONCEPT_FEATURES = "./miles_concept_features.dat"
-SVMC_l1_classifier_filename = r"./svmc_l1_miles.clf"
-SVMC_rbf_classifier_filename = r"./svmc_rbf_miles.clf"
+CompNB_classifier_filename = r"./compNB_si.clf"
+KNN_classifier_filename = r"./knn_si.clf"
+MultiNB_classifier_filename = r"./multiNB_si.clf"
+SVMCL1SI_classifier_filename = r"./svmc_l1_si.clf"
+SVMCRBFSI_classifier_filename = r"./svmc_rbf_si.clf"
     
 LoadMIL = LoadMIL(server_name, driver_name, database_name)
 
 
 #%% Class definitions
-    
+
 class BasePredictorTest(unittest.TestCase):
 
     def setUp(self):
         
         # Instance of BasePredictor
-        self.basePredictorL1 = BasePredictor(
-            classifier_filename=SVMC_l1_classifier_filename)
-        self.basePredictorRBF = BasePredictor(
-            classifier_filename=SVMC_rbf_classifier_filename)
+        self.basePredictor = BasePredictor(
+            classifier_filename=CompNB_classifier_filename)
 
         # Construct raw data input
         # This is intended to test input gathered from a web form. Not all
@@ -99,13 +98,21 @@ class BasePredictorTest(unittest.TestCase):
     
     def test__load_predictor(self):
         
-        classifierL1 = BasePredictor._load_predictor(SVMC_l1_classifier_filename)
-        classifierRBF = BasePredictor._load_predictor(SVMC_rbf_classifier_filename)
-        self.assertIsInstance(classifierL1, LinearSVC)
-        self.assertIsInstance(classifierRBF, SVC)
+        classifierCompNB = BasePredictor._load_predictor(CompNB_classifier_filename)
+        classifierKNN = BasePredictor._load_predictor(KNN_classifier_filename)
+        classifierMultiNB = BasePredictor._load_predictor(MultiNB_classifier_filename)
+        classifierSVMCL1 = BasePredictor._load_predictor(SVMCL1SI_classifier_filename)
+        classifierSVMCRBF = BasePredictor._load_predictor(SVMCRBFSI_classifier_filename)
         
+        self.assertIsInstance(classifierCompNB, ComplementNB)
+        self.assertIsInstance(classifierKNN, KNeighborsClassifier)
+        self.assertIsInstance(classifierMultiNB, MultinomialNB)
+        self.assertIsInstance(classifierSVMCL1, LinearSVC)
+        self.assertIsInstance(classifierSVMCRBF, SVC)
+
         return None
-        
+
+#%% #TODO Below
     def test__transform_data(self):
         
         # The loaded bag (self.bag_load) should match the manually transformed 

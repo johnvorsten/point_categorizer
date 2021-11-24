@@ -12,10 +12,6 @@ import configparser
 from dataclasses import dataclass
 
 # Third party imports
-from sklearn.model_selection import (train_test_split, StratifiedShuffleSplit, 
-                                     GridSearchCV)
-import sklearn as skl
-from sklearn.svm import LinearSVC, SVC
 from sklearn.utils.validation import check_is_fitted
 import numpy as np
 from pyMILES.embedding import embed_bag
@@ -84,7 +80,7 @@ class MILESEmbedding:
             C_features = pickle.load(pickled_features)
         return C_features
     
-    def embed_data(self, bag: np.ndarray, sigma: float=3):
+    def embed_data(self, bag:np.ndarray, sigma:float=3):
         """
         inputs
         -------
@@ -107,7 +103,7 @@ class MILESEmbedding:
         return embed_bag(self.C_features, bag, sigma=sigma, distance='euclidean')
     
     @classmethod
-    def validate_bag_size_configuration(cls, bag: np.ndarray) -> bool:
+    def validate_bag_size_configuration(cls, bag:np.ndarray) -> bool:
         """inputs
         -------
         bag: (np.ndarray) of shape (j,p) where j is the number of instances in 
@@ -128,7 +124,7 @@ class MILESEmbedding:
         
         return True
     
-    def validate_bag_size_concept(self, bag: np.ndarray) -> bool:
+    def validate_bag_size_concept(self, bag:np.ndarray) -> bool:
         """inputs
         -------
         concept_class: (np.ndarray)
@@ -150,7 +146,7 @@ class MILESEmbedding:
         
         return True
     
-    def _validate_transformed_data(self, data: np.ndarray):
+    def _validate_transformed_data(self, data:np.ndarray) -> bool:
         """Validate that the exact required input data is used for prediction 
         on the estimator
         the embedding is a (j,) array where each bag is encoded into a 
@@ -178,6 +174,41 @@ class MILESEmbedding:
 class BasePredictor:
     
     def __init__(self, classifier_filename:Union[str,bytes]):
+        """inputs
+        ------
+        classifier_filename: (str) name of file for pickled sklearn classifier
+        
+        Example usage
+        basePredictorL1 = BasePredictor(
+            classifier_filename=SVMC_l1_classifier_filename)
+        # Somehow, create some raw data
+        input_data = RawInputData(
+            # Required numeric attributes
+            DEVICEHI=122.0,
+            DEVICELO=32.0,
+            SIGNALHI=10,
+            SIGNALLO=0,
+            SLOPE=1.2104,
+            INTERCEPT=0.01,
+            # Required categorical attributes
+            TYPE="LAI",
+            ALARMTYPE="Standard",
+            FUNCTION="Value",
+            VIRTUAL=0,
+            CS="AE",
+            SENSORTYPE="VOLTAGE",
+            DEVUNITS="VDC",
+            # Requried text attributes
+            NAME="SHLH.AHU-ED.RAT",
+            DESCRIPTOR="RETURN TEMP",
+            NETDEVID='test-value',
+            SYSTEM='test-system'
+            )
+        # Load raw data
+        dfraw_input = pd.DataFrame(data=[input_data])
+        # Create predictions from raw input data
+        results_l1 = basePredictorL1.predict(dfraw_input)
+        """
         # Load classifier
         self.classifier = self._load_predictor(classifier_filename)
         # Load transform pipeline
@@ -200,13 +231,17 @@ class BasePredictor:
                     
         return classifier
 
-    def predict(self, data: List[RawInputData]) -> str:
+    def predict(self, data:Union[List[RawInputData], 
+                                 RawInputData, 
+                                 pd.DataFrame]) -> np.ndarray:
         """Predict on an embedded bag
         inputs
         -------
-        data: () Raw data input
+        data: (list(RawInputData), RawInputData, pandas.DataFrame) Raw data 
+        input which is transformed by this class
         outputs
-        -------"""
+        -------
+        prediction: (np.ndarray) of strings which represent the bag label"""
         
         # Transform raw data
         clean_data = self._transform_data(data)
@@ -220,13 +255,18 @@ class BasePredictor:
         
         return prediction
 
-    def _transform_data(self, data: List[RawInputData]):
+    def _transform_data(self, data:Union[List[RawInputData], 
+                                         RawInputData, 
+                                         pd.DataFrame]):
         """Transform raw data into a usable input to an estimator
         inputs
         -------
-        data: (RawInputData) Python dataclass specified for this predictor
+        data: (list(RawInputData), RawInputData, pandas.DataFrame) Raw data 
+        input which is transformed by this class
         outputs
         -------
+        clean_data: (np.ndarray) data passed through transformation pipeline
+        and output as numpy array
         """
         
         df_raw = pd.DataFrame(data)
@@ -250,30 +290,90 @@ class BasePredictor:
             raise ValueError(msg.format(data.ndim))
         return data
 
-class SVMC_L1_miles:
+
+class SVMCL1MILESPredictor(BasePredictor):
     
-    def __init__(self):
-        """"""
-        return None
-    
-    
-    def load(self):
-        """Load a trained estimator from a pickled sklearn object
-        inputs
-        -------
-        outputs
-        -------"""
-        return None
-    
-    
-    def predict(self):
-        """Predict on an embedded bag
-        inputs
-        -------
-        outputs
-        -------"""
+    def __init__(self, classifier_filename:Union[str,bytes]):
+        """inputs
+        ------
+        classifier_filename: (str) name of file for pickled sklearn classifier
+        
+        Example usage
+        basePredictorL1 = SVMCL1MILESPredictor(
+            classifier_filename=SVMC_l1_classifier_filename)
+        # Somehow, create some raw data
+        input_data = RawInputData(
+            # Required numeric attributes
+            DEVICEHI=122.0,
+            DEVICELO=32.0,
+            SIGNALHI=10,
+            SIGNALLO=0,
+            SLOPE=1.2104,
+            INTERCEPT=0.01,
+            # Required categorical attributes
+            TYPE="LAI",
+            ALARMTYPE="Standard",
+            FUNCTION="Value",
+            VIRTUAL=0,
+            CS="AE",
+            SENSORTYPE="VOLTAGE",
+            DEVUNITS="VDC",
+            # Requried text attributes
+            NAME="SHLH.AHU-ED.RAT",
+            DESCRIPTOR="RETURN TEMP",
+            NETDEVID='test-value',
+            SYSTEM='test-system'
+            )
+        # Load raw data
+        dfraw_input = pd.DataFrame(data=[input_data])
+        # Create predictions from raw input data
+        results_l1 = basePredictorL1.predict(dfraw_input)
+        """
+        
+        super(SVMCL1MILESPredictor, self).__init__(classifier_filename)
+        
         return None
 
-# Input sanitization
-# The input bag must be of shape (n,p)
 
+class SVMCRBFMILESPredictor(BasePredictor):
+    
+    def __init__(self, classifier_filename:Union[str,bytes]):
+        """inputs
+        ------
+        classifier_filename: (str) name of file for pickled sklearn classifier
+        
+        Example usage
+        basePredictorRBF = SVMCRBFMILESPredictor(
+            classifier_filename=SVMC_l1_classifier_filename)
+        # Somehow, create some raw data
+        input_data = RawInputData(
+            # Required numeric attributes
+            DEVICEHI=122.0,
+            DEVICELO=32.0,
+            SIGNALHI=10,
+            SIGNALLO=0,
+            SLOPE=1.2104,
+            INTERCEPT=0.01,
+            # Required categorical attributes
+            TYPE="LAI",
+            ALARMTYPE="Standard",
+            FUNCTION="Value",
+            VIRTUAL=0,
+            CS="AE",
+            SENSORTYPE="VOLTAGE",
+            DEVUNITS="VDC",
+            # Requried text attributes
+            NAME="SHLH.AHU-ED.RAT",
+            DESCRIPTOR="RETURN TEMP",
+            NETDEVID='test-value',
+            SYSTEM='test-system'
+            )
+        # Load raw data
+        dfraw_input = pd.DataFrame(data=[input_data])
+        # Create predictions from raw input data
+        results_l1 = basePredictorRBF.predict(dfraw_input)
+        """
+        
+        super(SVMCRBFMILESPredictor, self).__init__(classifier_filename)
+        
+        return None
