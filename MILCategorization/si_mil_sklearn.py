@@ -219,7 +219,7 @@ problem"""
 
 # K-NN
 knn = KNeighborsClassifier(n_neighbors=10, weights='uniform',
-                           algorithm='ball_tree', n_jobs=4)
+                           algorithm='ball_tree', n_jobs=8)
 
 # Multinomial Native Bayes
 multiNB = MultinomialNB(alpha=1.0, fit_prior=True, class_prior=None)
@@ -273,80 +273,11 @@ _print_results_dict(res_comNB_si,
 
 
 #%% 
-"""Predict on bags using most frequent label assigned to instances
-AKA Single-instance inference of a bag label
-
-This section was typed before I made the BagScorer"""
-
-# Initial Values
-CV = 3
-TEST_SIZE = 0.2
-TRAIN_SIZE = 0.8
-results = {}
-
-# Define a scorer and Metrics
-scorer = {'precision_weighted':make_scorer(precision_score, average='weighted'),
-          'recall_weighted':make_scorer(recall_score, average='weighted'),
-          'accuracy':make_scorer(accuracy_score),
-          'accuracy_balanced':make_scorer(balanced_accuracy_score),
-          }
-accuracy = []
-accuracy_balanced = []
-precision = []
-recall = []
-
-# Define an estimator
-ESTIMATOR = ComplementNB(alpha=1.0, fit_prior=True, class_prior=None, norm=False)
-
-# Load raw datasets, Already loaded above
-BAGS = train_bags_cat
-BAG_LABELS = train_labels_cat
-
-# Split bags into training and validation sets
-rs = ShuffleSplit(n_splits=CV, test_size=TEST_SIZE, train_size=TRAIN_SIZE)
-for train_index, test_index in rs.split(BAGS, BAG_LABELS):
-
-    # Split bags
-    _x_train_bags, _y_train_bags = BAGS[train_index], BAG_LABELS[train_index]
-    _x_test_bags, _y_test_bags = BAGS[test_index], BAG_LABELS[test_index]
-
-    # Convert training set to single instance to fit the estimator
-    _x_train_si, _y_train_si = bags_2_si(_x_train_bags,
-                                         _y_train_bags,
-                                         sparse_input=True)
-    
-    # Fit an estimator on SI data
-    ESTIMATOR.fit(_x_train_si, _y_train_si)
-    
-    # Predict instances in a bag
-    bag_predictions = BagScorer.predict_bags(ESTIMATOR, _x_test_bags, method='mode')
-        
-    # Estimate metrics on bags
-    accuracy.append(scorer['accuracy']\
-                    ._score_func(_y_test_bags.reshape(-1,1), 
-                                 bag_predictions, 
-                                 **(scorer['accuracy']._kwargs)))
-    accuracy_balanced.append(scorer['accuracy_balanced']\
-                             ._score_func(_y_test_bags, 
-                                          bag_predictions,
-                                          **(scorer['accuracy_balanced']._kwargs)))
-    precision.append(scorer['precision_weighted']
-                     ._score_func(_y_test_bags, 
-                                  bag_predictions,
-                                  **(scorer['precision_weighted']._kwargs)))
-    recall.append(scorer['recall_weighted']\
-                  ._score_func(_y_test_bags, 
-                               bag_predictions,
-                               **(scorer['recall_weighted']._kwargs)))
-
-
-
-#%% 
 """Predict on bags using cross validation with single-instance inference"""
 
 # Create estimators
 knn = KNeighborsClassifier(n_neighbors=3, weights='uniform',
-                           algorithm='ball_tree', n_jobs=4)
+                           algorithm='ball_tree', n_jobs=8)
 
 # Multinomial Native Bayes
 multiNB = MultinomialNB(alpha=0.5, fit_prior=True, class_prior=None)
@@ -356,7 +287,7 @@ compNB = ComplementNB(alpha=0.5, fit_prior=True, class_prior=None, norm=False)
 
 # SVC - Linear L1 regularized
 svmc_l1 = LinearSVC(loss='squared_hinge', penalty='l1', C=5, 
-                            dual=False, max_iter=2500)
+                            dual=False, max_iter=3000)
 
 # SVC Using LibSVM uses the squared l2 loss
 svmc = SVC(kernel='rbf', gamma='scale', C=5)
@@ -375,7 +306,7 @@ _train_labels_cat = train_labels_cat[_filter]
 
 # Define evaluation metrics
 accuracy_scorer = make_scorer(accuracy_score)
-bagAccScorer = BagScorer(accuracy_scorer, sparse_input=False) # Accuracy score, no factory function
+bagAccScorer = BagScorer(accuracy_scorer, sparse_input=False)
 precision_scorer = make_scorer(precision_score, average='weighted')
 bagPreScorer = BagScorer(precision_scorer, sparse_input=False)
 recall_scorer = make_scorer(recall_score, average='weighted')
@@ -394,7 +325,7 @@ res_knn_cv = cross_validate_bag(
     groups=None, 
     scoring=scoring_dense, # Custom scorer... 
     cv=2,
-    n_jobs=4, 
+    n_jobs=8, 
     verbose=0, 
     fit_params=None,
     pre_dispatch='2*n_jobs', 
@@ -421,7 +352,7 @@ res_multiNB_cv = cross_validate_bag(
     groups=None, 
     scoring=scoring_sparse, # Custom scorer... 
     cv=2,
-    n_jobs=4, 
+    n_jobs=8, 
     verbose=0, 
     fit_params=None,
     pre_dispatch='2*n_jobs', 
@@ -436,7 +367,7 @@ res_compNB_cv = cross_validate_bag(
     groups=None, 
     scoring=scoring_sparse, # Custom scorer... 
     cv=2,
-    n_jobs=4, 
+    n_jobs=8, 
     verbose=0, 
     fit_params=None,
     pre_dispatch='2*n_jobs', 
@@ -449,9 +380,9 @@ res_svmc_l1_cv = cross_validate_bag(
     X=_train_bags_dense,
     y=_train_labels, 
     groups=None, 
-    scoring=scoring_sparse, # Custom scorer... 
+    scoring=scoring_dense, # Custom scorer... 
     cv=2,
-    n_jobs=4, 
+    n_jobs=8, 
     verbose=0, 
     fit_params=None,
     pre_dispatch='2*n_jobs', 
@@ -464,9 +395,9 @@ res_svmc_cv = cross_validate_bag(
     X=_train_bags_dense,
     y=_train_labels, 
     groups=None, 
-    scoring=scoring_sparse, # Custom scorer... 
+    scoring=scoring_dense, # Custom scorer... 
     cv=2,
-    n_jobs=4, 
+    n_jobs=8, 
     verbose=0, 
     fit_params=None,
     pre_dispatch='2*n_jobs', 
@@ -531,7 +462,7 @@ _svm_c = 5 # Best result of cross validation
 
 # Define estimators
 knn = KNeighborsClassifier(n_neighbors=_knn_nneighbors, weights='uniform',
-                           algorithm='ball_tree', n_jobs=4)
+                           algorithm='ball_tree', n_jobs=8)
 
 # Multinomial Native Bayes
 multiNB = MultinomialNB(alpha=_multinb_alpha, fit_prior=True, class_prior=None)
