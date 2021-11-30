@@ -56,12 +56,6 @@ LoadMIL = LoadMIL(server_name, driver_name, database_name)
 class BasePredictorTest(unittest.TestCase):
 
     def setUp(self):
-        
-        # Instance of BasePredictor
-        self.basePredictor = BasePredictor(
-            classifier_filename=CompNB_classifier_filename,
-            pipeline_type='categorial')
-
         # Construct raw data input
         # This is intended to test input gathered from a web form. Not all
         # Attributes that are present in a SQL database are present
@@ -173,19 +167,20 @@ class CompNBPredictorTest(unittest.TestCase):
     def test__transform_data(self):
         
         # The loaded bag (self.bag_load) should match the manually transformed 
-        bag_manual = Transform.numeric_transform_pipeline_MIL()\
+        bag_manual = Transform.categorical_transform_pipeline_MIL()\
             .fit_transform(self.dfraw_load)
         self.assertTrue(np.equal(bag_manual.toarray(), 
                                  self.bag_load.toarray()).all())
         
         # Transform raw data (from input class)
-        bag_input = Transform.numeric_transform_pipeline_MIL().fit_transform(self.dfraw_input)
+        bag_input = Transform.categorical_transform_pipeline_MIL()\
+            .fit_transform(self.dfraw_input)
         msg=("The transformed bag has {} features, and the predictor "+
              "has {} features")
         print(msg.format(bag_input.shape[1], 
-                         self.basePredictor.predictor.n_features_in_[1]))
+                         self.predictor.classifier.n_features_in_))
         self.assertEqual(bag_input.shape[1], 
-                         self.basePredictor.predictor.n_features_in_[1])
+                         self.predictor.classifier.n_features_in_)
         
         return None
 
@@ -260,9 +255,9 @@ class KNNPredictorTest(unittest.TestCase):
         msg=("The transformed bag has {} features, and the predictor "+
              "has {} features")
         print(msg.format(bag_input.shape[1], 
-                         self.basePredictor.predictor.n_features_in_[1]))
+                         self.predictor.classifier.n_features_in_))
         self.assertEqual(bag_input.shape[1], 
-                         self.basePredictor.predictor.n_features_in_[1])
+                         self.predictor.classifier.n_features_in_)
         
         return None
 
@@ -326,19 +321,20 @@ class MultiNBPredictorTest(unittest.TestCase):
     def test__transform_data(self):
         
         # The loaded bag (self.bag_load) should match the manually transformed 
-        bag_manual = Transform.numeric_transform_pipeline_MIL()\
+        bag_manual = Transform.categorical_transform_pipeline_MIL()\
             .fit_transform(self.dfraw_load)
         self.assertTrue(np.equal(bag_manual.toarray(), 
                                  self.bag_load.toarray()).all())
         
         # Transform raw data (from input class)
-        bag_input = Transform.numeric_transform_pipeline_MIL().fit_transform(self.dfraw_input)
+        bag_input = Transform.categorical_transform_pipeline_MIL()\
+            .fit_transform(self.dfraw_input)
         msg=("The transformed bag has {} features, and the predictor "+
              "has {} features")
         print(msg.format(bag_input.shape[1], 
-                         self.basePredictor.predictor.n_features_in_[1]))
+                         self.predictor.classifier.n_features_in_))
         self.assertEqual(bag_input.shape[1], 
-                         self.basePredictor.predictor.n_features_in_[1])
+                         self.predictor.classifier.n_features_in_)
         
         return None
 
@@ -412,9 +408,9 @@ class SVMCL1SIPredictorTest(unittest.TestCase):
         msg=("The transformed bag has {} features, and the predictor "+
              "has {} features")
         print(msg.format(bag_input.shape[1], 
-                         self.basePredictor.predictor.n_features_in_[1]))
+                         self.predictor.classifier.n_features_in_))
         self.assertEqual(bag_input.shape[1], 
-                         self.basePredictor.predictor.n_features_in_[1])
+                         self.predictor.classifier.n_features_in_)
         
         return None
 
@@ -488,9 +484,9 @@ class SVMCRBFSIPredictorTest(unittest.TestCase):
         msg=("The transformed bag has {} features, and the predictor "+
              "has {} features")
         print(msg.format(bag_input.shape[1], 
-                         self.basePredictor.predictor.n_features_in_[1]))
+                         self.predictor.classifier.n_features_in_))
         self.assertEqual(bag_input.shape[1], 
-                         self.basePredictor.predictor.n_features_in_[1])
+                         self.predictor.classifier.n_features_in_)
         
         return None
 

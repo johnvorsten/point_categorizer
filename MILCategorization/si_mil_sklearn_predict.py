@@ -120,7 +120,7 @@ class BasePredictor(ABC):
         # Add aggregation of prediction
         bag_prediction = BagScorer.reduce_bag_label(predictions, method='mode')
         
-        return np.array(bag_prediction, dtype=np.unicode_)
+        return np.array([bag_prediction], dtype=np.unicode_)
 
     def _transform_data(self, data:Union[List[RawInputData], 
                                          RawInputData, 
@@ -189,42 +189,11 @@ class BasePredictor(ABC):
         return data
 
 
-class CompNBPredictor(BasePredictor):
-    
-    def __init__(self, 
-                 classifier_filename:Union[str,bytes],
-                 pipeline_type:str) -> None:
-        # Validate input pipeline type for specific predictor
-        # Native Bayes predictors use categorical & sparse inputs
-        # KNN and SVM predictors use numeric & dense inputs
-        if pipeline_type != 'categorical':
-            msg=("Pipeline type for this pickled estimator must be "+
-                 "'categorical'. Got {}")
-            raise ValueError(msg.format(pipeline_type))
-        # Base class loads predictor and pipeline
-        super(CompNBPredictor, self).__init__(classifier_filename, pipeline_type)
-        
-        return None
-    
-
-class KNNPredictor(BasePredictor):
-    """KNN Predictors support dense features"""
-    def __init__(self, 
-                 classifier_filename:Union[str,bytes],
-                 pipeline_type:str) -> None:
-        # Validate input pipeline type for specific predictor
-        # Native Bayes predictors use categorical & sparse inputs
-        # KNN and SVM predictors use numeric & dense inputs
-        if pipeline_type != 'numeric':
-            msg=("Pipeline type for this pickled estimator must be "+
-                 "'numeric'. Got {}")
-            raise ValueError(msg.format(pipeline_type))
-        # Base class loads predictor and pipeline
-        super(KNNPredictor, self).__init__(classifier_filename, pipeline_type)
-        
-        return None
-
-    def custom_transform(self, data:Union[csr_matrix, np.ndarray]) -> Union[csr_matrix, np.ndarray]:
+class DensifyMixin:
+    """Mixin which densifies (converts to dense input from a sparse array)
+    the input to a predictor"""
+    @classmethod
+    def custom_transform(cls, data:Union[csr_matrix, np.ndarray]) -> Union[csr_matrix, np.ndarray]:
         """Convert a Numpy array of sparse bags into an array of dense bags
         inputs
         -------
@@ -240,13 +209,13 @@ class KNNPredictor(BasePredictor):
             of shape (n_instances, n_features). n_instances can vary per bag"""
         
         if isinstance(data, csr_matrix) and data.ndim == 2:
-            return self._densify_single_bag(data)
+            return cls._densify_single_bag(data)
         
         elif isinstance(data, np.ndarray) and \
             data.ndim == 1 and \
             isinstance(data[0], csr_matrix):
             # Expect an array of objects, and each subobject is a sparse array
-            return self._densify_multiple_bags
+            return cls._densify_multiple_bags
         
         else:
             msg=("Incorrect input format. Must be either csr_matrix with 2 "+
@@ -255,7 +224,8 @@ class KNNPredictor(BasePredictor):
         
         return None
     
-    def _densify_multiple_bags(self, data):
+    @staticmethod
+    def _densify_multiple_bags(data):
         """Convert a Numpy array of sparse bags into an array of dense bags
         inputs
         -------
@@ -283,8 +253,46 @@ class KNNPredictor(BasePredictor):
             dense_bags[n] = data[n].toarray()
         return dense_bags
 
-    def _densify_single_bag(self, data:csr_matrix) -> np.ndarray:
+    @staticmethod
+    def _densify_single_bag(data:csr_matrix) -> np.ndarray:
         return data.toarray()
+
+
+
+class CompNBPredictor(BasePredictor):
+    
+    def __init__(self, 
+                 classifier_filename:Union[str,bytes],
+                 pipeline_type:str) -> None:
+        # Validate input pipeline type for specific predictor
+        # Native Bayes predictors use categorical & sparse inputs
+        # KNN and SVM predictors use numeric & dense inputs
+        if pipeline_type != 'categorical':
+            msg=("Pipeline type for this pickled estimator must be "+
+                 "'categorical'. Got {}")
+            raise ValueError(msg.format(pipeline_type))
+        # Base class loads predictor and pipeline
+        super(CompNBPredictor, self).__init__(classifier_filename, pipeline_type)
+        
+        return None
+    
+
+class KNNPredictor(DensifyMixin, BasePredictor):
+    """KNN Predictors support dense features"""
+    def __init__(self, 
+                 classifier_filename:Union[str,bytes],
+                 pipeline_type:str) -> None:
+        # Validate input pipeline type for specific predictor
+        # Native Bayes predictors use categorical & sparse inputs
+        # KNN and SVM predictors use numeric & dense inputs
+        if pipeline_type != 'numeric':
+            msg=("Pipeline type for this pickled estimator must be "+
+                 "'numeric'. Got {}")
+            raise ValueError(msg.format(pipeline_type))
+        # Base class loads predictor and pipeline
+        super(KNNPredictor, self).__init__(classifier_filename, pipeline_type)
+        
+        return None
 
 
 class MultiNBPredictor(BasePredictor):
@@ -306,7 +314,7 @@ class MultiNBPredictor(BasePredictor):
         return None
     
 
-class SVMCL1SIPredictor(BasePredictor): 
+class SVMCL1SIPredictor(DensifyMixin, BasePredictor): 
     """SVMC Predictors support dense features"""
     def __init__(self, 
                  classifier_filename:Union[str,bytes],
@@ -322,71 +330,9 @@ class SVMCL1SIPredictor(BasePredictor):
         super(SVMCL1SIPredictor, self).__init__(classifier_filename, pipeline_type)
         
         return None
-    
-    def custom_transform(self, data:Union[csr_matrix, np.ndarray]) -> Union[csr_matrix, np.ndarray]:
-        """Convert a Numpy array of sparse bags into an array of dense bags
-        inputs
-        -------
-        X: (scipy.sparse.csr_matrix) of shape (n) where n is the total number of 
-            bags in the dataset. Each entry of X is of shape 
-            (n_instances, n_features) where n_instances is the number of instances
-            within a bag, and n_features is the features space of instances.
-            n_instances can vary per bag
-        outputs
-        -------
-        dense_bags: (np.ndaray, dtype='object') of shape (n) where n is the total 
-            number of bags in the dataset. Each object is a dense numpy array
-            of shape (n_instances, n_features). n_instances can vary per bag"""
-        
-        if isinstance(data, csr_matrix) and data.ndim == 2:
-            return self._densify_single_bag(data)
-        
-        elif isinstance(data, np.ndarray) and \
-            data.ndim == 1 and \
-            isinstance(data[0], csr_matrix):
-            # Expect an array of objects, and each subobject is a sparse array
-            return self._densify_multiple_bags
-        
-        else:
-            msg=("Incorrect input format. Must be either csr_matrix with 2 "+
-                 "dimensions or np.ndarray of sparse arrys")
-            raise ValueError(msg)
-        
-        return None
-    
-    def _densify_multiple_bags(self, data):
-        """Convert a Numpy array of sparse bags into an array of dense bags
-        inputs
-        -------
-        X: (scipy.sparse.csr_matrix) of shape (n) where n is the total number of 
-            bags in the dataset. Each entry of X is of shape 
-            (n_instances, n_features) where n_instances is the number of instances
-            within a bag, and n_features is the features space of instances.
-            n_instances can vary per bag
-        outputs
-        -------
-        dense_bags: (np.ndaray, dtype='object') of shape (n) where n is the total 
-            number of bags in the dataset. Each object is a dense numpy array
-            of shape (n_instances, n_features). n_instances can vary per bag"""
-        if not isinstance(data[0], csr_matrix):
-            msg="Input must be of type scipy.sparse.csr_matrix. Got {}".format(type(data))
-            raise ValueError(msg)
-        if data.ndim != 1:
-            msg="Input must have single outer dimension. Got {} dims".format(data.ndim)
-            raise ValueError(msg)
-        
-        # Convert sparse bags to dense bags
-        n_bags = data.shape[0]
-        dense_bags = np.empty(n_bags, dtype='object')
-        for n in range(n_bags):
-            dense_bags[n] = data[n].toarray()
-        return dense_bags
-
-    def _densify_single_bag(self, data:csr_matrix) -> np.ndarray:
-        return data.toarray()
 
 
-class SVMCRBFSIPredictor(BasePredictor):  
+class SVMCRBFSIPredictor(DensifyMixin, BasePredictor):  
     """SVMC Predictors support dense features"""
     def __init__(self, 
                  classifier_filename:Union[str,bytes],
@@ -402,66 +348,3 @@ class SVMCRBFSIPredictor(BasePredictor):
         super(SVMCRBFSIPredictor, self).__init__(classifier_filename, pipeline_type)
         
         return None
-    def custom_transform(self, data:Union[csr_matrix, np.ndarray]) -> Union[csr_matrix, np.ndarray]:
-        """Convert a Numpy array of sparse bags into an array of dense bags
-        inputs
-        -------
-        X: (scipy.sparse.csr_matrix) of shape (n) where n is the total number of 
-            bags in the dataset. Each entry of X is of shape 
-            (n_instances, n_features) where n_instances is the number of instances
-            within a bag, and n_features is the features space of instances.
-            n_instances can vary per bag
-        outputs
-        -------
-        dense_bags: (np.ndaray, dtype='object') of shape (n) where n is the total 
-            number of bags in the dataset. Each object is a dense numpy array
-            of shape (n_instances, n_features). n_instances can vary per bag"""
-        
-        if isinstance(data, csr_matrix) and data.ndim == 2:
-            return self._densify_single_bag(data)
-        
-        elif isinstance(data, np.ndarray) and \
-            data.ndim == 1 and \
-            isinstance(data[0], csr_matrix):
-            # Expect an array of objects, and each subobject is a sparse array
-            return self._densify_multiple_bags
-        
-        else:
-            msg=("Incorrect input format. Must be either csr_matrix with 2 "+
-                 "dimensions or np.ndarray of sparse arrys")
-            raise ValueError(msg)
-        
-        return None
-    
-    def _densify_multiple_bags(self, data):
-        """Convert a Numpy array of sparse bags into an array of dense bags
-        inputs
-        -------
-        X: (scipy.sparse.csr_matrix) of shape (n) where n is the total number of 
-            bags in the dataset. Each entry of X is of shape 
-            (n_instances, n_features) where n_instances is the number of instances
-            within a bag, and n_features is the features space of instances.
-            n_instances can vary per bag
-        outputs
-        -------
-        dense_bags: (np.ndaray, dtype='object') of shape (n) where n is the total 
-            number of bags in the dataset. Each object is a dense numpy array
-            of shape (n_instances, n_features). n_instances can vary per bag"""
-        if not isinstance(data[0], csr_matrix):
-            msg="Input must be of type scipy.sparse.csr_matrix. Got {}".format(type(data))
-            raise ValueError(msg)
-        if data.ndim != 1:
-            msg="Input must have single outer dimension. Got {} dims".format(data.ndim)
-            raise ValueError(msg)
-        
-        # Convert sparse bags to dense bags
-        n_bags = data.shape[0]
-        dense_bags = np.empty(n_bags, dtype='object')
-        for n in range(n_bags):
-            dense_bags[n] = data[n].toarray()
-        return dense_bags
-
-    def _densify_single_bag(self, data:csr_matrix) -> np.ndarray:
-        return data.toarray()
-
-
