@@ -72,3 +72,6 @@ git notes.txt
 vocab_ANTIQUE.txt
 train_ANTIQUE.tfrecords
 
+# Negations
+!serving_config.ini
+

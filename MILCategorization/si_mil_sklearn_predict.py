@@ -258,7 +258,6 @@ class DensifyMixin:
         return data.toarray()
 
 
-
 class CompNBPredictor(BasePredictor):
     
     def __init__(self, 

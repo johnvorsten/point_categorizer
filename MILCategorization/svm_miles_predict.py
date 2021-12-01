@@ -23,7 +23,7 @@ from transform_mil import Transform
 # Global declarations
 SVMC_l1_classifier_filename = r"./svmc_l1_miles.clf"
 SVMC_rbf_classifier_filename = r"./svmc_rbf_miles.clf"
-concept_class_filename = r"./miles_concept_features.dat"
+CONCEPT_CLASS_FILENAME = r"./miles_concept_features.dat"
 N_CONCEPT_FEATURES = 2855 # Number of concept class features
 
 #%% Classses and data
@@ -213,7 +213,7 @@ class BasePredictor:
         # Load transform pipeline
         self.numeric_transform_pipeline_MIL = Transform.numeric_transform_pipeline_MIL()
         # Load embedding class member
-        self.MILESEmbedder = MILESEmbedding(concept_class_filename)
+        self.MILESEmbedder = MILESEmbedding(CONCEPT_CLASS_FILENAME)
 
         return None
     
