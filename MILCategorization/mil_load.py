@@ -199,9 +199,6 @@ class LoadMIL:
         # List, remove a single item from the list
         group_ids = self.Insert.core_select_execute(sel)
         group_id = group_ids.pop().group_id
-        print(group_ids); print(type(group_ids))
-        print(group_id); print(type(group_id))
-
         # Create the pipeline
         if pipeline == 'whole':
             full_pipeline = Transform.numeric_transform_pipeline_MIL()

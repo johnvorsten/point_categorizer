@@ -18,7 +18,6 @@ from pyMILES.embedding import embed_bag
 import pandas as pd
 
 # Local imports
-from mil_load import LoadMIL
 from transform_mil import Transform
 
 # Global declarations
@@ -89,7 +88,7 @@ class MILESEmbedding:
         sigma: (float) regularization paramter
         distance: (str) 'euclidean' is the only supported distance metric"""
         
-        if not LoadMIL.validate_bag(bag):
+        if not validate_bag(bag):
             msg=("The passed bag either contained a) All virtual instances b) "+
             "all L2SL points, or c) No instances made it through the pipeline "+
             "and has a shape of [0,n]")
@@ -377,3 +376,32 @@ class SVMCRBFMILESPredictor(BasePredictor):
         super(SVMCRBFMILESPredictor, self).__init__(classifier_filename)
         
         return None
+
+
+def validate_bag(bag):
+    """Determine if a bag of instances is valid. A bag is valid if the
+    resulting bag has at least one instance
+    inputs
+    ------
+    bag : (pd.DataFrame) or (scipy.sparse.csr.csr_matrix)
+    outputs
+    -------
+    is_valid : (bool) True if the bag has one instance at least"""
+
+    # Failure - a group has dupilcate point names are are both deleted
+    # during cleaning, causing an empty array to pass to subsequent pipes
+    if isinstance(bag, pd.DataFrame):
+        all_L2SL = list(set(bag['TYPE'])) == ['L2SL']
+        all_virtual = list(set(bag['VIRTUAL'])) == [True]
+
+        if all_L2SL:
+            print('Bag contained all L2SL instances and is skipped')
+            return False
+        if all_virtual:
+            print('Bag contained all Virtual instances and is skipped')
+            return False
+
+    if bag.shape[0] > 0:
+        return True
+
+    return False
