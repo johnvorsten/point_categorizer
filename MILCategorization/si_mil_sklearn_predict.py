@@ -6,7 +6,7 @@ Created on Fri Oct 29 12:13:22 2021
 """
 
 # Python imports
-from typing import Union, List
+from typing import Union, List, MutableMapping
 import pickle
 import configparser
 from dataclasses import dataclass
@@ -21,7 +21,7 @@ from bag_cross_validate import BagScorer
 
 # Local imports
 from transform_mil import Transform
-from svm_miles_predict import RawInputData
+from dataclass_serving import RawInputData, RawInputDataPydantic
 
 # Global declarations
 CompNB_classifier_filename = r"./compNB_si.clf"
@@ -31,6 +31,7 @@ SVMCL1SI_classifier_filename = r"./svmc_l1_si.clf"
 SVMCRBFSI_classifier_filename = r"./svmc_rbf_si.clf"
 
 #%% Classses and data
+
 
 class BasePredictor(ABC):
     """Load a pickled scikit-learn estimator, transform raw data, and 
@@ -122,8 +123,8 @@ class BasePredictor(ABC):
         
         return np.array([bag_prediction], dtype=np.unicode_)
 
-    def _transform_data(self, data:Union[List[RawInputData], 
-                                         RawInputData, 
+    def _transform_data(self, data:Union[List[MutableMapping], 
+                                         MutableMapping, 
                                          pd.DataFrame]):
         """Transform raw data into a usable input to an estimator
         inputs
@@ -135,7 +136,7 @@ class BasePredictor(ABC):
         clean_data (np.ndarray or scipy.sparse.csr_array) results of data
         passed through transformation pipeline
         """
-        
+        # Convert list or dictionary to dataframe
         df_raw = pd.DataFrame(data)
         clean_data = self.pipeline.fit_transform(df_raw)
         

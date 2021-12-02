@@ -19,6 +19,7 @@ import pandas as pd
 
 # Local imports
 from transform_mil import Transform
+from dataclass_serving import RawInputData, RawInputDataPydantic
 
 # Global declarations
 SVMC_l1_classifier_filename = r"./svmc_l1_miles.clf"
@@ -27,43 +28,6 @@ CONCEPT_CLASS_FILENAME = r"./miles_concept_features.dat"
 N_CONCEPT_FEATURES = 2855 # Number of concept class features
 
 #%% Classses and data
-
-@dataclass
-class RawInputData:
-    """Raw input data from HTTP Web form
-    Note, any default values are not required by the estimator, and are 
-    removed by the data cleaning pipeline
-    
-    Required numeric attributes
-    ['DEVICEHI', 'DEVICELO', 'SIGNALHI', 'SIGNALLO', 'SLOPE', 'INTERCEPT']
-    
-    Required categorical attributes
-    ['TYPE', 'ALARMTYPE', 'FUNCTION', 'VIRTUAL', 'CS','SENSORTYPE', 'DEVUNITS']
-    
-    Requried text attributes
-    ['NAME', 'DESCRIPTOR']
-    """
-    # Required numeric attributes
-    DEVICEHI: float
-    DEVICELO: float
-    SIGNALHI: float
-    SIGNALLO: float
-    SLOPE: float
-    INTERCEPT: float
-    # Required categorical attributes
-    TYPE: str
-    ALARMTYPE: str
-    FUNCTION: str
-    VIRTUAL: bool
-    CS: str
-    SENSORTYPE: str
-    DEVUNITS: str
-    # Requried text attributes
-    NAME: str
-    DESCRIPTOR: str
-    NETDEVID: str
-    SYSTEM: str
-
 
 class MILESEmbedding:
     

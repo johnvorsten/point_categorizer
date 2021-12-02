@@ -10,7 +10,6 @@ API server for several estimators, including
 
 # Python imports
 from typing import Optional
-from dataclasses import dataclass
 import configparser
 
 # Third party imports
@@ -22,8 +21,8 @@ import uvicorn
 from si_mil_sklearn_predict import (CompNBPredictor, KNNPredictor, 
                                     MultiNBPredictor, SVMCL1SIPredictor, 
                                     SVMCRBFSIPredictor)
-from svm_miles_predict import (SVMCL1MILESPredictor, SVMCRBFMILESPredictor, 
-                                )
+from svm_miles_predict import (SVMCL1MILESPredictor, SVMCRBFMILESPredictor)
+from dataclass_serving import RawInputData, RawInputDataPydantic
 
 # Declarations
 config = configparser.ConfigParser()
@@ -53,7 +52,7 @@ compNBPredictor = CompNBPredictor(
 multiNBPredictor = MultiNBPredictor(
     MultiNB_classifier_filename, 
     pipeline_type='categorical')
-knnPredictor = CompNBPredictor(
+knnPredictor = KNNPredictor(
     KNN_classifier_filename, 
     pipeline_type='numeric')
 svmcL1SIPredictor = SVMCL1SIPredictor(
@@ -68,41 +67,6 @@ svmcRBFMILESPredictor = SVMCL1MILESPredictor(
     SVMC_rbf_classifier_filename)
 
 #%%
-
-class RawInputData(BaseModel):
-    """Raw input data from HTTP Web form
-    Note, any default values are not required by the estimator, and are 
-    removed by the data cleaning pipeline
-    
-    Required numeric attributes
-    ['DEVICEHI', 'DEVICELO', 'SIGNALHI', 'SIGNALLO', 'SLOPE', 'INTERCEPT']
-    
-    Required categorical attributes
-    ['TYPE', 'ALARMTYPE', 'FUNCTION', 'VIRTUAL', 'CS','SENSORTYPE', 'DEVUNITS']
-    
-    Requried text attributes
-    ['NAME', 'DESCRIPTOR']
-    """
-    # Required numeric attributes
-    DEVICEHI: float
-    DEVICELO: float
-    SIGNALHI: float
-    SIGNALLO: float
-    SLOPE: float
-    INTERCEPT: float
-    # Required categorical attributes
-    TYPE: str
-    ALARMTYPE: str
-    FUNCTION: str
-    VIRTUAL: bool
-    CS: str
-    SENSORTYPE: str
-    DEVUNITS: str
-    # Requried text attributes
-    NAME: str
-    DESCRIPTOR: str
-    NETDEVID: str
-    SYSTEM: str
 
 
 @app.on_event("startup")
@@ -124,37 +88,37 @@ async def root():
     return {"message":msg}
 
 @app.post("/CompNBPredictor/")
-async def CompNB_server(data:RawInputData):
+async def CompNB_server(data:RawInputDataPydantic):
     """Serve predictions from the CompNBPredictor"""
     return {"prediction":compNBPredictor.predict(data)}
 
 @app.post("/MultiNBPredictor/")
-async def MultiNB_server(data:RawInputData):
+async def MultiNB_server(data:RawInputDataPydantic):
     """Serve predictions from the MultiNBPredictor"""
     return {"prediction":multiNBPredictor.predict(data)}
 
 @app.post("/KNNPredictor/")
-async def KNN_server(data:RawInputData):
+async def KNN_server(data:RawInputDataPydantic):
     """Serve predictions from the KNNPredictor"""
     return {"prediction":knnPredictor.predict(data)}
 
 @app.post("/SVMCL1SIPredictor/")
-async def SVMCL1SI_server(data:RawInputData):
+async def SVMCL1SI_server(data:RawInputDataPydantic):
     """Serve predictions from the SVMCL1SIPredictor"""
     return {"prediction":svmcL1SIPredictor.predict(data)}
 
 @app.post("/SVMCRBFSIPredictor/")
-async def SVMCRBFSI_server(data:RawInputData):
+async def SVMCRBFSI_server(data:RawInputDataPydantic):
     """Serve predictions from the SVMCRBFSIPredictor"""
     return {"prediction":svmcRBFSIPredictor.predict(data)}
 
 @app.post("/SVMCL1MILESPredictor/")
-async def SVMCL1MILES_server(data:RawInputData):
+async def SVMCL1MILES_server(data:RawInputDataPydantic):
     """Serve predictions from the SVMCL1MILESPredictor"""
     return {"prediction":svmcL1MILESPredictor.predict(data)}
 
 @app.post("/SVMCRBFMILESPredictor/")
-async def SVMCRBFMILES_server(data:RawInputData):
+async def SVMCRBFMILES_server(data:RawInputDataPydantic):
     """Serve predictions from the SVMCRBFMILESPredictor"""
     return {"prediction":svmcRBFMILESPredictor.predict(data)}
 
