@@ -14,6 +14,7 @@ import configparser
 import os
 import sys
 import unittest
+from copy import deepcopy
 
 # Third party imports
 import pandas as pd
@@ -30,9 +31,10 @@ if __name__ == '__main__':
     if _PROJECT_DIR not in sys.path:
         sys.path.insert(0, _PROJECT_DIR)
 from svm_miles_predict import (MILESEmbedding, SVMCL1MILESPredictor, 
-                               SVMCRBFMILESPredictor, RawInputData, 
+                               SVMCRBFMILESPredictor, 
                                BasePredictor, Transform, N_CONCEPT_FEATURES)
 from mil_load import LoadMIL
+from dataclass_serving import RawInputData, RawInputDataPydantic
 
 
 # Global declarations
@@ -51,21 +53,42 @@ LoadMIL = LoadMIL(server_name, driver_name, database_name)
 
 
 #%% Class definitions
-    
-class BasePredictorTest(unittest.TestCase):
+def generate_input_data():
+    # Construct raw data input
+    # This is intended to test input gathered from a web form. Not all
+    # Attributes that are present in a SQL database are present
+    input_data = RawInputData(
+        # Required numeric attributes
+        DEVICEHI=122.0,
+        DEVICELO=32.0,
+        SIGNALHI=10,
+        SIGNALLO=0,
+        SLOPE=1.2104,
+        INTERCEPT=0.01,
+        # Required categorical attributes
+        TYPE="LAI",
+        ALARMTYPE="Standard",
+        FUNCTION="Value",
+        VIRTUAL=0,
+        CS="AE",
+        SENSORTYPE="VOLTAGE",
+        DEVUNITS="VDC",
+        # Requried text attributes
+        NAME="SHLH.AHU-ED.RAT",
+        DESCRIPTOR="RETURN TEMP",
+        NETDEVID='test-value',
+        SYSTEM='test-system',
+        )
+    data_list = [deepcopy(input_data) for x in range(10)]
+    for i in range(0,10):
+        data_list[i].NAME = data_list[i].NAME+str(chr(i+64))
+    return input_data, data_list
 
-    def setUp(self):
-        
-        # Instance of BasePredictor
-        self.basePredictorL1 = BasePredictor(
-            classifier_filename=SVMC_l1_classifier_filename)
-        self.basePredictorRBF = BasePredictor(
-            classifier_filename=SVMC_rbf_classifier_filename)
-
-        # Construct raw data input
-        # This is intended to test input gathered from a web form. Not all
-        # Attributes that are present in a SQL database are present
-        input_data = RawInputData(
+def generate_input_data_pydantic():
+    # Construct raw data input
+    # This is intended to test input gathered from a web form. Not all
+    # Attributes that are present in a SQL database are present
+    input_data_pydantic = RawInputDataPydantic(          
             # Required numeric attributes
             DEVICEHI=122.0,
             DEVICELO=32.0,
@@ -85,16 +108,116 @@ class BasePredictorTest(unittest.TestCase):
             NAME="SHLH.AHU-ED.RAT",
             DESCRIPTOR="RETURN TEMP",
             NETDEVID='test-value',
-            SYSTEM='test-system'
+            SYSTEM='test-system',
             )
-        
+    data_list = [deepcopy(input_data_pydantic) for x in range(10)]
+    for i in range(0,10):
+        data_list[i].NAME = data_list[i].NAME+str(chr(i+64))
+    return input_data_pydantic, data_list
+
+
+class PredictorTestMixin:
+    
+    def _generate_data(self):
+        # Generate some data from dataclass / pydantic for FastAPI
+        self.input_data, self.input_data_list = generate_input_data()
+        self.input_data_pydantic, self.input_data_list_pydantic = generate_input_data_pydantic()
         # Convert raw data to dataframe
-        self.dfraw_input = pd.DataFrame(data=[input_data])
+        self.dfraw_input = pd.DataFrame(data=[self.input_data.__dict__])
+        self.dfraw_input_pydantic = pd.DataFrame(data=[self.input_data_pydantic.__dict__])
+        return None
+    
+    def test_predict_dataframe(self):
+        # Test estimator with dataframe inputs
+        results_input = self.predictor.predict(self.dfraw_input)
+        results_load = self.predictor.predict(self.dfraw_load)
+        results_input_pydantic = self.predictor.predict(self.dfraw_input_pydantic)
+
+        # Possible labels
+        label_set = {'ahu','alarm', 'boiler','chiller','exhaust_fan',
+                     'misc','room','rtu','skip','unknown'}
+        # Results are a numpy array holding str
+        self.assertTrue(results_input[0] in label_set)
+        self.assertTrue(results_load[0] in label_set)
+        self.assertTrue(results_input_pydantic[0] in label_set)
+
+        return None
+    
+    def test_predict_pydantic_list(self):
+        # Test estimator with Dataclass inputs
+        # Inputs MUST be converted to dictionary or list of dictionaries before
+        # Passing to .predict
+        input_list = [x.__dict__ for x in self.input_data_list_pydantic]
+        results = self.predictor.predict(input_list)
+        # Possible labels
+        label_set = {'ahu','alarm', 'boiler','chiller','exhaust_fan',
+                     'misc','room','rtu','skip','unknown'}
+        # Results are a numpy array holding str
+        self.assertTrue(results[0] in label_set)
+
+        return None
+    
+    def test_predict_dataclass_list(self):
+        # Test estimator with Dataclass inputs
+        # Inputs MUST be converted to dictionary or list of dictionaries before
+        # Passing to .predict
+        input_list = [x.__dict__ for x in self.input_data_list]
+        results = self.predictor.predict(input_list)
+        # Possible labels
+        label_set = {'ahu','alarm', 'boiler','chiller','exhaust_fan',
+                     'misc','room','rtu','skip','unknown'}
+        # Results are a numpy array holding str
+        self.assertTrue(results[0] in label_set)
+        return None
+    
+    def test__transform_data_pydantic(self):
+        # Transform raw data (from input class)
+        bag_input_pydantic = Transform.numeric_transform_pipeline_MIL()\
+            .fit_transform(self.dfraw_input_pydantic)
+            
+        return None
+
+    def test__transform_list(self):
+        # Transform from a list of dictionaries
+        input_data_list = self.input_data_list
+        input_list = [x.__dict__ for x in input_data_list]
+        dfraw = pd.DataFrame(input_list)
+        bag = Transform.numeric_transform_pipeline_MIL()\
+            .fit_transform(dfraw)
+        # Transform from a list of dictionaries
+        input_data_list_pydantic = self.input_data_list_pydantic
+        input_list = [x.__dict__ for x in input_data_list_pydantic]
+        dfraw = pd.DataFrame(input_list)
+        bag = Transform.numeric_transform_pipeline_MIL()\
+            .fit_transform(dfraw)
+            
+        return None
+
+
+class BasePredictorTest(unittest.TestCase):
+
+    def setUp(self):
         
+        # Instance of BasePredictor
+        self.basePredictorL1 = BasePredictor(
+            classifier_filename=SVMC_l1_classifier_filename)
+        self.basePredictorRBF = BasePredictor(
+            classifier_filename=SVMC_rbf_classifier_filename)
+        # Generate some data from dataclass / pydantic for FastAPI
+        self._generate_data()
         # Load raw data from file or create raw data
         (self.dfraw_load, self.bag_load, 
          self.bag_label_load) = LoadMIL.get_single_mil_bag(pipeline='whole')
         
+        return None
+    
+    def _generate_data(self):
+        # Generate some data from dataclass / pydantic for FastAPI
+        self.input_data, self.input_data_list = generate_input_data()
+        self.input_data_pydantic, self.input_data_list_pydantic = generate_input_data_pydantic()
+        # Convert raw data to dataframe
+        self.dfraw_input = pd.DataFrame(data=[self.input_data.__dict__])
+        self.dfraw_input_pydantic = pd.DataFrame(data=[self.input_data_pydantic.__dict__])
         return None
     
     def test__load_predictor(self):
@@ -147,7 +270,6 @@ class BasePredictorTest(unittest.TestCase):
         
         return None
     
-
 
 class MILESEmbeddingTest(unittest.TestCase):
     
@@ -203,42 +325,14 @@ class MILESEmbeddingTest(unittest.TestCase):
         return None
 
 
-class SVMCL1MILESPredictorTest(unittest.TestCase):
+class SVMCL1MILESPredictorTest(unittest.TestCase, PredictorTestMixin):
     
     def setUp(self):
         # Instance of BasePredictor
         self.predictor = SVMCL1MILESPredictor(
             classifier_filename=SVMC_l1_classifier_filename)
-
-        # Construct raw data input
-        # This is intended to test input gathered from a web form. Not all
-        # Attributes that are present in a SQL database are present
-        input_data = RawInputData(
-            # Required numeric attributes
-            DEVICEHI=122.0,
-            DEVICELO=32.0,
-            SIGNALHI=10,
-            SIGNALLO=0,
-            SLOPE=1.2104,
-            INTERCEPT=0.01,
-            # Required categorical attributes
-            TYPE="LAI",
-            ALARMTYPE="Standard",
-            FUNCTION="Value",
-            VIRTUAL=0,
-            CS="AE",
-            SENSORTYPE="VOLTAGE",
-            DEVUNITS="VDC",
-            # Requried text attributes
-            NAME="SHLH.AHU-ED.RAT",
-            DESCRIPTOR="RETURN TEMP",
-            NETDEVID='test-value',
-            SYSTEM='test-system'
-            )
-        
-        # Convert raw data to dataframe
-        self.dfraw_input = pd.DataFrame(data=[input_data])
-        
+        # Generate some data from dataclass / pydantic for FastAPI
+        self._generate_data()
         # Load raw data from file or create raw data
         (self.dfraw_load, self.bag_load, 
          self.bag_label_load) = LoadMIL.get_single_mil_bag(pipeline='whole')
@@ -259,42 +353,14 @@ class SVMCL1MILESPredictorTest(unittest.TestCase):
         return None
 
 
-class SVMCRBFMILESPredictorTest(unittest.TestCase):
+class SVMCRBFMILESPredictorTest(unittest.TestCase, PredictorTestMixin):
     
     def setUp(self):
         # Instance of BasePredictor
         self.predictor = SVMCRBFMILESPredictor(
             classifier_filename=SVMC_rbf_classifier_filename)
-
-        # Construct raw data input
-        # This is intended to test input gathered from a web form. Not all
-        # Attributes that are present in a SQL database are present
-        input_data = RawInputData(
-            # Required numeric attributes
-            DEVICEHI=122.0,
-            DEVICELO=32.0,
-            SIGNALHI=10,
-            SIGNALLO=0,
-            SLOPE=1.2104,
-            INTERCEPT=0.01,
-            # Required categorical attributes
-            TYPE="LAI",
-            ALARMTYPE="Standard",
-            FUNCTION="Value",
-            VIRTUAL=0,
-            CS="AE",
-            SENSORTYPE="VOLTAGE",
-            DEVUNITS="VDC",
-            # Requried text attributes
-            NAME="SHLH.AHU-ED.RAT",
-            DESCRIPTOR="RETURN TEMP",
-            NETDEVID='test-value',
-            SYSTEM='test-system'
-            )
-        
-        # Convert raw data to dataframe
-        self.dfraw_input = pd.DataFrame(data=[input_data])
-        
+        # Generate some data from dataclass / pydantic for FastAPI
+        self._generate_data()
         # Load raw data from file or create raw data
         (self.dfraw_load, self.bag_load, 
          self.bag_label_load) = LoadMIL.get_single_mil_bag(pipeline='whole')
@@ -313,9 +379,6 @@ class SVMCRBFMILESPredictorTest(unittest.TestCase):
         self.assertTrue(results_rbf_load[0] in label_set)
         
         return None
-
-
-
 
 
 #%% Main

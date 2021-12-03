@@ -9,7 +9,7 @@ API server for several estimators, including
 """
 
 # Python imports
-from typing import Optional
+from typing import Optional, Union, List
 import configparser
 
 # Third party imports
@@ -68,6 +68,13 @@ svmcRBFMILESPredictor = SVMCL1MILESPredictor(
 
 #%%
 
+def _determine_unpack(data:Union[List[RawInputDataPydantic], 
+                                 RawInputDataPydantic]) -> Union[dict, List[dict]]:
+    if isinstance(data, list):
+        return [x.__dict__ for x in data]
+    elif isinstance(data, RawInputDataPydantic):
+        return data.__dict__
+    return None
 
 @app.on_event("startup")
 async def startup():
@@ -90,37 +97,51 @@ async def root():
 @app.post("/CompNBPredictor/")
 async def CompNB_server(data:RawInputDataPydantic):
     """Serve predictions from the CompNBPredictor"""
-    return {"prediction":compNBPredictor.predict(data)}
+    predictor_input = _determine_unpack(data)
+    prediction = compNBPredictor.predict(predictor_input)
+    return {"prediction":prediction}
 
 @app.post("/MultiNBPredictor/")
 async def MultiNB_server(data:RawInputDataPydantic):
     """Serve predictions from the MultiNBPredictor"""
-    return {"prediction":multiNBPredictor.predict(data)}
+    predictor_input = _determine_unpack(data)
+    prediction = multiNBPredictor.predict(predictor_input)
+    return {"prediction":prediction}
 
 @app.post("/KNNPredictor/")
 async def KNN_server(data:RawInputDataPydantic):
     """Serve predictions from the KNNPredictor"""
-    return {"prediction":knnPredictor.predict(data)}
+    predictor_input = _determine_unpack(data)
+    prediction = knnPredictor.predict(predictor_input)
+    return {"prediction":prediction}
 
 @app.post("/SVMCL1SIPredictor/")
 async def SVMCL1SI_server(data:RawInputDataPydantic):
     """Serve predictions from the SVMCL1SIPredictor"""
-    return {"prediction":svmcL1SIPredictor.predict(data)}
+    predictor_input = _determine_unpack(data)
+    prediction = svmcL1SIPredictor.predict(predictor_input)
+    return {"prediction":prediction}
 
 @app.post("/SVMCRBFSIPredictor/")
 async def SVMCRBFSI_server(data:RawInputDataPydantic):
     """Serve predictions from the SVMCRBFSIPredictor"""
-    return {"prediction":svmcRBFSIPredictor.predict(data)}
+    predictor_input = _determine_unpack(data)
+    prediction = svmcRBFSIPredictor.predict(predictor_input)
+    return {"prediction":prediction}
 
 @app.post("/SVMCL1MILESPredictor/")
 async def SVMCL1MILES_server(data:RawInputDataPydantic):
     """Serve predictions from the SVMCL1MILESPredictor"""
-    return {"prediction":svmcL1MILESPredictor.predict(data)}
+    predictor_input = _determine_unpack(data)
+    prediction = svmcL1MILESPredictor.predict(predictor_input)
+    return {"prediction":prediction}
 
 @app.post("/SVMCRBFMILESPredictor/")
 async def SVMCRBFMILES_server(data:RawInputDataPydantic):
     """Serve predictions from the SVMCRBFMILESPredictor"""
-    return {"prediction":svmcRBFMILESPredictor.predict(data)}
+    predictor_input = _determine_unpack(data)
+    prediction = svmcRBFMILESPredictor.predict(predictor_input)
+    return {"prediction":prediction}
 
 
 #%%

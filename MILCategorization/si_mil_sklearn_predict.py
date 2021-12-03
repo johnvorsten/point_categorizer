@@ -100,8 +100,8 @@ class BasePredictor(ABC):
                     
         return classifier
 
-    def predict(self, data:Union[List[RawInputData], 
-                                 RawInputData, 
+    def predict(self, data:Union[List[MutableMapping], 
+                                 MutableMapping, 
                                  pd.DataFrame]) -> np.ndarray:
         """Predict on an embedded bag
         inputs
@@ -193,6 +193,7 @@ class BasePredictor(ABC):
 class DensifyMixin:
     """Mixin which densifies (converts to dense input from a sparse array)
     the input to a predictor"""
+    
     @classmethod
     def custom_transform(cls, data:Union[csr_matrix, np.ndarray]) -> Union[csr_matrix, np.ndarray]:
         """Convert a Numpy array of sparse bags into an array of dense bags

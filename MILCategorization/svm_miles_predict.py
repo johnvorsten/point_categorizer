@@ -6,7 +6,7 @@ Created on Fri Oct 29 12:12:39 2021
 """
 
 # Python imports
-from typing import Union, List
+from typing import Union, List, MutableMapping
 import pickle
 import configparser
 from dataclasses import dataclass
@@ -194,8 +194,8 @@ class BasePredictor:
                     
         return classifier
 
-    def predict(self, data:Union[List[RawInputData], 
-                                 RawInputData, 
+    def predict(self, data:Union[List[MutableMapping], 
+                                 MutableMapping, 
                                  pd.DataFrame]) -> np.ndarray:
         """Predict on an embedded bag
         inputs
@@ -218,8 +218,8 @@ class BasePredictor:
         
         return prediction
 
-    def _transform_data(self, data:Union[List[RawInputData], 
-                                         RawInputData, 
+    def _transform_data(self, data:Union[List[MutableMapping], 
+                                         MutableMapping, 
                                          pd.DataFrame]):
         """Transform raw data into a usable input to an estimator
         inputs
