@@ -9,13 +9,13 @@ Estimators (Pickling, saving)
     # Document validation results (.txt)
 
 Create HTTP API for accessing and serving predictions
-    Document raw data input fields (what specifically is required?)
-    Create input data structure for raw data (dataframe, dictionary, tuple, array...)
-    Deal with incomplete data (Error handling - see 8 cases of failure mode)
-    Transform raw data in estimator
-    Input data to estimator
-    Predict results
-    Send results
+    # Document raw data input fields (what specifically is required?)
+    # Create input data structure for raw data (dataframe, dictionary, tuple, array...)
+    # Deal with incomplete data (Error handling - see 8 cases of failure mode)
+    # Transform raw data in estimator
+    # Input data to estimator
+    # Predict results
+    # Send results
     ** Use FastAPI (https://fastapi.tiangolo.com/)
 
 Other - Low priority

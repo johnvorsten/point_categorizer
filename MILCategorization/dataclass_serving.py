@@ -16,6 +16,27 @@ import pandas as pd
 # Local imports
 
 # Declarations
+"""There are a total of 10 types of predictions that a predictor can choose
+from: ['ahu', 'alarm', 'boiler', 'chiller', 'exhaust_fan', 'misc', 'room',
+       'rtu', 'skip', 'unknown'].
+In the event that a predictor has an unknown label, this class will restrict
+the possible outputs from our API.
+It is unfortunate that these preidction labels were chosen. 'skip' and
+'unknown' are very similar class labels, and I'd like to combine them into
+one result. 'room','misc' are also unimportant, and I'd like to lump them 
+under the unknown class label"""
+prediction_map = {
+    'ahu':'Air Handler',
+    'alarm':'Alarm',
+    'boiler':'Boiler or Hot Water System',
+    'chiller':'Chiller, CHW pump, or Condenser System',
+    'exhaust_fan':'Exhaust System',
+    'misc':'Unknown System',
+    'room':'Unknown System',
+    'rtu':'Rooftop Unit',
+    'skip':'Unknown System',
+    'unknown':'Unknown System',
+    }
 
 #%% Classes
 
@@ -54,6 +75,9 @@ class RawInputDataPydantic(BaseModel):
     NETDEVID: str
     SYSTEM: str
 
+
+class PredictorOutput(BaseModel):
+    prediction: str
 
 @dataclass
 class RawInputData:

@@ -9,12 +9,12 @@ API server for several estimators, including
 """
 
 # Python imports
-from typing import Optional, Union, List
+from typing import Union, List
 import configparser
+import warnings
 
 # Third party imports
-from fastapi import FastAPI, Body
-from pydantic import BaseModel
+from fastapi import FastAPI
 import uvicorn
 
 # Local imports
@@ -22,11 +22,13 @@ from si_mil_sklearn_predict import (CompNBPredictor, KNNPredictor,
                                     MultiNBPredictor, SVMCL1SIPredictor, 
                                     SVMCRBFSIPredictor)
 from svm_miles_predict import (SVMCL1MILESPredictor, SVMCRBFMILESPredictor)
-from dataclass_serving import RawInputData, RawInputDataPydantic
+from dataclass_serving import (RawInputDataPydantic, 
+                               prediction_map, PredictorOutput)
 
 # Declarations
 config = configparser.ConfigParser()
 config.read(r'./serving_config.ini')
+warnings.filterwarnings(action='ignore', message='elementwise comparison failed')
 
 # Application level
 app = FastAPI(title=config['FastAPI']['title'],
@@ -63,7 +65,7 @@ svmcRBFSIPredictor = SVMCRBFSIPredictor(
     pipeline_type='numeric')
 svmcL1MILESPredictor = SVMCL1MILESPredictor(
     SVMC_l1_classifier_filename)
-svmcRBFMILESPredictor = SVMCL1MILESPredictor(
+svmcRBFMILESPredictor = SVMCRBFMILESPredictor(
     SVMC_rbf_classifier_filename)
 
 #%%
@@ -74,6 +76,9 @@ def _determine_unpack(data:Union[List[RawInputDataPydantic],
         return [x.__dict__ for x in data]
     elif isinstance(data, RawInputDataPydantic):
         return data.__dict__
+    else:
+        msg="Expected list of [RawInputDataPydatic,], instead got {}."
+        raise ValueError(msg.format(type(data)))
     return None
 
 @app.on_event("startup")
@@ -94,59 +99,60 @@ async def root():
         "SVMCL1MILESPredictor, SVMCRBFMILESPredictor")
     return {"message":msg}
 
-@app.post("/CompNBPredictor/")
-async def CompNB_server(data:RawInputDataPydantic):
+@app.post("/CompNBPredictor/", response_model=PredictorOutput)
+async def CompNB_server(data:List[RawInputDataPydantic]):
     """Serve predictions from the CompNBPredictor"""
     predictor_input = _determine_unpack(data)
     prediction = compNBPredictor.predict(predictor_input)
-    return {"prediction":prediction}
+    return PredictorOutput(prediction=prediction_map[prediction[0]])
 
-@app.post("/MultiNBPredictor/")
-async def MultiNB_server(data:RawInputDataPydantic):
+@app.post("/MultiNBPredictor/", response_model=PredictorOutput)
+async def MultiNB_server(data:List[RawInputDataPydantic]):
     """Serve predictions from the MultiNBPredictor"""
     predictor_input = _determine_unpack(data)
     prediction = multiNBPredictor.predict(predictor_input)
-    return {"prediction":prediction}
+    return PredictorOutput(prediction=prediction_map[prediction[0]])
 
-@app.post("/KNNPredictor/")
-async def KNN_server(data:RawInputDataPydantic):
+@app.post("/KNNPredictor/", response_model=PredictorOutput)
+async def KNN_server(data:List[RawInputDataPydantic]):
     """Serve predictions from the KNNPredictor"""
     predictor_input = _determine_unpack(data)
     prediction = knnPredictor.predict(predictor_input)
-    return {"prediction":prediction}
+    return PredictorOutput(prediction=prediction_map[prediction[0]])
 
-@app.post("/SVMCL1SIPredictor/")
-async def SVMCL1SI_server(data:RawInputDataPydantic):
+@app.post("/SVMCL1SIPredictor/", response_model=PredictorOutput)
+async def SVMCL1SI_server(data:List[RawInputDataPydantic]):
     """Serve predictions from the SVMCL1SIPredictor"""
     predictor_input = _determine_unpack(data)
     prediction = svmcL1SIPredictor.predict(predictor_input)
-    return {"prediction":prediction}
+    return PredictorOutput(prediction=prediction_map[prediction[0]])
 
-@app.post("/SVMCRBFSIPredictor/")
-async def SVMCRBFSI_server(data:RawInputDataPydantic):
+@app.post("/SVMCRBFSIPredictor/", response_model=PredictorOutput)
+async def SVMCRBFSI_server(data:List[RawInputDataPydantic]):
     """Serve predictions from the SVMCRBFSIPredictor"""
     predictor_input = _determine_unpack(data)
     prediction = svmcRBFSIPredictor.predict(predictor_input)
-    return {"prediction":prediction}
+    return PredictorOutput(prediction=prediction_map[prediction[0]])
 
-@app.post("/SVMCL1MILESPredictor/")
-async def SVMCL1MILES_server(data:RawInputDataPydantic):
+@app.post("/SVMCL1MILESPredictor/", response_model=PredictorOutput)
+async def SVMCL1MILES_server(data:List[RawInputDataPydantic]):
     """Serve predictions from the SVMCL1MILESPredictor"""
     predictor_input = _determine_unpack(data)
     prediction = svmcL1MILESPredictor.predict(predictor_input)
-    return {"prediction":prediction}
+    return PredictorOutput(prediction=prediction_map[prediction[0]])
 
-@app.post("/SVMCRBFMILESPredictor/")
-async def SVMCRBFMILES_server(data:RawInputDataPydantic):
+@app.post("/SVMCRBFMILESPredictor/", response_model=PredictorOutput)
+async def SVMCRBFMILES_server(data:List[RawInputDataPydantic]):
     """Serve predictions from the SVMCRBFMILESPredictor"""
     predictor_input = _determine_unpack(data)
     prediction = svmcRBFMILESPredictor.predict(predictor_input)
-    return {"prediction":prediction}
+    return PredictorOutput(prediction=prediction_map[prediction[0]])
 
 
 #%%
 if __name__ == "__main__":
-    uvicorn.run(app, 
-                host="127.0.0.1", 
-                port=config['FastAPI']['SERVE_PORT']
-                )
+    uvicorn.run(
+        app, 
+        host="127.0.0.1", 
+        port=config['FastAPI']['SERVE_PORT']
+        )
