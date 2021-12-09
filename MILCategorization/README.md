@@ -30,6 +30,10 @@ Web page
 Containerize service
 Deploy container
 
+## Docker
+build the docker image with docker `docker build . `
+Run the image for serving `docker run -p 8003:8003 --log-driver local`
+
 Vocabulary
 * MILES - Multiple instance learning via embedded instance selection
 
