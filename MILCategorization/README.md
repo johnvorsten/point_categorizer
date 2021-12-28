@@ -2,28 +2,25 @@
 
 ## TODO
 Estimators (Pickling, saving)
-    # Re-train estimator
-    # Pickle SkLearn estimator
-    # Save (training and validation) data for modular testing and validation
-    # Record optimal hyperparameters
-    # Document validation results (.txt)
+    'Re-train estimator
+    'Pickle SkLearn estimator
+    'Save (training and validation) data for modular testing and validation
+    'Record optimal hyperparameters
+    'Document validation results (.txt)
 
 Create HTTP API for accessing and serving predictions
-    # Document raw data input fields (what specifically is required?)
-    # Create input data structure for raw data (dataframe, dictionary, tuple, array...)
-    # Deal with incomplete data (Error handling - see 8 cases of failure mode)
-    # Transform raw data in estimator
-    # Input data to estimator
-    # Predict results
-    # Send results
-    ** Use FastAPI (https://fastapi.tiangolo.com/)
-
-Other - Low priority
-    Rate limiting
+    'Document raw data input fields (what specifically is required?)
+    'Create input data structure for raw data (dataframe, dictionary, tuple, array...)
+    'Deal with incomplete data (Error handling - see 8 cases of failure mode)
+    'Transform raw data in estimator
+    'Input data to estimator
+    'Predict results
+    'Send results
+    * Use FastAPI (https://fastapi.tiangolo.com/)
 
 Web page
-    HTML Form fields
-    Javascript - Template data input
+    'HTML Form fields
+    'Javascript - Template data input
     Javascript - POST form
     Javascript - Serialize data to JSON
     
@@ -43,7 +40,10 @@ Important files
 * bag_cross_validate - A module which allows for cross-validation on the bag-level using single-instance inference with sklearn estimators.
 * mil_load - A set of functions for loading and saving MIL datasets
 
+## Fastapi
+Run with `uvicorn mil_serving:app --port ####`
 
+## Estimators
 Optimal hyperparameters
 
 For single instance estimators:
