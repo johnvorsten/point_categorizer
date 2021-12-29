@@ -41,7 +41,7 @@ SVMC_l1_classifier_filename = config['SVMCMILES']['SVMC_l1_classifier_filename']
 SVMC_rbf_classifier_filename = config['SVMCMILES']['SVMC_rbf_classifier_filename']
 concept_class_filename = config['SVMCMILES']['concept_class_filename']
 CompNB_classifier_filename = config['SISklearn']['CompNB_classifier_filename']
-KNN_classifier_filename = config['SISklearn']['KNN_classifier_filename']
+# KNN_classifier_filename = config['SISklearn']['KNN_classifier_filename']
 MultiNB_classifier_filename = config['SISklearn']['MultiNB_classifier_filename']
 SVMCL1SI_classifier_filename = config['SISklearn']['SVMCL1SI_classifier_filename']
 SVMCRBFSI_classifier_filename = config['SISklearn']['SVMCRBFSI_classifier_filename']
@@ -54,9 +54,9 @@ compNBPredictor = CompNBPredictor(
 multiNBPredictor = MultiNBPredictor(
     MultiNB_classifier_filename, 
     pipeline_type='categorical')
-knnPredictor = KNNPredictor(
-    KNN_classifier_filename, 
-    pipeline_type='numeric')
+# knnPredictor = KNNPredictor(
+#     KNN_classifier_filename, 
+#     pipeline_type='numeric')
 svmcL1SIPredictor = SVMCL1SIPredictor(
     SVMCL1SI_classifier_filename, 
     pipeline_type='numeric')
@@ -113,12 +113,12 @@ async def MultiNB_server(data:List[RawInputDataPydantic]):
     prediction = multiNBPredictor.predict(predictor_input)
     return PredictorOutput(prediction=prediction_map[prediction[0]])
 
-@app.post("/KNNPredictor/", response_model=PredictorOutput)
-async def KNN_server(data:List[RawInputDataPydantic]):
-    """Serve predictions from the KNNPredictor"""
-    predictor_input = _determine_unpack(data)
-    prediction = knnPredictor.predict(predictor_input)
-    return PredictorOutput(prediction=prediction_map[prediction[0]])
+# @app.post("/KNNPredictor/", response_model=PredictorOutput)
+# async def KNN_server(data:List[RawInputDataPydantic]):
+#     """Serve predictions from the KNNPredictor"""
+#     predictor_input = _determine_unpack(data)
+#     prediction = knnPredictor.predict(predictor_input)
+#     return PredictorOutput(prediction=prediction_map[prediction[0]])
 
 @app.post("/SVMCL1SIPredictor/", response_model=PredictorOutput)
 async def SVMCL1SI_server(data:List[RawInputDataPydantic]):
