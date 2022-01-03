@@ -31,8 +31,6 @@ import re
 import statistics
 from statistics import StatisticsError
 import pickle
-import os, sys
-import configparser
 from collections import Counter
 
 # Third party imports
@@ -46,21 +44,13 @@ from sklearn.feature_extraction.text import CountVectorizer
 import numpy as np
 
 # Local imports
-if __name__ == '__main__':
-    # Remove the drive letter on windows
-    _CWD = os.path.splitdrive(os.getcwd())[1]
-    _PARTS = _CWD.split(os.sep)
-    # Project dir is one level above cwd
-    _PROJECT_DIR = os.path.join(os.sep, *_PARTS[:-1])
-    if _PROJECT_DIR not in sys.path:
-        sys.path.insert(0, _PROJECT_DIR)
 
 # Declarations
-config = configparser.ConfigParser()
-config.read(r'../extract/sql_config.ini')
-server_name = config['sql_server']['DEFAULT_SQL_SERVER_NAME']
-driver_name = config['sql_server']['DEFAULT_SQL_DRIVER_NAME']
-database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
+TYPES_FILE = r'./typescorrection.csv'
+# Vocabulary and categories data
+CATEGORIES_FILE = r'./categorical_categories.dat'
+POINTNAME_VOCABULARY_FILENAME = './vocab_name.txt'
+DESCRIPTOR_VOCABULARY_FILENAME = './vocab_descriptor.txt'
 
 #%%
 
@@ -626,7 +616,6 @@ class Transform():
         
         # The TYPE attribute can be many categories, but they will be reduced
         # To a predefined list
-        TYPES_FILE = r'../data/typescorrection.csv'
         units_df = pd.read_csv(TYPES_FILE, delimiter=',', encoding='utf-8', 
                                engine='python', quotechar='\'')
         UNIT_DICT = {}
@@ -650,10 +639,7 @@ class Transform():
         REPLACE_NUMBERS=True
         # Remove instances where the attribute 'VIRTUAL' is TRUE
         REMOVE_VIRTUAL=True
-        # Vocabulary and categories data
-        CATEGORIES_FILE = r'../data/categorical_categories.dat'
-        POINTNAME_VOCABULARY_FILENAME = '../data/vocab_name.txt'
-        DESCRIPTOR_VOCABULARY_FILENAME = '../data/vocab_descriptor.txt'
+
     
         # Cleaning pipeline
         clean_pipe = cls.cleaning_pipeline(
@@ -737,7 +723,6 @@ class Transform():
         
         # The TYPE attribute can be many categories, but they will be reduced
         # To a predefined list
-        TYPES_FILE = r'../data/typescorrection.csv'
         units_df = pd.read_csv(TYPES_FILE, delimiter=',', encoding='utf-8', 
                                engine='python', quotechar='\'')
         UNIT_DICT = {}
@@ -761,10 +746,6 @@ class Transform():
         REPLACE_NUMBERS=True
         # Remove instances where the attribute 'VIRTUAL' is TRUE
         REMOVE_VIRTUAL=True
-        # Vocabulary and categories data
-        CATEGORIES_FILE = r'../data/categorical_categories.dat'
-        POINTNAME_VOCABULARY_FILENAME = '../data/vocab_name.txt'
-        DESCRIPTOR_VOCABULARY_FILENAME = '../data/vocab_descriptor.txt'
         
         # Cleaning pipeline
         clean_pipe = cls.cleaning_pipeline(
@@ -902,7 +883,6 @@ class EncodingCategories:
 
         # The TYPE attribute can be many categories, but they will be reduced
         # To a predefined list
-        TYPES_FILE = r'../data/typescorrection.csv'
         units_df = pd.read_csv(TYPES_FILE, delimiter=',', encoding='utf-8', 
                                engine='python', quotechar='\'')
         UNIT_DICT = {}
@@ -939,6 +919,3 @@ class VocabularyText:
 
         return vocabulary
     
-
-
-

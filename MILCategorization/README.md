@@ -28,10 +28,11 @@ Containerize service
 Deploy container
 
 ## Docker
-build the docker image with docker `docker build . `
-Run the image for serving `docker run -p 8003:8003 --log-driver local`
+build the docker image with docker `docker build . --tag mil_serving`
+Run the image for serving `docker run --name mil_serving --publish 8003:8003 --log-driver local --restart=on-failure:2 --detach mil_serving`
+We must publish the containers port to a port on the host machine because we are not creating a networked group of containers. An Nginx proxy will pass requests to this host and port for predictions. It will no run as part of another service or container group
 
-Vocabulary
+## Vocabulary
 * MILES - Multiple instance learning via embedded instance selection
 
 Important files

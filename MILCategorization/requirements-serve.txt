@@ -4,8 +4,8 @@ bag-cross-validate==0.0.3
 Bottleneck==1.3.2
 certifi==2021.10.8
 click==8.0.3
-colorama=0.4.4
-fastapi=0.70.0
+colorama==0.4.4
+fastapi==0.70.0
 h11==0.12.0
 idna==3.1
 joblib==1.1.0
