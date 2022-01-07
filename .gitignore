@@ -33,6 +33,9 @@ data_sidense_trian.dat
 miles_concept_features.dat
 categorical_categories_old.dat
 categorical_categories_LEGACY.dat
+*categorical_categories.dat
+*MIL_cat_dataset.dat
+*MIL_dataset.dat
 
 # Log directories
 */logs/*
@@ -45,17 +48,11 @@ categorical_categories_LEGACY.dat
 *.drawio
 
 # Random Files
-DatabaseCategorizer (2).xml
 test.py
 user_input.csv
-*.ini
-*.csv
-*MIL_cat_dataset.dat
-*MIL_dataset.dat
-*categorical_categories.dat
-*vocab_descriptor.txt
-*vocab_name.txt
 *vocab_ANTIQUE2.txt
+data/desktop.ini
+error_dfs/error_df_other.csv
 
 # Word files
 *.docx
@@ -74,4 +71,6 @@ train_ANTIQUE.tfrecords
 
 # Negations
 !serving_config.ini
+!vocab_descriptor.txt
+!vocab_name.txt
 
