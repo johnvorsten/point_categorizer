@@ -89,8 +89,6 @@ class ExtractLabels():
     def __init__(self):
         pass
 
-
-
     def get_database_features(self, database, pipeline, instance_name):
         """Calculate the features of a dataset. These will be used to
         predict a good clustering algorithm.
@@ -178,7 +176,6 @@ class ExtractLabels():
 
         return features_df
 
-
     def get_word_dictionary(self, word_array, percent=True):
 
         count_dict = {}
@@ -210,8 +207,6 @@ class ExtractLabels():
             count_dict.setdefault(key, 0)
 
         return count_dict
-
-
 
     def calc_labels(self, records, correct_k, var_scale=0.2, error_scale=0.8):
         """Given an instance_name (database name in this case) and set of records
@@ -328,8 +323,6 @@ class ExtractLabels():
 
         return best_losses
 
-
-
     def calculate_loss(self, correct_k, predicted_ks, error_weight, variance_weight):
         """Calculate the custom loss metric
         This loss metric is a combination of error and variance of predictions
@@ -376,8 +369,6 @@ class ExtractLabels():
         custom_loss = (squared_error * error_weight + variance * variance_weight)
 
         return custom_loss
-
-
 
     def _hyperparameter_set_2_dict(self, hyperparameter_set):
         """self.calc_labels gets a unique list of hyerparameter sets by using
@@ -442,7 +433,6 @@ class ExtractLabels():
                 hyperparameter_dict['index'] = value
 
         return hyperparameter_dict
-
 
 
 def get_unique_labels():
@@ -514,7 +504,6 @@ def get_unique_labels():
 
     return hyperparameters
 
-
 def save_unique_labels(unique_labels):
     """Save all labels to text files for use in tensorflow
     inputs
@@ -573,7 +562,6 @@ def save_unique_labels(unique_labels):
             f.write('\n')
 
     return None
-
 
 def get_hyperparameters_serving():
     """The ranking model imputs a tensor of context features and per-item features
@@ -679,7 +667,5 @@ def open_hyperparameters_serving(dat_file=r'../data/serving_hyperparameters.dat'
         hyperparameters_serving = pickle.load(f)
 
     return hyperparameters_serving
-
-
 
 

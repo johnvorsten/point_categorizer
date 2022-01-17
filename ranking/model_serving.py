@@ -11,11 +11,10 @@ import numpy as np
 from collections import namedtuple
 
 # Local imports
-from point_database_categorizer.rank_write_record import (tf_feature_mapper,
-                               serialize_context, 
-                               _bytes_feature)
-
-
+from point_database_categorizer.rank_write_record import (
+    tf_feature_mapper,
+    serialize_context, 
+    _bytes_feature)
 
 
 #%% Module functions
@@ -66,8 +65,7 @@ class LoadSerializedAndServe():
             
         self.output_format = namedtuple('outputs', ['score','hyperparameter_dict'])
         
-        
-        pass
+        return None
     
     def load_serialized_and_serve_model2(self, document):
         
