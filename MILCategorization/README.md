@@ -21,11 +21,11 @@ Create HTTP API for accessing and serving predictions
 Web page
     'HTML Form fields
     'Javascript - Template data input
-    Javascript - POST form
-    Javascript - Serialize data to JSON
+    'Javascript - POST form
+    'Javascript - Serialize data to JSON
     
 Containerize service
-Deploy container
+    'Deploy container
 
 ## Docker
 build the docker image with docker `docker build . --tag mil_serving`
