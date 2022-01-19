@@ -52,6 +52,7 @@ serialize_examples() below
 import os
 import sys
 from random import shuffle
+import configparser
 
 # Thrid party imports
 import tensorflow as tf
@@ -71,6 +72,15 @@ if __name__ == '__main__':
 
 from extract import extract
 from extract.SQLAlchemyDataDefinition import (Customers)
+
+# Declarations
+config = configparser.ConfigParser()
+config.read(r'../extract/sql_config.ini')
+server_name = config['sql_server']['DEFAULT_SQL_SERVER_NAME']
+driver_name = config['sql_server']['DEFAULT_SQL_DRIVER_NAME']
+database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
+numeric_feature_file = config['sql_server']['DEFAULT_NUMERIC_FILE_NAME']
+categorical_feature_file = config['sql_server']['DEFAULT_CATEGORICAL_FILE_NAME']
 
 #%% functions & methods
 
@@ -660,9 +670,9 @@ def get_train_test_id_sql(train_pct=0.8):
     (train_ids, test_ids) : (list) of training and testing _ids """
 
     # Set up connection to SQL
-    Insert = extract.Insert(server_name='.\\DT_SQLEXPR2008',
-                            driver_name='SQL Server Native Client 10.0',
-                            database_name='Clustering')
+    Insert = extract.Insert(server_name=server_name,
+                            driver_name=driver_name,
+                            database_name=database_name)
 
     # Query SQL for all customer primary keys
     sel = sqlalchemy.select([Customers.id])

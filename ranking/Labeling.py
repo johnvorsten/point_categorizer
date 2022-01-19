@@ -51,6 +51,7 @@ import pickle
 import statistics
 from collections import namedtuple
 from collections import Counter
+import configparser
 
 #Third party imports
 from scipy.sparse import csr_matrix
@@ -77,7 +78,15 @@ from clustering.accuracy_visualize import Record, get_records
 
 # Local declarations
 loss = namedtuple('loss',['clusters', 'l2error', 'variance', 'loss'])
+HYPERPARAMETER_SERVING_FILEPATH = r'../data/serving_hyperparameters.dat'
 
+config = configparser.ConfigParser()
+config.read(r'../extract/sql_config.ini')
+server_name = config['sql_server']['DEFAULT_SQL_SERVER_NAME']
+driver_name = config['sql_server']['DEFAULT_SQL_DRIVER_NAME']
+database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
+numeric_feature_file = config['sql_server']['DEFAULT_NUMERIC_FILE_NAME']
+categorical_feature_file = config['sql_server']['DEFAULT_CATEGORICAL_FILE_NAME']
 
 #%%
 
@@ -94,20 +103,20 @@ class ExtractLabels():
         predict a good clustering algorithm.
         Inputs
         -------
-        database : Your database. Its type not matter as long as the
+        database: Your database. Its type not matter as long as the
             pipeline passed outputs a numpy array.
-        pipeline : (sklearn.pipeline.Pipeline) Your finalized pipeline.
+        pipeline: (sklearn.pipeline.Pipeline) Your finalized pipeline.
             See sklearn.Pipeline. The output of the pipelines .fit_transform()
             method should be your encoded array
             of instances and features of size (n,p) n=#instances, p=#features.
             Alternatively, you may pass a sequence of tuples containing names
-            and pipeline objects : [('pipe1', myPipe1()), ('pipe2',myPipe2())]
-        instance_name : (str | int) unique tag/name to identify each instance.
+            and pipeline objects: [('pipe1', myPipe1()), ('pipe2',myPipe2())]
+        instance_name: (str | int) unique tag/name to identify each instance.
             The instance with feature vectors will be returned as a pandas
             dataframe with the tag on the index.
         Returns
         -------
-        df : a pandas dataframe with the following features
+        df: a pandas dataframe with the following features
             a. Number of points
     		b. Correct number of clusters
     		c. Typical cluster size (n_instances / n_clusters)
@@ -154,7 +163,7 @@ class ExtractLabels():
         # Number of features
         n_features = data.shape[1]
 
-        # Word lengths
+        # Word lengths (as percentage of total number of instances)
         count_dict_pct = self.get_word_dictionary(data, percent=True)
 
         # Variance of lengths
@@ -213,31 +222,31 @@ class ExtractLabels():
         output the correct labels for that database.
         inputs
         -------
-        records : (list | iterable) of records from the Record class. All records
+        records: (list | iterable) of records from the Record class. All records
             should be from the same customer/database
-        var_scale : (float) contribution of prediction variance to total loss
+        var_scale: (float) contribution of prediction variance to total loss
         of a clustering hyperparameter set. The idea is less variance in predictions
         is better
-        error_scale : (flaot) contribution of prediction error to total loss
+        error_scale: (flaot) contribution of prediction error to total loss
         of a clustering hyperparameter set. error =
 
         output
         -------
-        A list a labels in string form. The list includes :
-            by_size : (bool) True to cluster by size, False otherwise
-            distance : (str) 'euclidean' only
-            clusterer : (str) clustering algorithm
-            reduce : (str) 'MDS','TSNE','False' dimensionality reduction metric
-            index : (str) clustering index to determine best number of clusters
-            loss : (float) loss indicating error between predicted number
+        A list a labels in string form. The list includes:
+            by_size: (bool) True to cluster by size, False otherwise
+            distance: (str) 'euclidean' only
+            clusterer: (str) clustering algorithm
+            reduce: (str) 'MDS','TSNE','False' dimensionality reduction metric
+            index: (str) clustering index to determine best number of clusters
+            loss: (float) loss indicating error between predicted number
             of clusters and actual number of clusters, and variance of predictions
-            n_components : (str) 8, 0, 2 number of dimensions reduced to. 0 if
+            n_components: (str) 8, 0, 2 number of dimensions reduced to. 0 if
             no dimensionality reduction was used
 
         Example Usage
         #Local Imports
-        from JVWork_AccuracyVisual import import_error_dfs
-        from JVWork_Labeling import ExtractLabels
+        from AccuracyVisual import import_error_dfs
+        from Labeling import ExtractLabels
 
         # Calculate the best hyperparameter labels, and optionally retrieve the hyper_dict
         # which shows all losses assosicated with each hyperparameter set
@@ -333,7 +342,7 @@ class ExtractLabels():
         predicted for a dataset changes (for example in kmeans clustering)
         The loss metric is the weighted sum or error and variance
 
-        The loss metric is calculated as follows :
+        The loss metric is calculated as follows:
         1. Calculate the squared error across all predictions. The squared
         error is calculated as SE(A,θ)=∑ ||yn−fθ(xn)|| ** 2
         2. Calculate the variance of predictions. The variance is calculated as
@@ -344,12 +353,12 @@ class ExtractLabels():
 
         inputs
         -------
-        correct_k : (int) correct number of clusters for a dataset
-        predicted_ks : (list | iterable) predicted number of clusters for a
+        correct_k: (int) correct number of clusters for a dataset
+        predicted_ks: (list | iterable) predicted number of clusters for a
         dataset. This argument can be iterable if there are multiple predictions
         available on a dataset
-        error_weight : (float) between 0 and 1
-        variance_weight : (float) between 0 and 1
+        error_weight: (float) between 0 and 1
+        variance_weight: (float) between 0 and 1
         """
 
         # Normalize weight in case they dont pass values 0-1 that sum to 1
@@ -387,7 +396,7 @@ class ExtractLabels():
         reduce = ['0','MDS','TSNE']
         output
         -------
-        hyperparameter_dict : (dict) of keys representing hyperparameter name
+        hyperparameter_dict: (dict) of keys representing hyperparameter name
             and values representing the hyperparameter value
             {n_components:'8',
              by_size:False,
@@ -415,7 +424,7 @@ class ExtractLabels():
                 hyperparameter_dict['by_size'] = value
             elif value == 'euclidean':
                 continue
-            # Common case :(
+            # Common case:(
             elif value == '0':
                 hyperparameter_dict['n_components'] = '0'
                 hyperparameter_dict['reduce'] = '0'
@@ -440,10 +449,10 @@ def get_unique_labels():
     Create a unique set of all labels on each hyperparameter
     input
     ------
-    collection : a mongodb collection object
+    collection: a mongodb collection object
     output
     ------
-    unique_labels : a dictionary containing hyperparameter fields
+    unique_labels: a dictionary containing hyperparameter fields
     and their unique labels for each field"""
 
     dat_file = r'..\data\unique_labels.dat'
@@ -508,7 +517,7 @@ def save_unique_labels(unique_labels):
     """Save all labels to text files for use in tensorflow
     inputs
     -------
-    unique_labels : (dict) with keys [by_size, clusterer, index, n_components,
+    unique_labels: (dict) with keys [by_size, clusterer, index, n_components,
                                       reduce]"""
 
     assert isinstance(unique_labels, dict), 'unique_labels must be dictionary'
@@ -567,12 +576,12 @@ def get_hyperparameters_serving():
     """The ranking model imputs a tensor of context features and per-item features
     The per-item features are clusterering hyperparameters turned to indicator
     columns.
-    In order to do prediction on a new database, I must input the per-item
+    In order to predict on a new database, you must input the per-item
     clustering hyperparameters into the model.
     In training, I have been doing this with actual recorded hyperparameters
-    For prediction I must generate the clustering hyperparameters - the must
-    be known before
-    This module will generate an array of clustering hyperparameters like :
+    For prediction I must generate the clustering hyperparameters. These must
+    be known before this module will generate an array of clustering 
+    hyperparameters like: 
     [['False', 'kmeans', '8', 'TSNE', 'optk_TSNE_gap*_max'],
      ['True', 'ward.D', '8', 'MDS', 'SDbw'],
      [...]]
@@ -581,9 +590,9 @@ def get_hyperparameters_serving():
     """
 
     # Instantiate a class for reading SQL data
-    Insert = extract.Insert(server_name='.\\DT_SQLEXPR2008',
-                            driver_name='SQL Server Native Client 10.0',
-                            database_name='Clustering')
+    Insert = extract.Insert(server_name,
+                            driver_name,
+                            database_name)
 
     """Get most frequent hyperparameter occurences for each customer
     Customer IDs are used to retrieve clustering results for each customer"""
@@ -655,13 +664,12 @@ def get_hyperparameters_serving():
 
 def save_hyperparameters_serving(hyperparameters_serving):
 
-    dat_file = r'../data/serving_hyperparameters.dat'
-    with open(dat_file, 'wb') as f:
+    with open(HYPERPARAMETER_SERVING_FILEPATH, 'wb') as f:
         pickle.dump(hyperparameters_serving, f)
 
-    return dat_file
+    return None
 
-def open_hyperparameters_serving(dat_file=r'../data/serving_hyperparameters.dat'):
+def open_hyperparameters_serving(dat_file=HYPERPARAMETER_SERVING_FILEPATH):
 
     with open(dat_file, 'rb') as f:
         hyperparameters_serving = pickle.load(f)

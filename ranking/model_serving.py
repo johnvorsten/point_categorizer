@@ -4,18 +4,37 @@ Created on Tue Oct  8 18:12:37 2019
 
 @author: z003vrzk
 """
-import tensorflow as tf
-import os
+# Python imports
+import os, sys
 import pickle
-import numpy as np
 from collections import namedtuple
+import configparser
+
+# Third party imports
+import tensorflow as tf
+import numpy as np
 
 # Local imports
-from point_database_categorizer.rank_write_record import (
+if __name__ == '__main__':
+    # Remove the drive letter on windows
+    _CWD = os.path.splitdrive(os.getcwd())[1]
+    _PARTS = _CWD.split(os.sep)
+    # Project dir is one level above cwd
+    _PROJECT_DIR = os.path.join(os.sep, *_PARTS[:-1])
+    if _PROJECT_DIR not in sys.path:
+        sys.path.insert(0, _PROJECT_DIR)
+        
+from rank_write_record import (
     tf_feature_mapper,
     serialize_context, 
     _bytes_feature)
+from Labeling import HYPERPARAMETER_SERVING_FILEPATH
 
+# Declarations
+_default_peritem_features_file = r'../data/JV_default_serving_peritem_features'
+with open(_default_peritem_features_file, 'rb') as f:
+    # Import from file
+    HYPERPARAMETER_LIST = pickle.load(f)
 
 #%% Module functions
 
@@ -57,11 +76,6 @@ class LoadSerializedAndServe():
         # Return these with the output prediction. User will be able 
         # To rank clusterer hyperparameters based on prediction
         # See _serialize_examples_serving_v1 for hyper_list of version1 model2
-        _default_peritem_features_file = r'data/JV_default_serving_peritem_features'
-
-        with open(_default_peritem_features_file, 'rb') as f:
-            # Import from file
-            self.hyper_list = pickle.load(f)
             
         self.output_format = namedtuple('outputs', ['score','hyperparameter_dict'])
         
@@ -69,9 +83,10 @@ class LoadSerializedAndServe():
     
     def load_serialized_and_serve_model2(self, document):
         
-        input_eie = self._encode_input_transmitter_fn_v1(document, 
-                                                text_features=False,
-                                                list_size=self._list_size_model2)
+        input_eie = self._encode_input_transmitter_fn_v1(
+            document, 
+            text_features=False,
+            list_size=self._list_size_model2)
         # Placeholder:0 is the feature column name in serving_input_receiver_fn
         input_feed_dict = {'Placeholder:0':[input_eie]}
         
@@ -95,7 +110,6 @@ class LoadSerializedAndServe():
             output_tuple_list.append(output_tuple)
         
         return output_tuple_list
-    
     
     def load_serialized_and_serve_v1_2(self,
                                        document, 
@@ -130,9 +144,10 @@ class LoadSerializedAndServe():
                                   model_directory=model_directory)
         """
     
-        input_eie = self._encode_input_transmitter_fn_v1(document, 
-                                                text_features=False,
-                                                list_size=list_size)
+        input_eie = self._encode_input_transmitter_fn_v1(
+            document, 
+            text_features=False,
+            list_size=list_size)
         input_feed_dict = {'inputs':[input_eie]}
         
         predict_fn = tf.contrib.predictor.from_saved_model(model_directory)
@@ -140,7 +155,6 @@ class LoadSerializedAndServe():
         outputs = predict_fn(input_feed_dict)
         
         return outputs
-    
     
     def load_serialized_and_serve_model4(self, 
                                          document, 
@@ -176,11 +190,12 @@ class LoadSerializedAndServe():
             hyper_list = self._get_hyper_list(document, 
                                               peritem_source=peritem_source)
         elif peritem_source == 'default':
-            hyper_list = self.hyper_list
+            hyper_list = HYPERPARAMETER_LIST
         
-        input_eie = self._encode_input_transmitter_fn_v2(document,
-                                               list_size=list_size,
-                                               peritem_source=peritem_source)
+        input_eie = self._encode_input_transmitter_fn_v2(
+            document,
+            list_size=list_size,
+            peritem_source=peritem_source)
         # Placeholder:0 is the feature column name in serving_input_receiver_fn
         input_feed_dict = {'Placeholder:0':[input_eie]}
         
@@ -199,7 +214,6 @@ class LoadSerializedAndServe():
         clusterer_hyperparameters = hyper_list[:list_size]
         # TODO Change this to get hyper_list based on peritem_source
         
-        
         output_tuple_list = []
         for score, hyperparameter in zip(outputs_model4.ravel(), 
                                          clusterer_hyperparameters):
@@ -207,9 +221,7 @@ class LoadSerializedAndServe():
             output_tuple_list.append(output_tuple)
             
         return output_tuple_list
-    
-
-        
+     
     def _serialize_examples_serving_v1(self,
                                        document,
                                        text_features,
@@ -221,9 +233,10 @@ class LoadSerializedAndServe():
         input
         -------
         document : (dict) must have ['encoded_hyper']['clust_index']['val']
-          and ['hyper_labels'] fields
-        text_features : (bool) Process clust_index as text (TRUE) or load 
-          from encoded (True)
+        and ['hyper_labels'] fields
+        text_features : (bool) Process clust_index as text (True) or load 
+        from encoded (False)
+        list_size: (int)
         output
         -------
         peritem_list : (list) a list of serialized per-item (exmpale) featuers
@@ -233,10 +246,8 @@ class LoadSerializedAndServe():
         if text_features: # TEXT FEATURES
             # Create dictionary of peritem features (encoded cat_index)
             # Extract saved labels (text -> bytes)
-            
             clusterer_list = document['best_hyper']['clusterer'] # list of bytes
             index_list = document['best_hyper']['index'] # list of bytes
-            
             peritem_features = []
             for clusterer, index in zip(clusterer_list, index_list):
                 peritem_features.append([clusterer.encode(), index.encode()])
@@ -287,7 +298,6 @@ class LoadSerializedAndServe():
         elif list_size < len(peritem_features):
             peritem_features = _trim(peritem_features)
             
-        
         # Create a list of serialized per-item features
         peritem_list = []
         
@@ -307,7 +317,6 @@ class LoadSerializedAndServe():
             
         return peritem_list
     
-    
     def _encode_input_transmitter_fn_v1(self, 
                                         document, 
                                         list_size,
@@ -322,9 +331,10 @@ class LoadSerializedAndServe():
         # Same for serving and training
         context_proto_str = serialize_context(document)
         
-        peritem_list = self._serialize_examples_serving_v1(document, 
-                                          text_features=text_features,
-                                          list_size=list_size)
+        peritem_list = self._serialize_examples_serving_v1(
+            document, 
+            text_features=text_features,
+            list_size=list_size)
         
         # Prepare serialized feature spec for EIE format
         serialized_dict = {'serialized_context':_bytes_feature([context_proto_str]),
@@ -337,7 +347,6 @@ class LoadSerializedAndServe():
         serialized_example_in_example = serialized_proto.SerializeToString()
         
         return serialized_example_in_example
-    
     
     def _get_hyper_list(self,
                         document,
@@ -386,11 +395,7 @@ class LoadSerializedAndServe():
         # ALl per-item features are saved as text and encoded or transformed later
         
         if peritem_source == 'default':
-            _default_peritem_features_file = r'data/JV_default_serving_peritem_features'
-            
-            with open(_default_peritem_features_file, 'rb') as f:
-                # Import from file
-                hyper_list = pickle.load(f)
+            hyper_list = HYPERPARAMETER_LIST
                 
         elif peritem_source == 'document':
             hyper_list = list(document['hyper_labels'].values())
@@ -470,7 +475,6 @@ class LoadSerializedAndServe():
             
         return peritem_list
     
-
     def _encode_input_transmitter_fn_v2(self,
                                         document,
                                         list_size,
@@ -486,9 +490,10 @@ class LoadSerializedAndServe():
         # Same for serving and training
         context_proto_str = serialize_context(document)
         
-        peritem_list = self._serialize_examples_serving_v2(document, 
-                                          list_size=list_size,
-                                          peritem_source=peritem_source)
+        peritem_list = self._serialize_examples_serving_v2(
+            document, 
+            list_size=list_size,
+            peritem_source=peritem_source)
         
         # Prepare serialized feature spec for EIE format
         serialized_dict = {'serialized_context':_bytes_feature([context_proto_str]),
@@ -503,59 +508,90 @@ class LoadSerializedAndServe():
         return serialized_example_in_example
 
 
+#%%
+# Load an example from SQL database
+from extract import extract
+import sqlalchemy
+from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev,
+                                              Customers, 
+                                              ClusteringHyperparameter, 
+                                              Labeling)
+config = configparser.ConfigParser()
+config.read(r'../extract/sql_config.ini')
+server_name = config['sql_server']['DEFAULT_SQL_SERVER_NAME']
+driver_name = config['sql_server']['DEFAULT_SQL_DRIVER_NAME']
+database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
+numeric_feature_file = config['sql_server']['DEFAULT_NUMERIC_FILE_NAME']
+categorical_feature_file = config['sql_server']['DEFAULT_CATEGORICAL_FILE_NAME']
+
+Insert = extract.Insert(server_name=server_name,
+                        driver_name=driver_name,
+                        database_name=database_name)
+
+# Return context features form a single group
+
+# Get a points dataframe
+customer_id = 15
+sel = sqlalchemy.select([Points]).where(Points.customer_id.__eq__(customer_id))
+database = Insert.pandas_select_execute(sel)
+sel = sqlalchemy.select([Customers.name]).where(Customers.id.__eq__(customer_id))
+customer_name = Insert.core_select_execute(sel)[0].name
+
+database_features = ExtractLabels.get_database_features(database,
+                                                        full_pipeline,
+                                                        instance_name=customer_name)
 
 
+REQUIRED_FEATURES = ['n_instance', 'n_features', 'len_var', 'uniq_ratio',
+                    'n_len1', 'n_len2', 'n_len3', 'n_len4', 'n_len5',
+                    'n_len6', 'n_len7']
+
+
+#%%
 #%% This works
 if __name__ == '__main__':
     
     _LIST_SIZE_V1 = 180
     _LIST_SIZE_V2 = 200
+    model_directory_v1 = b'final_model\\Run_20191006011340model2\\1570661762'
+    model_directory_v2 = b'final_model\\Run_20191024002109model4\\1572051525'
     
     document = collection.find_one()
     ServingClass = LoadSerializedAndServe()
     
-    # Messy, but for legacy testing
-    _encode_input_transmitter_fn_v1 = ServingClass._encode_input_transmitter_fn_v1
-    _encode_input_transmitter_fn_v2 = ServingClass._encode_input_transmitter_fn_v2
-
-    
-    model_directory_v1 = b'final_model\\Run_20191006011340model2\\1570661762'
-    model_directory_v2 = b'final_model\\Run_20191024002109model4\\1572051525'
-    
-    input_eie_v1 = _encode_input_transmitter_fn_v1(document, 
-                                            text_features=False,
-                                            list_size=_LIST_SIZE_V1)
-    input_eie_v2 = _encode_input_transmitter_fn_v2(document,
-                                                   list_size=_LIST_SIZE_V2,
-                                                   example_features='all')
-    
+    input_eie_v1 = ServingClass._encode_input_transmitter_fn_v1(
+        document, 
+        text_features=False,
+        list_size=_LIST_SIZE_V1)
+    input_eie_v2 = ServingClass._encode_input_transmitter_fn_v2(
+        document,
+        list_size=_LIST_SIZE_V2,
+        example_features='all')
     
     # Placeholder:0 is the feature column name in serving_input_receiver_fn
     input_feed_dict_v1 = {'Placeholder:0':[input_eie_v1]}
     input_feed_dict_v2 = {'Placeholder:0':[input_eie_v2]}
     
-
-    
-    
     # Only 'serve' is a valid MetaGraphDef - dont use 'predict'
     graph_v1 = tf.Graph()
     with tf.Session(graph=graph_v1) as sess:
-        
-        model_import_v1 = tf.saved_model.load(sess,
-                                              ['serve'],
-                                              model_directory_v1)
-        
-        outputs_v1 = sess.run('groupwise_dnn_v2/accumulate_scores/div_no_nan:0', 
-                           feed_dict=input_feed_dict_v1)
+        model_import_v1 = tf.saved_model.load(
+            sess,
+            ['serve'],
+            model_directory_v1)
+        outputs_v1 = sess.run(
+            'groupwise_dnn_v2/accumulate_scores/div_no_nan:0', 
+            feed_dict=input_feed_dict_v1)
     
     graph_v2 = tf.Graph()
     with tf.Session(graph=graph_v2) as sess:
-        
-        model_import_v2 = tf.saved_model.load(sess, 
-                                              ['serve'], 
-                                              model_directory_v2)
-        outputs_v2 = sess.run('groupwise_dnn_v2/accumulate_scores/div_no_nan:0', 
-                           feed_dict=input_feed_dict_v2)
+        model_import_v2 = tf.saved_model.load(
+            sess, 
+            ['serve'], 
+            model_directory_v2)
+        outputs_v2 = sess.run(
+            'groupwise_dnn_v2/accumulate_scores/div_no_nan:0', 
+            feed_dict=input_feed_dict_v2)
         
     print('ouputs_v1 : ', outputs_v1, '\n\n')
     print('outputs_v2 : ', outputs_v2)

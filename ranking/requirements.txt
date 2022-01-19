@@ -1,0 +1,7 @@
+tensorflow==2.7.0
+python==3.7.12
+tensorflow-ranking==0.2.1
+sqlalchemy==1.4.27
+pyodbc==4.0.31
+pandas==1.3.5
+scikit-learn==0.23.2
