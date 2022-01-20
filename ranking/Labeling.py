@@ -15,7 +15,7 @@ from JVWork_AccuracyVisual import import_error_dfs
 # which shows all losses assosicated with each hyperparameter set
 # Across all optimal k indexs
 
-extract = ExtractLabels()
+extract = ClusteringLabels()
 
 records = import_error_dfs()
 db_tag = r'D:\Z - Saved SQL Databases\44OP-093324_Baylor_Bric_Bldg\JobDB.mdf'
@@ -36,7 +36,7 @@ mypipe = Pipeline([('clean_pipe', clean_pipe),
 correct_k = myTest.get_correct_k(db_name, df_clean, manual=True)
 
 
-extract = ExtractLabels()
+extract = ClusteringLabels()
 db_feat = extract.calc_features(database, mypipe, tag=db_name)
 
 #%%
@@ -48,15 +48,12 @@ db_feat = extract.calc_features(database, mypipe, tag=db_name)
 import os
 import sys
 import pickle
-import statistics
-from collections import namedtuple
-from collections import Counter
+from collections import namedtuple, Counter
 import configparser
 
 #Third party imports
 from scipy.sparse import csr_matrix
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder
 import numpy as np
 import pandas as pd
 import sqlalchemy
@@ -73,7 +70,7 @@ if __name__ == '__main__':
 from extract import extract
 from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev, Customers,
                                               ClusteringHyperparameter)
-from clustering.accuracy_visualize import Record, get_records
+from clustering.accuracy_visualize import get_records
 
 
 # Local declarations
@@ -93,12 +90,27 @@ categorical_feature_file = config['sql_server']['DEFAULT_CATEGORICAL_FILE_NAME']
 class PipelineError(Exception):
     pass
 
-class ExtractLabels():
+class DatabaseFeatures:
+    instance:str
+    n_instance:int
+    n_features:int
+    len_var:float
+    uniq_ratio:float
+    n_len1:float
+    n_len2:float
+    n_len3:float 
+    n_len4:float 
+    n_len5:float 
+    n_len6:float 
+    n_len7:float
+
+class ClusteringLabels():
 
     def __init__(self):
         pass
-
-    def get_database_features(self, database, pipeline, instance_name):
+    
+    @classmethod
+    def get_database_features(cls, database, pipeline, instance_name) -> DatabaseFeatures:
         """Calculate the features of a dataset. These will be used to
         predict a good clustering algorithm.
         Inputs
@@ -164,11 +176,11 @@ class ExtractLabels():
         n_features = data.shape[1]
 
         # Word lengths (as percentage of total number of instances)
-        count_dict_pct = self.get_word_dictionary(data, percent=True)
+        count_dict_pct = cls.get_word_dictionary(data, percent=True)
 
         # Variance of lengths
         lengths = []
-        count_dict_whole = self.get_word_dictionary(data, percent=False)
+        count_dict_whole = cls.get_word_dictionary(data, percent=False)
         for key, value in count_dict_whole.items():
             lengths.extend([int(key[-1])] * value)
         len_var = np.array(lengths).var(axis=0)
@@ -180,12 +192,13 @@ class ExtractLabels():
                 'len_var':len_var,
                 'uniq_ratio':n_points/n_features,
                 }
-        features_dict = {**features_dict, **count_dict_pct}
-        features_df = pd.DataFrame(features_dict, index=[instance_name])
+        features_dict: DatabaseFeatures = {**features_dict, **count_dict_pct}
+        # features_df = pd.DataFrame(features_dict, index=[instance_name])
 
-        return features_df
+        return features_dict
 
-    def get_word_dictionary(self, word_array, percent=True):
+    @classmethod
+    def get_word_dictionary(cls, word_array, percent=True):
 
         count_dict = {}
 
@@ -217,7 +230,8 @@ class ExtractLabels():
 
         return count_dict
 
-    def calc_labels(self, records, correct_k, var_scale=0.2, error_scale=0.8):
+    @classmethod
+    def calc_labels(cls, records, correct_k, var_scale=0.2, error_scale=0.8):
         """Given an instance_name (database name in this case) and set of records
         output the correct labels for that database.
         inputs
@@ -246,13 +260,13 @@ class ExtractLabels():
         Example Usage
         #Local Imports
         from AccuracyVisual import import_error_dfs
-        from Labeling import ExtractLabels
+        from Labeling import ClusteringLabels
 
         # Calculate the best hyperparameter labels, and optionally retrieve the hyper_dict
         # which shows all losses assosicated with each hyperparameter set
         # Across all optimal k indexs
 
-        extract = ExtractLabels()
+        extract = ClusteringLabels()
 
         records = import_error_dfs()
         db_tag = r'D:\Z - Saved SQL Databases\44OP-093324_Baylor_Bric_Bldg\JobDB.mdf'
@@ -320,11 +334,11 @@ class ExtractLabels():
         best_losses = []
         for hyperparameter_set, predictions in predicted_clusters.items():
             # Calculate loss associated with
-            loss = self.calculate_loss(correct_k,
+            loss = cls.calculate_loss(correct_k,
                                        predictions,
                                        error_weight=0.8,
                                        variance_weight=0.2)
-            hyperparameter_dict = self._hyperparameter_set_2_dict(hyperparameter_set)
+            hyperparameter_dict = cls._hyperparameter_set_2_dict(hyperparameter_set)
             tup = x(hyperparameter_dict, predictions, correct_k, loss)
             best_losses.append(tup)
 
@@ -332,7 +346,8 @@ class ExtractLabels():
 
         return best_losses
 
-    def calculate_loss(self, correct_k, predicted_ks, error_weight, variance_weight):
+    @classmethod
+    def calculate_loss(cls, correct_k, predicted_ks, error_weight, variance_weight):
         """Calculate the custom loss metric
         This loss metric is a combination of error and variance of predictions
         Error is the difference between the correct number of clusters and the
@@ -379,7 +394,8 @@ class ExtractLabels():
 
         return custom_loss
 
-    def _hyperparameter_set_2_dict(self, hyperparameter_set):
+    @classmethod
+    def _hyperparameter_set_2_dict(cls, hyperparameter_set):
         """self.calc_labels gets a unique list of hyerparameter sets by using
         the values of a dictionary. This function converts a frozenset
         of hyperparameter values back into a dictionary. It relies on each
@@ -462,9 +478,9 @@ def get_unique_labels():
         hyperparameters = {}
 
         # Set up connection to database
-        Insert = extract.Insert(server_name='.\\DT_SQLEXPR2008',
-                                driver_name='SQL Server Native Client 10.0',
-                                database_name='Clustering')
+        Insert = extract.Insert(server_name,
+                                driver_name,
+                                database_name)
 
         # Query database for unique values under hyperparameters table
         sql_bysize = """SELECT DISTINCT by_size from hyperparameter"""
@@ -626,7 +642,7 @@ def get_hyperparameters_serving():
         each tuple has a name hyperparameter_dict which contains hyperparameters
         used to cluster that customers database
         A unique list of clustering hyperparameters will be used for model serving"""
-        best_labels = ExtractLabels.calc_labels(records, correct_k, error_scale=0.8, var_scale=0.2)
+        best_labels = ClusteringLabels.calc_labels(records, correct_k, error_scale=0.8, var_scale=0.2)
 
         """Keep the 10 best best_lables for each customer_id
         The idea is we should predict between some of the best available
@@ -657,7 +673,7 @@ def get_hyperparameters_serving():
     Convert hyperparameter frozenset back to a nomral dictionary"""
     hyperparameters_serving = []
     for x in c.keys():
-        hyperparameter_dict = ExtractLabels._hyperparameter_set_2_dict(x)
+        hyperparameter_dict = ClusteringLabels._hyperparameter_set_2_dict(x)
         hyperparameters_serving.append(hyperparameter_dict)
 
     return hyperparameters_serving

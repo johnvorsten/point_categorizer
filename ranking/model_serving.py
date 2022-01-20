@@ -28,9 +28,13 @@ from rank_write_record import (
     tf_feature_mapper,
     serialize_context, 
     _bytes_feature)
-from Labeling import HYPERPARAMETER_SERVING_FILEPATH
+from Labeling import HYPERPARAMETER_SERVING_FILEPATH, ClusteringLabels
 
 # Declarations
+"""Peritem clusterer hyperparameters used for prediction
+# Return these with the output prediction. User will be able 
+# To rank clusterer hyperparameters based on prediction
+# See _serialize_examples_serving_v1 for hyper_list of version1 model2"""
 _default_peritem_features_file = r'../data/JV_default_serving_peritem_features'
 with open(_default_peritem_features_file, 'rb') as f:
     # Import from file
@@ -38,80 +42,71 @@ with open(_default_peritem_features_file, 'rb') as f:
 
 #%% Module functions
 
-class LoadSerializedAndServe():
+class LoadSerializedAndServe:
+    """Loads an existing serialized model and makes a prediction based on a 
+    passed document from mongodb. The output is an array of ranked clustering
+    hyperparameters that should yield the closest prediction on correct number
+    of clusters
     
-    def __init__(self):
-        """Loads an existing serialized model and makes a prediction based on a 
-        passed document from mongodb. The output is an array of ranked clustering
-        hyperparameters that should yield the closest prediction on correct number
-        of clusters
-        
-        inputs
-        -------
-        document : (dict) document from mongodb
-        list_size : (int) number of examples to include in model for prediction. 
-        This is based on the model's input layer when training. The correct
-        values to pass are 180 for 'model2' and 200 for 'model4'
-        model_name : (str) one of 'model2' or 'model4'. 'model2' is a DNN that
-        was trained on only the clusterer algorithm and closen index. 'model4' is 
-        a DNN that was trained on all clusterer hyperparameters [index, reduce, 
-        clusterer, n_components, by_size]
-        
-        Example usage
-        
-        ServingClass = LoadSerializedAndServe()
-        document = collection.find_one()
-        
-        predictions = ServingClass.load_serialized_and_serve_model2(document)
-        """
-        
-        self._list_size_model2 = 180
-        self._list_size_model4 = 200
-        self._directory_model2 = b'final_model\\Run_20191006011340model2\\1570661762'
-        self._directory_model4 = b'final_model\\Run_20191024002109model4\\1572051525'
-        self._graph_model2 = tf.Graph()
-        self._graph_model4 = tf.Graph()
-        
-        # Peritem clusterer hyperparameters used for prediction
-        # Return these with the output prediction. User will be able 
-        # To rank clusterer hyperparameters based on prediction
-        # See _serialize_examples_serving_v1 for hyper_list of version1 model2
-            
-        self.output_format = namedtuple('outputs', ['score','hyperparameter_dict'])
-        
-        return None
+    inputs
+    -------
+    document : (dict) document from mongodb
+    list_size : (int) number of examples to include in model for prediction. 
+    This is based on the model's input layer when training. The correct
+    values to pass are 180 for 'model2' and 200 for 'model4'
+    model_name : (str) one of 'model2' or 'model4'. 'model2' is a DNN that
+    was trained on only the clusterer algorithm and closen index. 'model4' is 
+    a DNN that was trained on all clusterer hyperparameters [index, reduce, 
+    clusterer, n_components, by_size]
     
-    def load_serialized_and_serve_model2(self, document):
+    Example usage
+    
+    ServingClass = LoadSerializedAndServe()
+    document = collection.find_one()
+    
+    predictions = ServingClass.load_serialized_and_serve_model2(document)
+    """
+    _list_size_model2 = 180
+    _list_size_model4 = 200
+    _directory_model2 = b'final_model\\Run_20191006011340model2\\1570661762'
+    _directory_model4 = b'final_model\\Run_20191024002109model4\\1572051525'
+    _graph_model2 = tf.Graph()
+    _graph_model4 = tf.Graph()
+    output_format = namedtuple('outputs', ['score','hyperparameter_dict'])
+
+    @classmethod
+    def load_serialized_and_serve_model2(cls, document, hyper_list_model2):
         
-        input_eie = self._encode_input_transmitter_fn_v1(
+        input_eie = cls._encode_input_transmitter_fn_v1(
             document, 
             text_features=False,
-            list_size=self._list_size_model2)
+            list_size=cls._list_size_model2)
         # Placeholder:0 is the feature column name in serving_input_receiver_fn
         input_feed_dict = {'Placeholder:0':[input_eie]}
         
         # Only 'serve' is a valid MetaGraphDef - dont use 'predict'
-        with tf.Session(graph=self._graph_model2) as sess:
+        with tf.Session(graph=cls._graph_model2) as sess:
             
             # MetaGraphDef - load MetaGraphDef to session graph
-            self._MetaGraphDef_model2 = tf.saved_model.load(sess, 
+            cls._MetaGraphDef_model2 = tf.saved_model.load(sess, 
                                                 ['serve'], 
-                                                self._directory_model2)
+                                                cls._directory_model2)
             
             outputs_model2 = sess.run('groupwise_dnn_v2/accumulate_scores/div_no_nan:0', 
                                feed_dict=input_feed_dict)
         
         # per-item features (clusterer) used for prediction
-        clusterer_hyperparameters = self.hyper_list_model2[:self._list_size_model2]
+        clusterer_hyperparameters = hyper_list_model2[:cls._list_size_model2]
         
         output_tuple_list = []
         for score, hyperparameter in zip(outputs_model2.ravel(), clusterer_hyperparameters):
-            output_tuple = self.output_format(score, hyperparameter)
+            output_tuple = cls.output_format(score, hyperparameter)
             output_tuple_list.append(output_tuple)
         
         return output_tuple_list
     
-    def load_serialized_and_serve_v1_2(self,
+    @classmethod
+    def load_serialized_and_serve_v1_2(cls,
                                        document, 
                                        list_size, 
                                        model_directory):
@@ -144,7 +139,7 @@ class LoadSerializedAndServe():
                                   model_directory=model_directory)
         """
     
-        input_eie = self._encode_input_transmitter_fn_v1(
+        input_eie = cls._encode_input_transmitter_fn_v1(
             document, 
             text_features=False,
             list_size=list_size)
@@ -156,7 +151,8 @@ class LoadSerializedAndServe():
         
         return outputs
     
-    def load_serialized_and_serve_model4(self, 
+    @classmethod
+    def load_serialized_and_serve_model4(cls, 
                                          document, 
                                          list_size, 
                                          peritem_source):
@@ -181,18 +177,18 @@ class LoadSerializedAndServe():
         output_tuple_list[0].hyperparameter_dict for clustering hyperparams"""
         
         if list_size is None:
-            list_size = self._list_size_model4
+            list_size = cls._list_size_model4
             
         else:
             list_size = False
             
         if peritem_source == 'document':
-            hyper_list = self._get_hyper_list(document, 
+            hyper_list = cls._get_hyper_list(document, 
                                               peritem_source=peritem_source)
         elif peritem_source == 'default':
             hyper_list = HYPERPARAMETER_LIST
         
-        input_eie = self._encode_input_transmitter_fn_v2(
+        input_eie = cls._encode_input_transmitter_fn_v2(
             document,
             list_size=list_size,
             peritem_source=peritem_source)
@@ -200,12 +196,12 @@ class LoadSerializedAndServe():
         input_feed_dict = {'Placeholder:0':[input_eie]}
         
         # Only 'serve' is a valid MetaGraphDef - dont use 'predict'
-        with tf.Session(graph=self._graph_model4) as sess:
+        with tf.Session(graph=cls._graph_model4) as sess:
             
             # MetaGraphDef - load MetaGraphDef to session graph
-            self._MetaGraphDef_model4 = tf.saved_model.load(sess, 
+            cls._MetaGraphDef_model4 = tf.saved_model.load(sess, 
                                                     ['serve'], 
-                                                    self._directory_model4)
+                                                    cls._directory_model4)
             
             outputs_model4 = sess.run('groupwise_dnn_v2/accumulate_scores/div_no_nan:0', 
                                feed_dict=input_feed_dict)
@@ -217,15 +213,16 @@ class LoadSerializedAndServe():
         output_tuple_list = []
         for score, hyperparameter in zip(outputs_model4.ravel(), 
                                          clusterer_hyperparameters):
-            output_tuple = self.output_format(score, hyperparameter)
+            output_tuple = cls.output_format(score, hyperparameter)
             output_tuple_list.append(output_tuple)
             
         return output_tuple_list
      
-    def _serialize_examples_serving_v1(self,
-                                       document,
-                                       text_features,
-                                       list_size):
+    @classmethod
+    def _serialize_examples_serving_v1(cls,
+                                       document:dict,
+                                       text_features:bool,
+                                       list_size:int):
         """
         Create a list of serialized tf.train.Example proto from a document 
         stored in mongo-db. Use this for serving & predicting models (not
@@ -260,11 +257,11 @@ class LoadSerializedAndServe():
             # Return for prediction
             hyper_list = pickle.loads(document['encoded_hyper']['clust_index']['cat'])
             hyper_list = np.concatenate((hyper_list[0], hyper_list[1]), axis=0)
-            self.hyper_list_model2 = []
+            hyper_list_model2 = []
             for peritem_feature in peritem_features:
                 clusterer, index = hyper_list[np.array(peritem_feature, dtype=np.bool_)]
                 hyper_dict = {'clusterer':clusterer, 'index':index}
-                self.hyper_list_model2.append(hyper_dict)
+                hyper_list_model2.append(hyper_dict)
         
         def _pad(peritem_features):
             
@@ -317,7 +314,8 @@ class LoadSerializedAndServe():
             
         return peritem_list
     
-    def _encode_input_transmitter_fn_v1(self, 
+    @classmethod
+    def _encode_input_transmitter_fn_v1(cls, 
                                         document, 
                                         list_size,
                                         text_features=False):
@@ -331,7 +329,7 @@ class LoadSerializedAndServe():
         # Same for serving and training
         context_proto_str = serialize_context(document)
         
-        peritem_list = self._serialize_examples_serving_v1(
+        peritem_list = cls._serialize_examples_serving_v1(
             document, 
             text_features=text_features,
             list_size=list_size)
@@ -348,7 +346,8 @@ class LoadSerializedAndServe():
         
         return serialized_example_in_example
     
-    def _get_hyper_list(self,
+    @classmethod
+    def _get_hyper_list(cls,
                         document,
                         peritem_source):
         """Use this only when peritem_source is 'document'. Retrieves 
@@ -361,7 +360,8 @@ class LoadSerializedAndServe():
             
         return hyper_list
     
-    def _serialize_examples_serving_v2(self,
+    @classmethod
+    def _serialize_examples_serving_v2(cls,
                                        document,
                                        list_size,
                                        peritem_source):
@@ -418,9 +418,7 @@ class LoadSerializedAndServe():
             single_item_feature_dict['index'] = index.encode()
             peritem_features.append(single_item_feature_dict)
                 
-        
         def _pad(peritem_features, pad_value=b''):
-            
             # Pad with empty string
             cur_size = len(peritem_features)
             new_size = list_size
@@ -475,11 +473,12 @@ class LoadSerializedAndServe():
             
         return peritem_list
     
-    def _encode_input_transmitter_fn_v2(self,
+    @classmethod
+    def _encode_input_transmitter_fn_v2(cls,
                                         document,
                                         list_size,
                                         peritem_source):
-        """Use this function to output a TFRecord from a mongo document.
+        """Use this function to output a TFRecord from a dictionary
         Useful for serving serialized tensorflow estimators/models
         inputs
         -------
@@ -490,7 +489,7 @@ class LoadSerializedAndServe():
         # Same for serving and training
         context_proto_str = serialize_context(document)
         
-        peritem_list = self._serialize_examples_serving_v2(
+        peritem_list = cls._serialize_examples_serving_v2(
             document, 
             list_size=list_size,
             peritem_source=peritem_source)
@@ -516,6 +515,9 @@ from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev,
                                               Customers, 
                                               ClusteringHyperparameter, 
                                               Labeling)
+from transform_ranking import Transform
+from Labeling import ClusteringLabels
+
 config = configparser.ConfigParser()
 config.read(r'../extract/sql_config.ini')
 server_name = config['sql_server']['DEFAULT_SQL_SERVER_NAME']
@@ -528,7 +530,7 @@ Insert = extract.Insert(server_name=server_name,
                         driver_name=driver_name,
                         database_name=database_name)
 
-# Return context features form a single group
+#1. Return context features form a single group
 
 # Get a points dataframe
 customer_id = 15
@@ -537,17 +539,23 @@ database = Insert.pandas_select_execute(sel)
 sel = sqlalchemy.select([Customers.name]).where(Customers.id.__eq__(customer_id))
 customer_name = Insert.core_select_execute(sel)[0].name
 
-database_features = ExtractLabels.get_database_features(database,
-                                                        full_pipeline,
-                                                        instance_name=customer_name)
+# Transformation pipeline
+full_pipeline = Transform.get_ranking_pipeline()
+
+# Dictionary with keys ['n_instance', 'n_features', 'len_var', 'uniq_ratio',
+#                    'n_len1', 'n_len2', 'n_len3', 'n_len4', 'n_len5',
+#                    'n_len6', 'n_len7']
+database_features = ClusteringLabels.get_database_features(
+    database,
+    full_pipeline,
+    instance_name=customer_name)
+context_proto_str = serialize_context({'db_features':database_features})
+
+#2. Return peritem features
+peritem_features = LoadSerializedAndServe._serialize_examples_serving_v1(
+    database_features, text_features=False, list_size=180)
 
 
-REQUIRED_FEATURES = ['n_instance', 'n_features', 'len_var', 'uniq_ratio',
-                    'n_len1', 'n_len2', 'n_len3', 'n_len4', 'n_len5',
-                    'n_len6', 'n_len7']
-
-
-#%%
 #%% This works
 if __name__ == '__main__':
     

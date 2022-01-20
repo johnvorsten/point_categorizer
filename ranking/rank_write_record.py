@@ -51,8 +51,8 @@ serialize_examples() below
 # Python imports
 import os
 import sys
-from random import shuffle
 import configparser
+from typing import Dict
 
 # Thrid party imports
 import tensorflow as tf
@@ -96,8 +96,6 @@ def _int64_feature(value):
   """Returns an int64_list from a bool / enum / int / uint."""
   return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
 
-
-
 def tf_feature_mapper(value, dtype=None):
     # Float -> tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
     # int -> tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
@@ -138,8 +136,6 @@ def tf_feature_mapper(value, dtype=None):
 
     return
 
-
-
 def relevance_scorer(relevance, n_bins=None, reciprocal=None):
     """Scale labels to a range (min,10] and invert the list to satisfy
     ranking label slope (h(x)|index is monotonically decreasing with
@@ -148,15 +144,15 @@ def relevance_scorer(relevance, n_bins=None, reciprocal=None):
     have a rank of 10, and irrelevant labels have a rank of min
     inputs
     -------
-    n_bins : (int) number of divisions between ranked examples.
+    n_bins: (int) number of divisions between ranked examples.
         For example, if n_bins = 3, exampels will be labeled [1,1,1,2,2,2,3,3,3]
-    reciprocal : (bool) label examples based on inverse of
+    reciprocal: (bool) label examples based on inverse of
         loss metric (see Labeling.py)
-    relevance : (list | iterable) of relevance measurements
+    relevance: (list | iterable) of relevance measurements
         (loss metric see Labeling.py)
     output
     -------
-    relevance : scaled or ranked labels that are suitable intputs into
+    relevance: scaled or ranked labels that are suitable intputs into
     tensorflow_ranking"""
 
     assert (bool(n_bins) ^ bool(reciprocal)), 'n_bins and reciprocal must not \
@@ -205,16 +201,15 @@ def relevance_scorer(relevance, n_bins=None, reciprocal=None):
 
     raise(ValueError('Invalid function arguments'))
 
-
-
-def serialize_context(document):
+def serialize_context(document: Dict[str, dict]):
     """Create a serialized tf.train.Example proto from a document stored in
     mongo-db
     input
     -------
-    document : (dict) must have db_features key
+    document: (dict) must have db_features key {'db_features': dict}
     output
-    context_proto_str : (bytes) serialized context features in tf.train.Example
+    -------
+    context_proto_str: (bytes) serialized context features in tf.train.Example
     proto
 
     the context_feature spec is of the form
@@ -248,19 +243,18 @@ def serialize_context(document):
 
     return context_proto_str
 
-
 def serialize_context_from_dictionary(context_features):
     """Create a serialized tf.train.Example proto from a dictionary of context
         features
     input
     -------
-    context_features : (dict) Must contain the keys
+    context_features: (dict) Must contain the keys
         ['n_instance', 'n_features', 'len_var', 'uniq_ratio',
          'n_len1', 'n_len2', 'n_len3', 'n_len4', 'n_len5',
          'n_len6', 'n_len7']
     output
     ------
-    context_proto_str : (bytes) serialized context features in tf.train.Example
+    context_proto_str: (bytes) serialized context features in tf.train.Example
         proto
 
     the context_feature spec is of the form
@@ -300,7 +294,6 @@ def serialize_context_from_dictionary(context_features):
 
     return context_proto_str
 
-
 def serialize_examples_v1(document,
                           example_features,
                           reciprocal=False,
@@ -310,20 +303,20 @@ def serialize_examples_v1(document,
       stored in mongo-db
       input
       -------
-      document : (dict) must have ['encoded_hyper']['clust_index']['val']
+      document: (dict) must have ['encoded_hyper']['clust_index']['val']
           and ['hyper_labels'] fields
-      example_features : (list) name of example feautres to include in per-item
+      example_features: (list) name of example feautres to include in per-item
           feature list. Must be one of 'clust_index' or 'all'. If 'clust_index' is
           chosen, only (clusterer, index) pairs are included. If 'all' then
           ['by_size','clusterer','n_components','reduce','index'] are all included
           as indicator columns.
-      reciprocal : (bool) the reciprocal of scores will be used
-      n_bins : (int) number of bins to place relevance in if reciprocal=False
-      example_text : (bool) Process clust_index as text (TRUE) or load
+      reciprocal: (bool) the reciprocal of scores will be used
+      n_bins: (int) number of bins to place relevance in if reciprocal=False
+      example_text: (bool) Process clust_index as text (TRUE) or load
           from encoded (True)
       output
       -------
-      peritem_list : (list) a list of serialized per-item (exmpale) featuers
+      peritem_list: (list) a list of serialized per-item (exmpale) featuers
       in the form of tf.train.Example protos
 
       The per_item feature spec is of the form
@@ -382,7 +375,6 @@ def serialize_examples_v1(document,
 
     return peritem_list
 
-
 def serialize_examples_v2(document,
                        reciprocal=False,
                        n_bins=5,
@@ -391,16 +383,16 @@ def serialize_examples_v2(document,
       stored in mongo-db
       input
       -------
-      document : (dict) must have ['encoded_hyper']['clust_index']['val']
+      document: (dict) must have ['encoded_hyper']['clust_index']['val']
           and ['hyper_labels'] fields
-      reciprocal : (bool) the reciprocal of scores will be used. If True,
+      reciprocal: (bool) the reciprocal of scores will be used. If True,
           n_bins must be False
-      n_bins : (int) number of bins to place relevance in.
-      shuffle_peritem : (bool) set to True if you want to shuffle peritem examples
+      n_bins: (int) number of bins to place relevance in.
+      shuffle_peritem: (bool) set to True if you want to shuffle peritem examples
           this will make peritem features in a non-default order
       output
       -------
-      peritem_list : (list) a list of serialized per-item (exmpale) featuers
+      peritem_list: (list) a list of serialized per-item (exmpale) featuers
       in the form of tf.train.Example protos
 
       The per_item feature spec is of the form
@@ -487,8 +479,6 @@ def serialize_examples_v2(document,
 
     return peritem_list
 
-
-
 def serialize_examples_from_dictionary(example_features,
                                        label_key,
                                        peritem_keys,
@@ -499,12 +489,12 @@ def serialize_examples_from_dictionary(example_features,
       stored in mongo-db
       input
       -------
-      example_features : (list) of dictionaries. Each dictionary contains keys
+      example_features: (list) of dictionaries. Each dictionary contains keys
           of peritem features and relevance labels of each item.
           Dict values are converted to encoded and
           saved as serialized features. ALl per-item features are saved as
           text and encoded or transformed later.
-          Example :
+          Example:
            [{'distance': 'euclidean',
           'by_size': False,
           'n_components': '0',
@@ -520,22 +510,22 @@ def serialize_examples_from_dictionary(example_features,
           'index': 'Frey',
           'relevance': 8761.6}, ..., ]
 
-     label_key : (str) key of relevance label. Should be something like
+     label_key: (str) key of relevance label. Should be something like
          'relevance' (see above)
 
-     peritem_keys : (iter | list) of string keys of peritem features. Each
+     peritem_keys: (iter | list) of string keys of peritem features. Each
          key should be a key in example_features.
          Example peritem_keys = ['by_size','n_components',
                                  'clusterer','reduce','index']
 
-     reciprocal : (bool) the reciprocal of scores will be used. If True,
+     reciprocal: (bool) the reciprocal of scores will be used. If True,
           n_bins must be False
-     n_bins : (int) number of bins to place relevance in.
-     shuffle_peritem : (bool) set to True if you want to shuffle peritem examples
+     n_bins: (int) number of bins to place relevance in.
+     shuffle_peritem: (bool) set to True if you want to shuffle peritem examples
           this will make peritem features in a non-default order
       output
       -------
-      peritem_list : (list) a list of serialized per-item (exmpale) featuers
+      peritem_list: (list) a list of serialized per-item (exmpale) featuers
           in the form of tf.train.Example protos
 
       The per_item feature spec is of the form
@@ -633,17 +623,16 @@ def serialize_examples_from_dictionary(example_features,
 
     return peritem_list
 
-
 def get_train_test_id_mongo(collection, train_pct=0.8):
     """Returns Mongo-db _id's for training and testing instances. document _ids
     are shuffled using sklearn's model_selection.train_test_split
     inputs
     -------
-    collection : mongo collection object
-    train_pct : (float) percent of docuemnt _ids to be considered for training
+    collection: mongo collection object
+    train_pct: (float) percent of docuemnt _ids to be considered for training
     outputs_
     -------
-    (train_ids, test_ids) : list of training and testing _ids """
+    (train_ids, test_ids): list of training and testing _ids """
 
     ids = []
     _ids = collection.find({}, {'_id':1})
@@ -664,10 +653,10 @@ def get_train_test_id_sql(train_pct=0.8):
     sets
     inputs
     -------
-    train_pct : (float) percent of docuemnt _ids to be considered for training
+    train_pct: (float) percent of docuemnt _ids to be considered for training
         outputs_
     -------
-    (train_ids, test_ids) : (list) of training and testing _ids """
+    (train_ids, test_ids): (list) of training and testing _ids """
 
     # Set up connection to SQL
     Insert = extract.Insert(server_name=server_name,
@@ -690,12 +679,4 @@ def get_train_test_id_sql(train_pct=0.8):
     test_ids = [customer_ids[idx] for idx in text_index]
 
     return train_ids, test_ids
-
-
-
-
-
-
-
-
 
