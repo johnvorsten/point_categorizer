@@ -99,14 +99,14 @@ async def root():
         "SVMCL1MILESPredictor, SVMCRBFMILESPredictor")
     return {"message":msg}
 
-@app.post("/mil-serving/CompNBPredictor/", response_model=PredictorOutput)
+@app.post("/mil-prediction/CompNBPredictor/", response_model=PredictorOutput)
 async def CompNB_server(data:List[RawInputDataPydantic]):
     """Serve predictions from the CompNBPredictor"""
     predictor_input = _determine_unpack(data)
     prediction = compNBPredictor.predict(predictor_input)
     return PredictorOutput(prediction=prediction_map[prediction[0]])
 
-@app.post("/mil-serving/MultiNBPredictor/", response_model=PredictorOutput)
+@app.post("/mil-prediction/MultiNBPredictor/", response_model=PredictorOutput)
 async def MultiNB_server(data:List[RawInputDataPydantic]):
     """Serve predictions from the MultiNBPredictor"""
     predictor_input = _determine_unpack(data)
@@ -120,28 +120,28 @@ async def MultiNB_server(data:List[RawInputDataPydantic]):
 #     prediction = knnPredictor.predict(predictor_input)
 #     return PredictorOutput(prediction=prediction_map[prediction[0]])
 
-@app.post("/mil-serving/SVMCL1SIPredictor/", response_model=PredictorOutput)
+@app.post("/mil-prediction/SVMCL1SIPredictor/", response_model=PredictorOutput)
 async def SVMCL1SI_server(data:List[RawInputDataPydantic]):
     """Serve predictions from the SVMCL1SIPredictor"""
     predictor_input = _determine_unpack(data)
     prediction = svmcL1SIPredictor.predict(predictor_input)
     return PredictorOutput(prediction=prediction_map[prediction[0]])
 
-@app.post("/mil-serving/SVMCRBFSIPredictor/", response_model=PredictorOutput)
+@app.post("/mil-prediction/SVMCRBFSIPredictor/", response_model=PredictorOutput)
 async def SVMCRBFSI_server(data:List[RawInputDataPydantic]):
     """Serve predictions from the SVMCRBFSIPredictor"""
     predictor_input = _determine_unpack(data)
     prediction = svmcRBFSIPredictor.predict(predictor_input)
     return PredictorOutput(prediction=prediction_map[prediction[0]])
 
-@app.post("/mil-serving/SVMCL1MILESPredictor/", response_model=PredictorOutput)
+@app.post("/mil-prediction/SVMCL1MILESPredictor/", response_model=PredictorOutput)
 async def SVMCL1MILES_server(data:List[RawInputDataPydantic]):
     """Serve predictions from the SVMCL1MILESPredictor"""
     predictor_input = _determine_unpack(data)
     prediction = svmcL1MILESPredictor.predict(predictor_input)
     return PredictorOutput(prediction=prediction_map[prediction[0]])
 
-@app.post("/mil-serving/SVMCRBFMILESPredictor/", response_model=PredictorOutput)
+@app.post("/mil-prediction/SVMCRBFMILESPredictor/", response_model=PredictorOutput)
 async def SVMCRBFMILES_server(data:List[RawInputDataPydantic]):
     """Serve predictions from the SVMCRBFMILESPredictor"""
     predictor_input = _determine_unpack(data)
