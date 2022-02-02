@@ -9,7 +9,7 @@ Created on Mon Sep 30 17:48:46 2019
 import tensorflow as tf
 import tensorflow_ranking as tfr
 
-
+# Declarations
 tf.enable_eager_execution()
 tf.executing_eagerly()
 #tf.set_random_seed(1234)
@@ -29,7 +29,7 @@ _INPUT_SIZE = _LIST_SIZE
 
 # Location of all clust_index vocabulary (per-item features)
 # Hyperparameters related to per-item features
-_VOCABULARY_FILE = r'./data/JV_vocab.txt'
+_VOCABULARY_FILE = r'./data/vocab_all.txt'
 _VOCABULARY_SIZE = 37 # All should be this long
 _N_CATEGORIES = 37
 _SUGGESTED_EMB_DIM = _N_CATEGORIES ** (1/4) # 2.4

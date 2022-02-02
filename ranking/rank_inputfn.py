@@ -8,12 +8,12 @@ Read example-in-example saved data into feature dicts for training and eval
 @author: z003vrzk
 """
 
+# Thrid party imports
 import tensorflow as tf
 import numpy as np
 import tensorflow_ranking as tfr
 
-
-
+# Declarations
 # Padding labels are set negative so that the corresponding examples can be
 # ignored in loss and metrics.
 _PADDING_LABEL = -1
@@ -27,8 +27,7 @@ _LIST_SIZE = 237
 # The document relevance label.
 _LABEL_FEATURE = "relevance"
 
-
-
+#%%
 def context_feature_columns():
     """Returns context feature names to column definitions.
     DEPRECITATED : 

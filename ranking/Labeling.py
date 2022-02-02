@@ -39,9 +39,6 @@ correct_k = myTest.get_correct_k(db_name, df_clean, manual=True)
 extract = ClusteringLabels()
 db_feat = extract.calc_features(database, mypipe, tag=db_name)
 
-#%%
-
-@author: z003vrzk
 """
 
 # Python imports
@@ -55,7 +52,6 @@ import configparser
 from scipy.sparse import csr_matrix
 from sklearn.pipeline import Pipeline
 import numpy as np
-import pandas as pd
 import sqlalchemy
 
 # Local imports

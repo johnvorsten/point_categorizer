@@ -35,12 +35,14 @@ clustered_points [
 @author: z003vrzk
 """
 
-# Third party imports
-from pymongo import MongoClient
+# Python imports
+import copy
 import sys
 import os
+
+# Third party imports
+from pymongo import MongoClient
 import pandas as pd
-import copy
 
 # Local imports
 _CWD = os.getcwd()
@@ -116,7 +118,6 @@ class MongoQuery():
         else:
             raise ValueError("Invalid collection_object : {}".format(collection_object))
 
-
     def retrieve_document_missing_labels(self):
         # Find documents where not all clustered_points are labeled
         """Use this to generate mongodb documents where not all clustered
@@ -143,7 +144,6 @@ class MongoQuery():
 
             yield document
 
-
     def update_points_on_index(self, _id, array_index, new_points_object):
         """Use this to update one of the objects under 'clustered_points' with
         a new points dictionary. This is useful when you want to remove or
@@ -161,7 +161,6 @@ class MongoQuery():
                                {'clustered_points.'+str(array_index):new_points_object}})
         return result.modified_count
 
-
     def append_points_to_array(self, _id, new_item):
         """Add an object to the clustered_points array
         inputs
@@ -175,7 +174,6 @@ class MongoQuery():
                                     {'$push':{'clustered_points':new_item}})
         return result.modified_count
 
-
     def add_label_to_cluster(self, _id, array_index, label):
         # Add a label to an object in an array
         assert isinstance(label, list), 'Passed label must be type list'
@@ -186,7 +184,6 @@ class MongoQuery():
                                          '.label':label}})
 
         return result.modified_count
-
 
     @staticmethod
     def retrieve_points_dataframe(document):
@@ -208,10 +205,9 @@ class MongoQuery():
                 continue
 
             dataframe_clean = pd.DataFrame.from_dict(cluster_dict['points'],
-                                                   orient='columns')
+                                                     orient='columns')
 
             yield index, dataframe_clean
-
 
     @staticmethod
     def split_dataframe_on_index(dataframe, split_indicies):

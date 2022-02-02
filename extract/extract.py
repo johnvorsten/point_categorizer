@@ -61,7 +61,7 @@ class UNCMapping():
     def _parse_network_connections(network_string):
         """inputs
         -------
-        network_string : (str) output of 'net use' windows cmd"""
+        network_string: (str) output of 'net use' windows cmd"""
 
         # Regex patterns
         drive_pattern = ': '
@@ -113,8 +113,8 @@ class Extract():
         save them to save_directory
         inputs
         -------
-        search_directory : (str) Directory to look for .mdf files
-        save_directory : (str) Directory to save .mdf files into
+        search_directory: (str) Directory to look for .mdf files
+        save_directory: (str) Directory to save .mdf files into
         outputs
         -------
         None"""
@@ -124,7 +124,7 @@ class Extract():
             pass
         else:
             raise ValueError('search_directory must be of type str() or' +
-                             ' Path(). Received type : {}'\
+                             ' Path(). Received type: {}'\
                              .format(type(search_directory)))
 
         paths = [x for x in self.search_databases(search_directory,
@@ -132,7 +132,7 @@ class Extract():
 
         for path_mdf, path_ldf in paths:
             self.save_database(path_mdf, path_ldf, save_directory)
-            print('Saved : {}'.format(path_mdf))
+            print('Saved: {}'.format(path_mdf))
 
         return None
 
@@ -146,10 +146,10 @@ class Extract():
         to a default directory on the D drive
         parameters
         -------
-        search_directory : (str) or (Path) directory to recusively search for
+        search_directory: (str) or (Path) directory to recusively search for
             .mdf and .ldf files
-        idx : (int) for printing (optional)
-        print_flag : (bool) enable print (optional)
+        idx: (int) for printing (optional)
+        print_flag: (bool) enable print (optional)
         output
         -------
         (None) Saves databases to default directory"""
@@ -164,7 +164,7 @@ class Extract():
                 ldf_paths = sorted(current_dir.glob('*.ldf'))
 
                 if print_flag:
-                    print('{}Searching directory : {}'\
+                    print('{}Searching directory: {}'\
                           .format(chr(62)*idx, current_dir))
 
                 # No databases found
@@ -177,9 +177,9 @@ class Extract():
                     for mdf_path, ldf_path in zip(mdf_paths, ldf_paths):
 
                         if print_flag:
-                            print('{}Database found : {}'\
+                            print('{}Database found: {}'\
                                   .format(chr(62)*idx,str(mdf_path)))
-                            print('{}Log found : {}'\
+                            print('{}Log found: {}'\
                                   .format(chr(62)*idx,str(ldf_path)))
 
                         db_files = self.sql_path_tuple(mdf_path=mdf_path,
@@ -197,9 +197,9 @@ class Extract():
         inside the destination directory (the folder name is auto-generated)
         Inputs
         -------
-        path_mdf : (str) or (Path) database path
-        path_ldf : (str) or (Path) log of database path
-        save_directory : (str) or (Path) destination folder to save to
+        path_mdf: (str) or (Path) database path
+        path_ldf: (str) or (Path) log of database path
+        save_directory: (str) or (Path) destination folder to save to
         Outputs
         -------
         Saves file to given directory"""
@@ -239,7 +239,7 @@ class Extract():
         """Creates a save directory if allowed by the user
         inputs
         -------
-        save_directory : (str) directory to create"""
+        save_directory: (str) directory to create"""
         if not os.path.isdir(save_directory):
             x = input('Create a directory at {}? [Y/N]'.format(save_directory))
 
@@ -257,11 +257,11 @@ class Extract():
         job name is found
         inputs
         -------
-        split_path : (list) of (str) representing path components
-        match_pattern : (str) name pattern to look for (default '44op')
+        split_path: (list) of (str) representing path components
+        match_pattern: (str) name pattern to look for (default '44op')
         outputs
         -------
-        job_name : (str) if a 44op pattern is found, (False) otherwise"""
+        job_name: (str) if a 44op pattern is found, (False) otherwise"""
 
         for path in split_path:
             match = re.match(match_pattern, path, re.IGNORECASE)
@@ -311,9 +311,9 @@ class Extract():
         path_ldf file will be saved
         inputs
         ------
-        path_mdf : (str) or (Path) of source file. The final save path is derived
+        path_mdf: (str) or (Path) of source file. The final save path is derived
             from the source file path
-        save_directory : (str) destination folder to create new folder in"""
+        save_directory: (str) destination folder to create new folder in"""
 
         if isinstance(path_mdf, str):
             path_mdf = Path(path_mdf)
@@ -364,12 +364,12 @@ class Extract():
 
         inputs
         -------
-        server_name : (str) SQL Server name, defaults to named instance DT_SQLEXPR2008
+        server_name: (str) SQL Server name, defaults to named instance DT_SQLEXPR2008
             On local machine
-        driver_name : (str) SQL driver name, defaults to
+        driver_name: (str) SQL driver name, defaults to
             'SQL Server Native Client 10.0'
-        database_name : (str) Name of database to attach SQL databases as
-        search_directory : (str) Directory to search for .mdf files
+        database_name: (str) Name of database to attach SQL databases as
+        search_directory: (str) Directory to search for .mdf files
         outputs
         -------
         """
@@ -495,10 +495,10 @@ class Insert:
         None is mapped to Null in SQL
         inputs
         -------
-        dataframe : (pd.DataFrame)
+        dataframe: (pd.DataFrame)
         outputs
         -------
-        dataframe : (pd.DataFrame) cleaned dataframe"""
+        dataframe: (pd.DataFrame) cleaned dataframe"""
 
         # Remove duplicate columns
         dataframe = dataframe.loc[:,~dataframe.columns.duplicated()]
@@ -513,12 +513,12 @@ class Insert:
     def core_insert_dataframe(self, BaseClass, dataframe):
         """inputs
         -------
-        BaseClass : (sqlalchemy.ext.declarative.api.DeclarativeMeta) the base
+        BaseClass: (sqlalchemy.ext.declarative.api.DeclarativeMeta) the base
         class used for declarative class definitions. This is used to get the
         metadata associated with BaseClass. The metadata is needed to link the
         ORM and hte SQLAlchemy core. This method use the SQLAlchemy core to
         insert objects (I like it more than the ORM)
-        dataframe : (pandas.DataFrame) to insert to table specified by BaseTable
+        dataframe: (pandas.DataFrame) to insert to table specified by BaseTable
         The dataframe must have columns for each mandatory column in
         BaseTable"""
 
@@ -538,12 +538,12 @@ class Insert:
         """
         inputs
         -------
-        BaseClass : (sqlalchemy.ext.declarative.api.DeclarativeMeta) the base
+        BaseClass: (sqlalchemy.ext.declarative.api.DeclarativeMeta) the base
         class used for declarative class definitions. This is used to get the
         metadata associated with BaseClass. The metadata is needed to link the
         ORM and hte SQLAlchemy core. This method use the SQLAlchemy core to
         insert objects (I like it more than the ORM)
-        dictionary : (dict) dictionary of key values to insert"""
+        dictionary: (dict) dictionary of key values to insert"""
 
         table_obj = BaseClass.__dict__['__table__']
         insert_object = table_obj.insert().values(dictionary)
@@ -558,12 +558,12 @@ class Insert:
         and return the result
         inputs
         -------
-        BaseClass : (sqlalchemy.ext.declarative.api.DeclarativeMeta) the base
+        BaseClass: (sqlalchemy.ext.declarative.api.DeclarativeMeta) the base
         class used for declarative class definitions. This is used to get the
         metadata associated with BaseClass. The metadata is needed to link the
         ORM and hte SQLAlchemy core. This method use the SQLAlchemy core to
         insert objects (I like it more than the ORM)
-        select : (sqlalchemy.sql.selectable.Select)
+        select: (sqlalchemy.sql.selectable.Select)
 
         Example
         sql = '''SELECT distinct group_id
@@ -584,10 +584,10 @@ class Insert:
         object through pandas.read_sql and output a dataframe
         inputs
         -------
-        select : (sqlalchemy.sql.selectable.Select) query
+        select: (sqlalchemy.sql.selectable.Select) query
         outputs
         -------
-        result : (pd.DataFrame) query result
+        result: (pd.DataFrame) query result
 
         Example
         """

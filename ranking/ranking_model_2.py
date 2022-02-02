@@ -7,10 +7,10 @@ Ranking function for project (use this file to train and evaluate)
 model_1 is my initial shot at making a good ranking model.
 model_2 (THIS FILE) will try training binned labels instead of continuous labels
 
-First impressions : 
+First impressions: 
 
     
-Some things to try : 
+Some things to try: 
 1)
 (NOT IMPLEMNTED HERE) Embed label space - see tensorflow documentation 
 for encoded feature space tip
@@ -24,13 +24,18 @@ Try binning input data into a non-continuous spectrum
 @author: z003vrzk
 """
 
-
-import tensorflow as tf
-import tensorflow_ranking as tfr
-import numpy as np
+# Python imports
 import os
 from datetime import datetime
 
+# Third party imports
+import tensorflow as tf
+import tensorflow_ranking as tfr
+import numpy as np
+
+# Local imports
+
+# Declarations
 tf.enable_eager_execution()
 tf.executing_eagerly()
 #tf.set_random_seed(1234)
@@ -98,7 +103,7 @@ _NUM_TRAIN_STEPS = 14000
 
 def context_feature_columns():
     """Returns context feature names to column definitions.
-    DEPRECITATED : 
+    DEPRECITATED: 
     context_feature_spec = {
         'n_instance': tf.io.FixedLenFeature([], tf.float32),
         'n_features': tf.io.FixedLenFeature([], tf.float32),
@@ -152,25 +157,10 @@ def context_feature_columns():
     return context_feature_cols
 
 def example_feature_columns():
-    """Returns the example feature columns.
+    """Returns the example feature columns
     """
-    
-#    encoded_clust_index = tf.feature_column.numeric_column(
-#        'encoded_clust_index', 
-#        dtype=tf.float32, 
-#        shape=[_Encoded_labels_dimension],
-#        default_value=np.zeros((_Encoded_labels_dimension))
-#        )
-#    
-#    peritem_feature_cols = {
-#        'encoded_clust_index':encoded_clust_index
-#        }
-    
-    _file_name_bysize = r'./data/JV_vocab_bysize.txt'
-    _file_name_clusterer = r'./data/JV_vocab_clusterer.txt'
-    _file_name_index = r'./data/JV_vocab_index.txt'
-    _file_name_n_components = r'./data/JV_vocab_n_components.txt'
-    _file_name_reduce = r'./data/JV_vocab_reduce.txt'
+    _file_name_clusterer = r'./data/vocab_clusterer.txt'
+    _file_name_index = r'./data/vocab_index.txt'
     
     clusterer = tf.feature_column.categorical_column_with_vocabulary_file(
         'clusterer', 
@@ -193,9 +183,9 @@ def example_feature_columns():
 
 
 def input_fn(path, num_epochs=None, shuffle=True):
-  """path : (str) path of tfrecord EIE file
-  num_epochs : (int) or (None) how many times to iterate through dataset
-  shuffle : (bool) shuffle dataset or not"""
+  """path: (str) path of tfrecord EIE file
+  num_epochs: (int) or (None) how many times to iterate through dataset
+  shuffle: (bool) shuffle dataset or not"""
   global _iter_track
   # {'key': tf.io.FixedLenFeature}
   #  context_feature_spec = context_feature_columns()
@@ -227,11 +217,10 @@ def input_fn(path, num_epochs=None, shuffle=True):
   label = tf.cast(label, tf.float32)
   
   _iter_track += 1
-  print('called : {}'.format(_iter_track))
+  print('called: {}'.format(_iter_track))
   return features, label
 
 features, label = input_fn(_TRAIN_DATA_PATH)
-
 
 def make_transform_fn():
     
@@ -513,10 +502,11 @@ def serving_input_receiver_fn():
 
 # ranker is my tf.estimator.Estimator object
 
-model_dir = ranker.export_saved_model(export_dir,
-                          serving_input_receiver_fn,
-                          as_text=False
-                          )
+model_dir = ranker.export_saved_model(
+    export_dir,
+    serving_input_receiver_fn,
+    as_text=False
+    )
 
 from model_serving import encode_input_transmitter_fn_v1
 

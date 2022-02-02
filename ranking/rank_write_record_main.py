@@ -8,6 +8,7 @@ Created on Thu Jun  4 12:46:14 2020
 # Python imports
 import sys
 import os
+import configparser
 
 # Thrid party imports
 from pymongo import MongoClient
@@ -43,10 +44,17 @@ from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev, Custom
 from extract.SQLAlchemyDataDefinition import Labeling as SQLTableLabeling
 from clustering.accuracy_visualize import Record, get_records
 
+# Declarations
 ExtractLabels = Labeling.ExtractLabels()
+config = configparser.ConfigParser()
+config.read(r'../extract/sql_config.ini')
+server_name = config['sql_server']['DEFAULT_SQL_SERVER_NAME']
+driver_name = config['sql_server']['DEFAULT_SQL_DRIVER_NAME']
+database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
+numeric_feature_file = config['sql_server']['DEFAULT_NUMERIC_FILE_NAME']
+categorical_feature_file = config['sql_server']['DEFAULT_CATEGORICAL_FILE_NAME']
 
 #%%
-
 
 def save_tfrecord_mongo():
     """Save TFRecord EIE format to files for ranking
@@ -96,7 +104,6 @@ def save_tfrecord_mongo():
         # Serialize context featuers -> serialized_context
         # This is a serialized tf.train.Example object
         context_proto_str = serialize_context(document)
-
 
         # Serialize peritem features. AKA examples or instances that will be ranked
         # This is a list of serialized tf.train.Example objects
@@ -157,9 +164,7 @@ def save_tfrecord_mongo():
 
     return None
 
-
 #%% Savee TFRecords from SQL
-
 
 def save_tfrecord_sql(customer_ids,
                       peritem_keys,
@@ -300,14 +305,12 @@ def save_tfrecord_sql(customer_ids,
 
     return None
 
-
-
-
+#%%
 if __name__ == '__main__':
     # Set up connection to SQL
-    Insert = extract.Insert(server_name='.\\DT_SQLEXPR2008',
-                            driver_name='SQL Server Native Client 10.0',
-                            database_name='Clustering')
+    Insert = extract.Insert(server_name,
+                            driver_name,
+                            database_name)
 
     # Peritem keys to serialize
     peritem_keys = ['by_size','n_components','clusterer','reduce','index']

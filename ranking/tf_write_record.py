@@ -4,7 +4,7 @@ Created on Sun Oct 13 19:11:35 2019
 
 Write TFRecord objects for modeling. Each file written will be used for a 
 different model - this module will be mostly used for writing TFRecord 
-objects used to model hyperparameters : 
+objects used to model hyperparameters: 
 a)
 by_size
 b)
@@ -14,11 +14,14 @@ reduce
 
 @author: z003vrzk
 """
-
-import tensorflow as tf
+# Python imports
 import pickle
+
+# Third party imports
+import tensorflow as tf
 import numpy as np
 
+# Local imports
 
 
 #%% functions & methods
@@ -82,12 +85,12 @@ def serialize_features(document, label_names):
     mongo-db
     input
     -------
-    document : (dict) must have db_features key
-    label_names : (list) names of label to be included in example proto. 
+    document: (dict) must have db_features key
+    label_names: (list) names of label to be included in example proto. 
     Should be a list including at least one of ['by_size','n_components','reduce']
     output
     -------
-    feature_proto_str : (bytes) serialized context features in tf.train.Example
+    feature_proto_str: (bytes) serialized context features in tf.train.Example
     proto
     
     the context_feature spec is of the form for context features
@@ -150,11 +153,11 @@ def get_test_train_id(collection, train_pct=0.8):
     are shuffled using sklearn's model_selection.train_test_split
     inputs
     -------
-    collection : mongo collection object
-    train_pct : (float) percent of docuemnt _ids to be considered for training
+    collection: mongo collection object
+    train_pct: (float) percent of docuemnt _ids to be considered for training
     outputs_
     -------
-    (train_ids, test_ids) : list of training and testing _ids """
+    (train_ids, test_ids): list of training and testing _ids """
     
     ids = []
     _ids = collection.find({}, {'_id':1})

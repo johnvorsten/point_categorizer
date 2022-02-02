@@ -273,8 +273,8 @@ def get_batch(collection,
 
 
 def get_encoded_batch(collection, 
-              batch_size, 
-              label_name='encoded_hyper.by_size'):
+                      batch_size, 
+                      label_name='encoded_hyper.by_size'):
     """Retrieve an encoded instance {features, labels} from MongoDB.
     inputs
     -------

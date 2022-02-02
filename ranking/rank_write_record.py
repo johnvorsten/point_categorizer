@@ -52,7 +52,7 @@ serialize_examples() below
 import os
 import sys
 import configparser
-from typing import Dict
+from typing import Dict, Union
 
 # Thrid party imports
 import tensorflow as tf
@@ -243,57 +243,6 @@ def serialize_context(document: Dict[str, dict]):
 
     return context_proto_str
 
-def serialize_context_from_dictionary(context_features):
-    """Create a serialized tf.train.Example proto from a dictionary of context
-        features
-    input
-    -------
-    context_features: (dict) Must contain the keys
-        ['n_instance', 'n_features', 'len_var', 'uniq_ratio',
-         'n_len1', 'n_len2', 'n_len3', 'n_len4', 'n_len5',
-         'n_len6', 'n_len7']
-    output
-    ------
-    context_proto_str: (bytes) serialized context features in tf.train.Example
-        proto
-
-    the context_feature spec is of the form
-    {'n_instance': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,)),
-     'n_features': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,)),
-     'len_var': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,)),
-     'uniq_ratio': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,)),
-     'n_len1': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,)),
-     'n_len2': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,)),
-     'n_len3': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,)),
-     'n_len4': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,)),
-     'n_len5': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,)),
-     'n_len6': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,)),
-     'n_len7': FixedLenFeature(shape=(1,), dtype=tf.float32, default_value=(0.0,))
-     }"""
-
-    # Create dictionary of context features
-    context_dict = {}
-    enforce_order = ['n_instance', 'n_features', 'len_var', 'uniq_ratio',
-                     'n_len1', 'n_len2', 'n_len3', 'n_len4', 'n_len5',
-                     'n_len6', 'n_len7']
-
-    # Ensure integrity of context_features
-    for key in context_features.keys():
-        assert key in enforce_order, "Invalid key {} included in context_features".format(key)
-
-    # tf.train.Feature for each value passed in context_features
-    for key in enforce_order:
-        # Serialize context features
-        val = context_features[key] # Enforce float
-        context_dict[key] = tf_feature_mapper(float(val), dtype=float)
-
-    # Create serialized context tf.train.Example
-    context_proto = tf.train.Example(
-            features=tf.train.Features(feature=context_dict))
-    context_proto_str = context_proto.SerializeToString() # Serialized
-
-    return context_proto_str
-
 def serialize_examples_v1(document,
                           example_features,
                           reciprocal=False,
@@ -376,9 +325,9 @@ def serialize_examples_v1(document,
     return peritem_list
 
 def serialize_examples_v2(document,
-                       reciprocal=False,
-                       n_bins=5,
-                       shuffle_peritem=True):
+                          reciprocal=False,
+                          n_bins=5,
+                          shuffle_peritem=True):
     """Create a list of serialized tf.train.Example proto from a document
       stored in mongo-db
       input
@@ -509,15 +458,12 @@ def serialize_examples_from_dictionary(example_features,
           'reduce': 'MDS',
           'index': 'Frey',
           'relevance': 8761.6}, ..., ]
-
      label_key: (str) key of relevance label. Should be something like
          'relevance' (see above)
-
      peritem_keys: (iter | list) of string keys of peritem features. Each
          key should be a key in example_features.
          Example peritem_keys = ['by_size','n_components',
                                  'clusterer','reduce','index']
-
      reciprocal: (bool) the reciprocal of scores will be used. If True,
           n_bins must be False
      n_bins: (int) number of bins to place relevance in.

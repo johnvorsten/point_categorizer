@@ -8,7 +8,6 @@ Created on Tue Oct  8 18:12:37 2019
 import os, sys
 import pickle
 from collections import namedtuple
-import configparser
 
 # Third party imports
 import tensorflow as tf
@@ -50,11 +49,11 @@ class LoadSerializedAndServe:
     
     inputs
     -------
-    document : (dict) document from mongodb
-    list_size : (int) number of examples to include in model for prediction. 
+    document: (dict) document from mongodb
+    list_size: (int) number of examples to include in model for prediction. 
     This is based on the model's input layer when training. The correct
     values to pass are 180 for 'model2' and 200 for 'model4'
-    model_name : (str) one of 'model2' or 'model4'. 'model2' is a DNN that
+    model_name: (str) one of 'model2' or 'model4'. 'model2' is a DNN that
     was trained on only the clusterer algorithm and closen index. 'model4' is 
     a DNN that was trained on all clusterer hyperparameters [index, reduce, 
     clusterer, n_components, by_size]
@@ -116,14 +115,14 @@ class LoadSerializedAndServe:
         
         inputs
         -------
-        document : (dict) a document retrieved from mongo db in my own special 
+        document: (dict) a document retrieved from mongo db in my own special 
         format
-        text_features : (bool) will the model clust_index be passed as 
+        text_features: (bool) will the model clust_index be passed as 
         text features and embedded (True) or one-hot encoded (False)
-        list_size : (int) number of examples to prune or pad input EIE to
-        model_directory : directory of serialized model. 
+        list_size: (int) number of examples to prune or pad input EIE to
+        model_directory: directory of serialized model. 
         
-        Example Usage : 
+        Example Usage: 
         client = MongoClient('localhost', 27017)
         db = client['master_points']
         collection = db['raw_databases']
@@ -160,18 +159,18 @@ class LoadSerializedAndServe:
         TFProto to the serialized model and output the ranked prediction
         input
         -------
-        document : (dict) document from mongodb
-        list_size : (bool) list size of per-item features to be included. If 
+        document: (dict) document from mongodb
+        list_size: (bool) list size of per-item features to be included. If 
         the default None is kept, 200 (default for model4) is used. If False 
         is passed then no padding or trimming of peritem lists will take place
-        peritem_source : (str) 'default' or 'document'. The determines where
+        peritem_source: (str) 'default' or 'document'. The determines where
         peritem features come from. If 'default' a set list of clusterer
         hyperparameters is used. If 'document', the list of clusterer 
         hyperparameters associated with the document is used
         
         output
         -------
-        output_tuple_list : (tuple) a named tuple of prediction scores and 
+        output_tuple_list: (tuple) a named tuple of prediction scores and 
         hyperparameter dicts. Each score is presumable relevant to the 
         hyperparameter dict. Use output_tuple_list[0].score for the score and
         output_tuple_list[0].hyperparameter_dict for clustering hyperparams"""
@@ -229,14 +228,14 @@ class LoadSerializedAndServe:
         used for training - the "relevance" label is not included)
         input
         -------
-        document : (dict) must have ['encoded_hyper']['clust_index']['val']
+        document: (dict) must have ['encoded_hyper']['clust_index']['val']
         and ['hyper_labels'] fields
-        text_features : (bool) Process clust_index as text (True) or load 
+        text_features: (bool) Process clust_index as text (True) or load 
         from encoded (False)
         list_size: (int)
         output
         -------
-        peritem_list : (list) a list of serialized per-item (exmpale) featuers
+        peritem_list: (list) a list of serialized per-item (exmpale) featuers
           in the form of tf.train.Example protos
         """
         
@@ -323,8 +322,8 @@ class LoadSerializedAndServe:
         Useful for serving serialized tensorflow estimators/models
         inputs
         -------
-        document : (dict) document retrieved from Mongo. Dictionary of field:value
-        reciprocal : """
+        document: (dict) document retrieved from Mongo. Dictionary of field:value
+        reciprocal: """
         
         # Same for serving and training
         context_proto_str = serialize_context(document)
@@ -375,18 +374,18 @@ class LoadSerializedAndServe:
         
         input
         -------
-        document : (dict) must have ['encoded_hyper']['clust_index']['val']
+        document: (dict) must have ['encoded_hyper']['clust_index']['val']
           and ['hyper_labels'] fields
-        list_size : (int) Number of examples to include. This must be determined
+        list_size: (int) Number of examples to include. This must be determined
             from the input size of the ranking model. Optionally, pass False
             if you do not want peritem examples to be padded
-        peritem_source : (str) 'default' or 'document'. The determines where
+        peritem_source: (str) 'default' or 'document'. The determines where
         peritem features come from. If 'default' a set list of clusterer
         hyperparameters is used. If 'document', the list of clusterer 
         hyperparameters associated with the document is used
         output
         -------
-        peritem_list : (list) a list of serialized per-item (exmpale) featuers
+        peritem_list: (list) a list of serialized per-item (exmpale) featuers
           in the form of tf.train.Example protos
         """
            
@@ -482,8 +481,8 @@ class LoadSerializedAndServe:
         Useful for serving serialized tensorflow estimators/models
         inputs
         -------
-        document : (dict) document retrieved from Mongo. Dictionary of field:value
-        list_size : (int) number of examples to use in the model. Typ 160-200 for me
+        document: (dict) document retrieved from Mongo. Dictionary of field:value
+        list_size: (int) number of examples to use in the model. Typ 160-200 for me
         """
         
         # Same for serving and training
@@ -505,55 +504,6 @@ class LoadSerializedAndServe:
         serialized_example_in_example = serialized_proto.SerializeToString()
         
         return serialized_example_in_example
-
-
-#%%
-# Load an example from SQL database
-from extract import extract
-import sqlalchemy
-from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev,
-                                              Customers, 
-                                              ClusteringHyperparameter, 
-                                              Labeling)
-from transform_ranking import Transform
-from Labeling import ClusteringLabels
-
-config = configparser.ConfigParser()
-config.read(r'../extract/sql_config.ini')
-server_name = config['sql_server']['DEFAULT_SQL_SERVER_NAME']
-driver_name = config['sql_server']['DEFAULT_SQL_DRIVER_NAME']
-database_name = config['sql_server']['DEFAULT_DATABASE_NAME']
-numeric_feature_file = config['sql_server']['DEFAULT_NUMERIC_FILE_NAME']
-categorical_feature_file = config['sql_server']['DEFAULT_CATEGORICAL_FILE_NAME']
-
-Insert = extract.Insert(server_name=server_name,
-                        driver_name=driver_name,
-                        database_name=database_name)
-
-#1. Return context features form a single group
-
-# Get a points dataframe
-customer_id = 15
-sel = sqlalchemy.select([Points]).where(Points.customer_id.__eq__(customer_id))
-database = Insert.pandas_select_execute(sel)
-sel = sqlalchemy.select([Customers.name]).where(Customers.id.__eq__(customer_id))
-customer_name = Insert.core_select_execute(sel)[0].name
-
-# Transformation pipeline
-full_pipeline = Transform.get_ranking_pipeline()
-
-# Dictionary with keys ['n_instance', 'n_features', 'len_var', 'uniq_ratio',
-#                    'n_len1', 'n_len2', 'n_len3', 'n_len4', 'n_len5',
-#                    'n_len6', 'n_len7']
-database_features = ClusteringLabels.get_database_features(
-    database,
-    full_pipeline,
-    instance_name=customer_name)
-context_proto_str = serialize_context({'db_features':database_features})
-
-#2. Return peritem features
-peritem_features = LoadSerializedAndServe._serialize_examples_serving_v1(
-    database_features, text_features=False, list_size=180)
 
 
 #%% This works
@@ -601,8 +551,8 @@ if __name__ == '__main__':
             'groupwise_dnn_v2/accumulate_scores/div_no_nan:0', 
             feed_dict=input_feed_dict_v2)
         
-    print('ouputs_v1 : ', outputs_v1, '\n\n')
-    print('outputs_v2 : ', outputs_v2)
+    print('ouputs_v1: ', outputs_v1, '\n\n')
+    print('outputs_v2: ', outputs_v2)
 
 
 #%% Depreciated, but WORKS
@@ -619,10 +569,10 @@ if __name__ == '__main__':
     # I need to name the input dictionary key correctly - use 'inputs' instead of 
     # EIE_input
     #prediction = predict_fn(
-    #        {'EIE_input' : [input_eie]})
+    #        {'EIE_input': [input_eie]})
     
     prediction = predict_fn(
-            {'inputs' : [input_eie]})
+            {'inputs': [input_eie]})
 
 
 #%% Using saved_model_cli
@@ -723,10 +673,10 @@ Method name is: tensorflow/serving/regress
 ## I need to name the input dictionary key correctly - use 'inputs' instead of 
 ## EIE_input
 #prediction = predict_fn(
-#        {'EIE_input' : [input_eie]})
+#        {'EIE_input': [input_eie]})
 #
 #prediction = predict_fn(
-#        {'inputs' : [input_eie]})
+#        {'inputs': [input_eie]})
 
 
 #%% Serve TFRecord for estimaton

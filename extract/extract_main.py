@@ -136,10 +136,6 @@ def main():
 #%% Main function
 """Take information that was saved in .csv files and move to SQL Server
 """
-
-
-
-
 def enforce_clustering_null(dictionary, replace=0):
     """Replace specific dictionary keys with 0 instead of None/Null"""
     not_null = ['correct_k','n_points','n_len1','n_len2','n_len3',
@@ -224,7 +220,6 @@ def pair_csv_files(base_directory=r'C:\Users\z003vrzk\.spyder-py3\Scripts\ML\poi
 
     return pairs
 
-
 def hyperparameter_type_conversion(dataframe):
     """inputs
     -------
@@ -238,7 +233,6 @@ def hyperparameter_type_conversion(dataframe):
     n_components = int(dataframe['n_components'][0])
 
     return by_size, clusterer, distance, reduce, n_components
-
 
 def insert_csv_to_sql():
     base_directory=r'C:\Users\z003vrzk\.spyder-py3\Scripts\ML\point_categorizer\error_dfs'
