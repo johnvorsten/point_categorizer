@@ -635,10 +635,11 @@ def serving_input_receiver_fn():
     return tf.estimator.export.ServingInputReceiver(parsed_features, receiver_tensors)
 
 
-model_dir = ranker.export_saved_model(export_dir,
-                          serving_input_receiver_fn,
-                          as_text=False
-                          )
+model_dir = ranker.export_saved_model(
+    export_dir,
+    serving_input_receiver_fn,
+    as_text=False
+    )
 
 
 

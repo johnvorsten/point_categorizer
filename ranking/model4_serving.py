@@ -25,6 +25,9 @@ from typing import Dict, Union, Iterable
 # Third party imports
 import sqlalchemy
 import tensorflow as tf
+from scipy.sparse import csr_matrix
+from sklearn.pipeline import Pipeline
+import numpy as np
 
 # Local imports
 if __name__ == '__main__':
@@ -41,11 +44,9 @@ from extract.SQLAlchemyDataDefinition import (Clustering, Points, Netdev,
                                               ClusteringHyperparameter, 
                                               Labeling)
 from transform_ranking import Transform
-from Labeling import ClusteringLabels
 from rank_write_record import (
     tf_feature_mapper, 
     _bytes_feature)
-from Labeling import HYPERPARAMETER_SERVING_FILEPATH, ClusteringLabels
 
 # Declarations
 config = configparser.ConfigParser()
@@ -64,14 +65,156 @@ Insert = extract.Insert(server_name=server_name,
 # Return these with the output prediction. User will be able 
 # To rank clusterer hyperparameters based on prediction"""
 _default_peritem_features_file = r'../data/JV_default_serving_peritem_features'
+HYPERPARAMETER_SERVING_FILEPATH = r'../data/serving_hyperparameters.dat'
 with open(_default_peritem_features_file, 'rb') as f:
     # Import from file
     HYPERPARAMETER_LIST = pickle.load(f)
     
 _LIST_SIZE_MODEL4 = 200
 _MODEL4_DIRECTORY = 'final_model\\Run_20191024002109model4\\1572051525'
-
+_file_name_bysize = '../data/vocab_bysize.txt'
+_file_name_clusterer = '../data/vocab_clusterer.txt'
+_file_name_index = '../data/vocab_index.txt'
+_file_name_n_components = '../data/vocab_n_components.txt'
+_file_name_reduce = '../data/vocab_reduce.txt'
+    
 #%%
+
+class DatabaseFeatures:
+    instance:str
+    n_instance:int
+    n_features:int
+    len_var:float
+    uniq_ratio:float
+    n_len1:float
+    n_len2:float
+    n_len3:float 
+    n_len4:float 
+    n_len5:float 
+    n_len6:float 
+    n_len7:float
+    
+class PipelineError(Exception):
+    pass
+    
+def get_database_features(database, pipeline, instance_name) -> DatabaseFeatures:
+    """Calculate the features of a dataset. These will be used to
+    predict a good clustering algorithm.
+    Inputs
+    -------
+    database: Your database. Its type not matter as long as the
+        pipeline passed outputs a numpy array.
+    pipeline: (sklearn.pipeline.Pipeline) Your finalized pipeline.
+        See sklearn.Pipeline. The output of the pipelines .fit_transform()
+        method should be your encoded array
+        of instances and features of size (n,p) n=#instances, p=#features.
+        Alternatively, you may pass a sequence of tuples containing names
+        and pipeline objects: [('pipe1', myPipe1()), ('pipe2',myPipe2())]
+    instance_name: (str | int) unique tag/name to identify each instance.
+        The instance with feature vectors will be returned as a pandas
+        dataframe with the tag on the index.
+    Returns
+    -------
+    df: a pandas dataframe with the following features
+        a. Number of points
+		b. Correct number of clusters
+		c. Typical cluster size (n_instances / n_clusters)
+		d. Word length
+		e. Variance of words lengths?
+		f. Total number of unique words
+        g. n_instances / Total number of unique words
+
+    # Example Usage
+    from JVWork_UnClusterAccuracy import AccuracyTest
+    myTest = AccuracyTest()
+    text_pipe = myDBPipe.text_pipeline(vocab_size='all', attributes='NAME',
+                               seperator='.')
+    clean_pipe = myDBPipe.cleaning_pipeline(remove_dupe=False,
+                                  replace_numbers=False,
+                                  remove_virtual=True)
+    mypipe = Pipeline([('clean_pipe', clean_pipe),
+                       ('text_pipe',text_pipe)
+                       ])
+    correct_k = myTest.get_correct_k(db_name, df_clean, manual=True)
+
+    data_transform = DataFeatures()
+    db_feat = data_transform.calc_features(database, mypipe,
+                                           tag=db_name, correct_k=correct_k)
+    """
+
+    if hasattr(pipeline, '__iter__'):
+        pipeline = Pipeline(pipeline)
+    else:
+        pass
+
+    try:
+        data = pipeline.fit_transform(database)
+    except:
+        msg = "An error occured in the passed pipeline {}".format(pipeline.named_steps)
+        raise(PipelineError(msg))
+
+    if isinstance(data, csr_matrix):
+        data = data.toarray()
+
+    # Number of points
+    n_points = data.shape[0]
+
+    # Number of features
+    n_features = data.shape[1]
+
+    # Word lengths (as percentage of total number of instances)
+    count_dict_pct = get_word_dictionary(data, percent=True)
+
+    # Variance of lengths
+    lengths = []
+    count_dict_whole = get_word_dictionary(data, percent=False)
+    for key, value in count_dict_whole.items():
+        lengths.extend([int(key[-1])] * value)
+    len_var = np.array(lengths).var(axis=0)
+
+    features_dict = {
+            'instance':instance_name,
+            'n_instance':n_points,
+            'n_features':n_features,
+            'len_var':len_var,
+            'uniq_ratio':n_points/n_features,
+            }
+    features_dict: DatabaseFeatures = {**features_dict, **count_dict_pct}
+    # features_df = pd.DataFrame(features_dict, index=[instance_name])
+
+    return features_dict
+
+def get_word_dictionary(word_array, percent=True):
+
+    count_dict = {}
+
+    #Create a dictionary of word lengths
+    for row in word_array:
+        count = sum(row>0)
+        try:
+            count_dict[count] += 1
+        except KeyError:
+            count_dict[count] = 1
+
+    #Return word lengths by percentage, or
+    if percent:
+        for key, label in count_dict.items():
+            count_dict[key] = count_dict[key] / len(word_array) #Percentage
+    else:
+        pass #Dont change it, return number of each length
+
+    max_key = 7 #Static for later supervised training
+    old_keys = list(count_dict.keys())
+    new_keys = ['n_len' + str(old_key) for old_key in old_keys]
+
+    for old_key, new_key in zip(old_keys, new_keys):
+        count_dict[new_key] = count_dict.pop(old_key)
+
+    required_keys = ['n_len' + str(key) for key in range(1,max_key+1)]
+    for key in required_keys:
+        count_dict.setdefault(key, 0)
+
+    return count_dict
 
 def serialize_context_from_dictionary(context_features: Dict[str, Union[int,float]]):
     """Create a serialized tf.train.Example proto from a dictionary of context
@@ -236,6 +379,117 @@ def serialize_examples_model4(hyperparameter_list: Iterable[Dict[str,str]],
         
     return peritem_list
 
+def serving_input_receiver_fn():
+
+    serialized_tfrecord = tf.placeholder(dtype=tf.string,
+                                         shape=[None],
+                                         name='EIE_input')  # placeholder
+    receiver_tensors = {'EIE_input':serialized_tfrecord}
+
+    # Building the input reciever
+    n_instance = tf.feature_column.numeric_column(
+        'n_instance', dtype=tf.float32, default_value=0.0)
+    n_features = tf.feature_column.numeric_column(
+        'n_features', dtype=tf.float32, default_value=0.0)
+    len_var = tf.feature_column.numeric_column(
+        'len_var', dtype=tf.float32, default_value=0.0)
+    uniq_ratio = tf.feature_column.numeric_column(
+        'uniq_ratio', dtype=tf.float32, default_value=0.0)
+    n_len1 = tf.feature_column.numeric_column(
+        'n_len1', dtype=tf.float32, default_value=0.0)
+    n_len2 = tf.feature_column.numeric_column(
+        'n_len2', dtype=tf.float32, default_value=0.0)
+    n_len3 = tf.feature_column.numeric_column(
+        'n_len3', dtype=tf.float32, default_value=0.0)
+    n_len4 = tf.feature_column.numeric_column(
+        'n_len4', dtype=tf.float32, default_value=0.0)
+    n_len5 = tf.feature_column.numeric_column(
+        'n_len5', dtype=tf.float32, default_value=0.0)
+    n_len6 = tf.feature_column.numeric_column(
+        'n_len6', dtype=tf.float32, default_value=0.0)
+    n_len7 = tf.feature_column.numeric_column(
+        'n_len7', dtype=tf.float32, default_value=0.0)
+
+    # Adding an outer layer (None) to shape would allow me to batch inputs
+    # for efficiency. However that woud mean I have to add an outer list layer
+    # aka [[]] to all my inputs, and combine features
+    # It may be easier to pass a single batch at a time
+    by_size = tf.feature_column.categorical_column_with_vocabulary_file(
+        'by_size',
+        _file_name_bysize,
+        dtype=tf.string)
+    clusterer = tf.feature_column.categorical_column_with_vocabulary_file(
+        'clusterer',
+        _file_name_clusterer,
+        dtype=tf.string)
+    index = tf.feature_column.categorical_column_with_vocabulary_file(
+        'index',
+        _file_name_index,
+        dtype=tf.string)
+    n_components = tf.feature_column.categorical_column_with_vocabulary_file(
+        'n_components',
+        _file_name_n_components,
+        dtype=tf.string)
+    reduce = tf.feature_column.categorical_column_with_vocabulary_file(
+        'reduce',
+        _file_name_reduce,
+        dtype=tf.string)
+
+    by_size_indicator = tf.feature_column.indicator_column(by_size)
+    clusterer_indicator = tf.feature_column.indicator_column(clusterer)
+    index_indicator = tf.feature_column.indicator_column(index)
+    n_components_indicator = tf.feature_column.indicator_column(n_components)
+    reduce_indicator = tf.feature_column.indicator_column(reduce)
+
+    context_feature_spec = tf.feature_column.make_parse_example_spec(
+            [n_instance,
+            n_features,
+            len_var,
+            uniq_ratio,
+            n_len1,
+            n_len2,
+            n_len3,
+            n_len4,
+            n_len5,
+            n_len6,
+            n_len7])
+
+    example_feature_spec = tf.feature_column.make_parse_example_spec(
+          [by_size_indicator,
+           clusterer_indicator,
+           index_indicator,
+           n_components_indicator,
+           reduce_indicator])
+
+    # Parse receiver_tensors
+    parsed_features = tfr.python.data.parse_from_example_in_example(
+          serialized_tfrecord,
+          context_feature_spec=context_feature_spec,
+          example_feature_spec=example_feature_spec)
+
+#    # Transform receiver_tensors - sparse must be transformed to dense
+#    context_features, example_features = tfr.feature.encode_listwise_features(
+#        features=parsed_features,
+#        input_size=_LIST_SIZE,
+#        context_feature_columns=context_feature_columns(),
+#        example_feature_columns=example_feature_columns_v2(),
+#        mode=tf.estimator.ModeKeys.PREDICT,
+#        scope="transform_layer")
+
+#    features = {**context_features, **example_features}
+
+#    context_input = [
+#          tf.compat.v1.layers.flatten(context_features[name])
+#          for name in sorted(context_feature_columns())
+#      ]
+#    group_input = [
+#          tf.compat.v1.layers.flatten(example_features[name])
+#          for name in sorted(example_feature_columns_v2())
+#      ]
+#    input_layer = tf.concat(context_input + group_input, 1)
+
+    return tf.estimator.export.ServingInputReceiver(parsed_features, receiver_tensors)
+
 #%%
 
 # Load an example from SQL database
@@ -251,29 +505,37 @@ full_pipeline = Transform.get_ranking_pipeline()
 # Dictionary with keys ['n_instance', 'n_features', 'len_var', 'uniq_ratio',
 #                    'n_len1', 'n_len2', 'n_len3', 'n_len4', 'n_len5',
 #                    'n_len6', 'n_len7']
-database_features = ClusteringLabels.get_database_features(
+database_features = get_database_features(
     database,
     full_pipeline,
     instance_name=customer_name)
 database_features.pop('instance')
 
 #1. Context features (bytes object)
-context_proto_str = serialize_context_from_dictionary(database_features)
+serialized_context = serialize_context_from_dictionary(database_features)
 
 #2. Peritem features (bytes object)
-peritem_features = serialize_examples_model4(
+serialized_peritem = serialize_examples_model4(
     HYPERPARAMETER_LIST,
     list_size=_LIST_SIZE_MODEL4)
 
 # Prepare serialized feature spec for EIE format
-serialized_dict = {'serialized_context':_bytes_feature([context_proto_str]),
-                   'serialized_examples':_bytes_feature(peritem_features)
+serialized_dict = {'serialized_context':_bytes_feature([serialized_context]),
+                   'serialized_examples':_bytes_feature(serialized_peritem)
                    }
 
 # Convert to tf.train.Example object
 serialized_proto = tf.train.Example(
         features=tf.train.Features(feature=serialized_dict))
 serialized_example_in_example = serialized_proto.SerializeToString()
+
+# Convert serialized example-in-example to tensor
+context_features = tf.io.parse_example(
+    serialized=[serialized_context],
+    features=context_feature_spec)
+peritem_features = tf.io.parse_example(
+    serialized=serialized_peritem,
+    features=example_feature_spec)
 
 """
 #TODO
@@ -289,8 +551,10 @@ Isolate these models into a separate project
 """
 
 # Load previously serialized model from V1 tensorflow
-imported = tf.saved_model.load(_MODEL4_DIRECTORY)
+imported = tf.compat.v2.saved_model.load(_MODEL4_DIRECTORY)
 pruned = imported.prune('Placeholder:0', 'groupwise_dnn_v2/accumulate_scores/div_no_nan:0')
+pruned(serialized_example_in_example)
+pruned(input_feed_dict)
 
 
 
@@ -315,4 +579,10 @@ if __name__ == '__main__':
             'groupwise_dnn_v2/accumulate_scores/div_no_nan:0', 
             feed_dict=input_feed_dict)
         
-    print('outputs_v2: ', outputs_model4)
+    print('outputs_model4: ', outputs_model4)
+    hyperparameter_list = HYPERPARAMETER_LIST[:_LIST_SIZE_MODEL4]
+    _best_idx = np.argsort(outputs_model4, axis=1)
+    print("Best 5 hyperparameter sets for clustering: \n")
+    for i in range(1, 5):
+        print("Score: ", outputs_model4[0, _best_idx[0, -i]])
+        print(hyperparameter_list[_best_idx[0, -i]])

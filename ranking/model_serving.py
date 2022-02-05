@@ -515,13 +515,12 @@ if __name__ == '__main__':
     model_directory_v2 = b'final_model\\Run_20191024002109model4\\1572051525'
     
     document = collection.find_one()
-    ServingClass = LoadSerializedAndServe()
     
-    input_eie_v1 = ServingClass._encode_input_transmitter_fn_v1(
+    input_eie_v1 = LoadSerializedAndServe._encode_input_transmitter_fn_v1(
         document, 
         text_features=False,
         list_size=_LIST_SIZE_V1)
-    input_eie_v2 = ServingClass._encode_input_transmitter_fn_v2(
+    input_eie_v2 = LoadSerializedAndServe._encode_input_transmitter_fn_v2(
         document,
         list_size=_LIST_SIZE_V2,
         example_features='all')
@@ -562,9 +561,9 @@ if __name__ == '__main__':
     
     predict_fn = tf.contrib.predictor.from_saved_model(model_directory)
     
-    input_eie = _encode_input_transmitter_fn_v1(document, 
-                                            text_features=False,
-                                            list_size=180)
+    input_eie = LoadSerializedAndServe._encode_input_transmitter_fn_v1(document, 
+                                                text_features=False,
+                                                list_size=180)
     
     # I need to name the input dictionary key correctly - use 'inputs' instead of 
     # EIE_input
