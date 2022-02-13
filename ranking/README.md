@@ -18,3 +18,9 @@ From there, a custom loss function is used to calculate how well that clustering
 8. Create FastAPI for serving the models predictions
 9. Create template data for input into a web form
 10. Create visualizations of clustering process for website understnading
+
+# Tensorflow serving
+Start tensorflow serving docker container `docker run -t --rm -p 8502:8502 -v "C:\Users\vorst\PythonProjects\ML\point_categorizer\ranking\final_model\Run_20191024002109model4:/models/model4" -e MODEL_NAME=model4 tensorflow/serving &`
+Logs - 'Successfully loaded servable version {name: model4 version: 1572051525'
+Sent a POST request `curl -d "{"instances":[1.0,2.0]}" -X POST http://localhost:8501/v1/models/model4`
+Response - {"error": "Malformed request: POST /v1/models/model4"}
