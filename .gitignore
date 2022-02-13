@@ -53,6 +53,8 @@ user_input.csv
 *vocab_ANTIQUE2.txt
 data/desktop.ini
 error_dfs/error_df_other.csv
+*model4_xml.txt
+testing.md
 
 # Word files
 *.docx
