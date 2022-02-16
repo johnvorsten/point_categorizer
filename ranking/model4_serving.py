@@ -398,10 +398,11 @@ async def clustering_ranking_model4(database_features: RawInputData):
     # Response is a list of predicitons {'predictions': [[float,float,...]]}
     resp = requests.post(RANKING_MODEL_URL, json=json_data)
     relevancies = resp.json()['predictions'][0]
-    top_5_hyperparameters, worst_hyperparameter = \
+    top_5_hyperparameters, worst_5_hyperparameter = \
         get_top_n_hyperparameters(5, HYPERPARAMETER_LIST, relevancies)
     
-    return PredictorOutput(top_n=top_5_hyperparameters, worst_n=worst_hyperparameter)
+    return PredictorOutput(top_n=top_5_hyperparameters,
+                           worst_n=worst_5_hyperparameter)
 
 #%%
 if __name__ == "__main__":
