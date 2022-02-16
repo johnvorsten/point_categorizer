@@ -32,17 +32,15 @@ import requests
 from pydantic import BaseModel
 from fastapi import FastAPI
 import uvicorn
+import numpy as np
 
 # Local imports
-from rank_write_record import (
-    tf_feature_mapper, 
-    _bytes_feature)
 
 # Declarations
 """Peritem clusterer hyperparameters used for prediction
 # Return these with the output prediction. User will be able 
 # To rank clusterer hyperparameters based on prediction"""
-DEFAULT_PERITEM_FEATURES_FILE = r'./default_serving_peritem_features'
+DEFAULT_PERITEM_FEATURES_FILE = r'./default_serving_peritem_features.dat'
 with open(DEFAULT_PERITEM_FEATURES_FILE, 'rb') as f:
     # Import from file
     HYPERPARAMETER_LIST = pickle.load(f)
@@ -64,7 +62,6 @@ app = FastAPI(title=config['FastAPI']['title'],
 #%%
 
 class DatabaseFeatures:
-    instance:str
     n_instance:int
     n_features:int
     len_var:float
@@ -77,6 +74,56 @@ class DatabaseFeatures:
     n_len6:float 
     n_len7:float
     
+def _bytes_feature(value):
+  """Returns a bytes_list from a string / byte."""
+  return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
+
+def _float_feature(value):
+  """Returns a float_list from a float / double."""
+  return tf.train.Feature(float_list=tf.train.FloatList(value=value))
+
+def _int64_feature(value):
+  """Returns an int64_list from a bool / enum / int / uint."""
+  return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
+
+def tf_feature_mapper(value, dtype=None):
+    # Float -> tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
+    # int -> tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
+    # Create a dictionary mapper to map the function to data type
+    dict_mapper = {int:_int64_feature,
+                   float:_float_feature,
+                   np.float64:_float_feature,
+                   bytes:_bytes_feature,
+                   np.bytes_:_bytes_feature,
+                   bool:_int64_feature}
+    
+    # Make sure all list items are same dtype
+    if hasattr(value, '__iter__'):
+        if dtype:
+            expected_type = dtype
+        else:
+            expected_type = type(value[0])
+        all_same = all(isinstance(item, expected_type) for item in value)
+        
+        if not all_same: # Cast as the first type in iterable
+            try:
+                value = [expected_type(item) for item in value]
+            except ValueError:
+                raise ValueError('Cannot cast all items in passed list to \
+                                 same type')
+                
+        return dict_mapper[expected_type](value)
+    
+    # Handle single values (not list)
+    else:
+        if dtype:
+            expected_type = dtype
+        else:
+            expected_type = type(value)
+        
+        return dict_mapper[expected_type]([value])
+    
+    return None
 
 def serialize_context_from_dictionary(context_features: Dict[str, Union[int,float]]):
     """Create a serialized tf.train.Example proto from a dictionary of context
@@ -383,7 +430,7 @@ async def clustering_ranking_model4(database_features: RawInputData):
 
     # Serialize input context features into an example-in-example
     serialized_example_in_example = cached_serialize_example_in_example(
-        database_features,
+        dict(database_features),
         SERIALIZED_PERITEM)
     
     # Tensorflow serving requires 

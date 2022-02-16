@@ -38,7 +38,6 @@ def _int64_feature(value):
   """Returns an int64_list from a bool / enum / int / uint."""
   return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
 
-
 def tf_feature_mapper(value, dtype=None):
     # Float -> tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
     # int -> tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
@@ -78,7 +77,6 @@ def tf_feature_mapper(value, dtype=None):
         return dict_mapper[expected_type]([value])
     
     return
-
 
 def serialize_features(document, label_names):
     """Create a serialized tf.train.Example proto from a document stored in
@@ -171,7 +169,6 @@ def get_test_train_id(collection, train_pct=0.8):
     test_ids = permuted_sequence[n_train:]
     
     return train_ids, test_ids
-
 
 def feature_columns():
     """Returns context feature names to column definitions.

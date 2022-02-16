@@ -23,5 +23,10 @@ Logs - 'Successfully loaded servable version {name: model4 version: 1572051525'
 Sent a POST request `curl -d "{"instances":[1.0,2.0]}" -X POST http://localhost:8501/v1/models/model4`
 Response - {"error": "Malformed request: POST /v1/models/model4"}
 
-# Docker
+# Docker (tensorflow serving)
 docker run -d --rm -p 8501:8501 -v "C:\Users\Jvorsten\PythonProjects\ML\point_categorizer\ranking\final_model\Run_20191024002109model4/:/models/model4" -e MODEL_NAME=model4 --name tf_serving tensorflow/serving &
+
+## Docker (fastapi model4_serving.py)
+build the docker image with docker `docker build . --tag ranking_serving`
+Run the image for serving `docker run --name ranking_serving --publish 8004:8004 --log-driver local --restart=on-failure:2 --detach ranking_serving`
+We must publish the containers port to a port on the host machine because we are not creating a networked group of containers. An Nginx proxy will pass requests to this host and port for predictions. It will no run as part of another service or container group

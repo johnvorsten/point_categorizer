@@ -39,7 +39,9 @@ from rank_write_record import (_bytes_feature)
 from model4_serving import (serialize_context_from_dictionary, 
                             serialize_examples_model4, 
                             serialize_example_in_example, 
-                            DatabaseFeatures)
+                            DatabaseFeatures,
+                            RANKING_MODEL_URL, 
+                            RawInputData)
 
 # Declarations
 """Peritem clusterer hyperparameters used for prediction
@@ -425,6 +427,38 @@ class Model4ServingTest(TestCase):
         # resp = requests.post(model_server_url, json=json_data)
         # print(resp.json())
         
+        return None
+    
+
+class Model4ServingOnlineTest():
+    
+    def setUp(self):
+        
+        # Static database features
+        self.database_features = copy.deepcopy(DATABASE_FEATURES)
+        
+        # Serialized context
+        self.serialized_context = serialize_context_from_dictionary(self.database_features)
+        
+        # Serialized example in example
+        self.serialized_peritem = serialize_examples_model4(
+            HYPERPARAMETER_LIST,
+            list_size=_LIST_SIZE_MODEL4)
+        
+        return None
+    
+    def test_request_model4_serving(self):
+        
+        SERVING_MODEL_URL = 'http://localhost:8004/clustering-ranking/model4predict/'
+        headers = {'accept': 'application/json',
+                   'Content-Type': 'application/json'}
+        json_data = RawInputData(**DATABASE_FEATURES).json()
+        
+        resp = requests.post(SERVING_MODEL_URL, json=json_data, headers=headers)
+        print(resp.json())
+
+        self.assertEqual(resp.status_code, 200)
+            
         return None
 
 
