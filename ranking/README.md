@@ -14,7 +14,7 @@ From there, a custom loss function is used to calculate how well that clustering
 6. (done) Document input features and data types
 7. (done) Create custom transformer for inputting raw data to model - probably requires serializing data?
 8. (done) Create FastAPI for serving the models predictions
-9. Create template data for input into a web form
+9. (done) Create template data for input into a web form
 10. Create visualizations of clustering process for website understnading
 
 # Docker networking
