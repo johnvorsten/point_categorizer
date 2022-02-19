@@ -18,7 +18,8 @@ From there, a custom loss function is used to calculate how well that clustering
 10. Create visualizations of clustering process for website understnading
 
 # Tensorflow serving
-Start tensorflow serving docker container `docker run -t --rm -p 8502:8502 -v "C:\Users\vorst\PythonProjects\ML\point_categorizer\ranking\final_model\Run_20191024002109model4:/models/model4" -e MODEL_NAME=model4 tensorflow/serving &`
+Pull docker image `docker pull tensorflow/serving:latest`
+Start tensorflow serving docker container `docker run -t --rm -p 8501:8501 -v "C:\Users\vorst\PythonProjects\ML\point_categorizer\ranking\final_model\Run_20191024002109model4:/models/model4" -e MODEL_NAME=model4 tensorflow/serving &`
 Logs - 'Successfully loaded servable version {name: model4 version: 1572051525'
 
 # Docker (tensorflow serving)
