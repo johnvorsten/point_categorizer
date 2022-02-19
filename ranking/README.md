@@ -20,8 +20,6 @@ From there, a custom loss function is used to calculate how well that clustering
 # Tensorflow serving
 Start tensorflow serving docker container `docker run -t --rm -p 8502:8502 -v "C:\Users\vorst\PythonProjects\ML\point_categorizer\ranking\final_model\Run_20191024002109model4:/models/model4" -e MODEL_NAME=model4 tensorflow/serving &`
 Logs - 'Successfully loaded servable version {name: model4 version: 1572051525'
-Sent a POST request `curl -d "{"instances":[1.0,2.0]}" -X POST http://localhost:8501/v1/models/model4`
-Response - {"error": "Malformed request: POST /v1/models/model4"}
 
 # Docker (tensorflow serving)
 docker run -d --rm -p 8501:8501 -v "C:\Users\Jvorsten\PythonProjects\ML\point_categorizer\ranking\final_model\Run_20191024002109model4/:/models/model4" -e MODEL_NAME=model4 --name tf_serving tensorflow/serving &
@@ -29,4 +27,9 @@ docker run -d --rm -p 8501:8501 -v "C:\Users\Jvorsten\PythonProjects\ML\point_ca
 ## Docker (fastapi model4_serving.py)
 build the docker image with docker `docker build . --tag ranking_serving`
 Run the image for serving `docker run --name ranking_serving --publish 8004:8004 --log-driver local --restart=on-failure:2 --detach ranking_serving`
+Create request `curl -X 'POST' \
+  'http://localhost:8004/clustering-ranking/model4predict/' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{"n_instance": 445.0, "n_features": 161.0, "len_var": 0..18, "uniq_ratio": 2.76, "n_len1": 0.01, "n_len2": 0.01, "n_len3": 0.78, "n_len4": 0.22, "n_len5": 0.0, "n_len6": 0.0, "n_len7": 0.0}'`
 We must publish the containers port to a port on the host machine because we are not creating a networked group of containers. An Nginx proxy will pass requests to this host and port for predictions. It will no run as part of another service or container group
