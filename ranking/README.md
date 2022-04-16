@@ -15,20 +15,20 @@ From there, a custom loss function is used to calculate how well that clustering
 7. (done) Create custom transformer for inputting raw data to model - probably requires serializing data?
 8. (done) Create FastAPI for serving the models predictions
 9. (done) Create template data for input into a web form
-10. Create visualizations of clustering process for website understnading
+10. (done) Create visualizations of clustering process for website understanding
 
 # Docker networking
 Create a default network for ranking_serving `docker network create ranking_net --driver bridge`
 
 # Docker (tensorflow serving)
 Pull docker image `docker pull tensorflow/serving:latest`
-Start tensorflow serving docker container `docker run --detach -p 8501:8501 --network ranking_net -v "C:\Users\Jvorsten\PythonProjects\ML\point_categorizer\ranking\final_model\Run_20191024002109model4/:/models/model4" -e MODEL_NAME=model4 --name tf_serving --restart=on-failure:5 tensorflow/serving &`
+Start tensorflow serving docker container `docker run --detach -p 8501:8501 --network ranking_net -v "C:\Users\Jvorsten\PythonProjects\ML\point_categorizer\ranking\final_model\Run_20191024002109model4/:/models/model4" -e MODEL_NAME=model4 --name tf_serving --restart=on-failure:5 --log-driver json-file --log-opts max-size=10m max-file=3 tensorflow/serving &`
 Logs - 'Successfully loaded servable version {name: model4 version: 1572051525'
 Connect this container to the bridge network `docker network connect ranking_net tf_serving`
 
 ## Docker (fastapi model4_serving.py)
 build the docker image with docker `docker build . --tag ranking_serving`
-Run the image for serving `docker run --name ranking_serving --publish 8004:8004 --network ranking_net --log-driver local --restart=on-failure:5 --detach ranking_serving`
+Run the image for serving `docker run --name ranking_serving --publish 8004:8004 --network ranking_net --log-driver json-file --log-opts max-size=10m max-file=3 --restart=on-failure:5 --detach ranking_serving`
 Create request `curl -X 'POST' \
   'http://localhost:8004/clustering-ranking/model4predict/' \
   -H 'accept: application/json' \

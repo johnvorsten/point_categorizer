@@ -1,14 +1,14 @@
 ## MIL - Multiple instance learning on BMS datasets
 
 ## TODO
-Estimators (Pickling, saving)
+(done) Estimators (Pickling, saving)
     'Re-train estimator
     'Pickle SkLearn estimator
     'Save (training and validation) data for modular testing and validation
     'Record optimal hyperparameters
     'Document validation results (.txt)
 
-Create HTTP API for accessing and serving predictions
+(done) Create HTTP API for accessing and serving predictions
     'Document raw data input fields (what specifically is required?)
     'Create input data structure for raw data (dataframe, dictionary, tuple, array...)
     'Deal with incomplete data (Error handling - see 8 cases of failure mode)
@@ -18,18 +18,18 @@ Create HTTP API for accessing and serving predictions
     'Send results
     * Use FastAPI (https://fastapi.tiangolo.com/)
 
-Web page
+(done) Web page
     'HTML Form fields
     'Javascript - Template data input
     'Javascript - POST form
     'Javascript - Serialize data to JSON
     
-Containerize service
+(done) Containerize service
     'Deploy container
 
 ## Docker
 build the docker image with docker `docker build . --tag mil_serving`
-Run the image for serving `docker run --name mil_serving --publish 8003:8003 --log-driver local --restart=on-failure:2 --detach mil_serving`
+Run the image for serving `docker run --name mil_serving --publish 8003:8003 --log-driver json-file --log-opts max-size=20m max-size=20m --restart=on-failure:2 --detach mil_serving`
 We must publish the containers port to a port on the host machine because we are not creating a networked group of containers. An Nginx proxy will pass requests to this host and port for predictions. It will no run as part of another service or container group
 
 ## Vocabulary
